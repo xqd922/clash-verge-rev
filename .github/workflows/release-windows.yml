@@ -35,20 +35,8 @@ jobs:
           node-version: "22"
           cache: "pnpm"
 
-      - name: Setup pnpm via corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@9.0.0 --activate
-
-      - uses: pnpm/action-setup@v4
-        name: Install pnpm
-        with:
-          version: 9
-          run_install: false
-
-      - name: Ensure pnpm available (fallback)
-        run: |
-          if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) { npm i -g pnpm@9 }
+      - name: Install pnpm (global)
+        run: npm i -g pnpm@9
 
       - name: Pnpm install and check
         run: |
