@@ -10,6 +10,7 @@ use std::{sync::Arc, time::Duration};
 use tauri_plugin_shell::ShellExt;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
+use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct CoreManager {
@@ -72,12 +73,37 @@ impl CoreManager {
         if service::check_service().await.is_ok() {
             log::info!(target: "app", "try to run core in service mode");
             service::run_core_by_service(&config_path).await?;
+        } else {
+            // 侧载模式（无服务时直接启动核心进程）
+            log::warn!(target: "app", "service unavailable, start core by sidecar");
+            Self::run_core_by_sidecar(&config_path).await?;
         }
         // 流量订阅
         #[cfg(target_os = "macos")]
         log_err!(Tray::global().subscribe_traffic().await);
 
         *running = true;
+
+        Ok(())
+    }
+
+    /// 无服务时，直接以子进程方式启动核心
+    async fn run_core_by_sidecar(config_file: &PathBuf) -> Result<()> {
+        let clash_core = { Config::verge().latest().clash_core.clone() };
+        let clash_core = clash_core.unwrap_or("verge-mihomo".into());
+
+        let app_handle = handle::Handle::global().app_handle().unwrap();
+        let config_dir = crate::utils::dirs::app_home_dir()?;
+        let config_dir = crate::utils::dirs::path_to_str(&config_dir)?;
+        let config_file = crate::utils::dirs::path_to_str(config_file)?;
+
+        log::info!(target:"app", "start core by sidecar: {} -d {} -f {}", clash_core, config_dir, config_file);
+
+        let _child = app_handle
+            .shell()
+            .sidecar(clash_core)?
+            .args(["-d", config_dir, "-f", config_file])
+            .spawn()?;
 
         Ok(())
     }
@@ -358,7 +384,40 @@ impl CoreManager {
                 let run_path = Config::generate_file(ConfigType::Run)?;
                 let run_path = dirs::path_to_str(&run_path)?;
 
-                // 5. 应用新配置
+                // 5. 等待核心就绪并应用新配置
+                println!("[core配置更新] 检查核心就绪状态");
+                let mut ready = false;
+                for attempt in 1..=20 {
+                    match clash_api::check_ready().await {
+                        Ok(_) => { 
+                            println!("[core配置更新] 核心就绪 (检查第{}次)", attempt);
+                            ready = true; 
+                            break; 
+                        }
+                        Err(e) => {
+                            if attempt % 5 == 0 { println!("[core配置更新] 核心未就绪({attempt}/20): {}", e); }
+                            sleep(Duration::from_millis(250)).await
+                        },
+                    }
+                }
+                if !ready {
+                    println!("[core配置更新] 核心未就绪，尝试重启核心");
+                    if let Err(e) = Self::global().restart_core().await {
+                        println!("[core配置更新] 重启核心失败: {}", e);
+                    } else {
+                        // 重启后再等待就绪
+                        for attempt in 1..=30 {
+                            match clash_api::check_ready().await {
+                                Ok(_) => { println!("[core配置更新] 核心重启后就绪 (检查第{}次)", attempt); break; }
+                                Err(e) => {
+                                    if attempt % 5 == 0 { println!("[core配置更新] 重启后仍未就绪({attempt}/30): {}", e); }
+                                    sleep(Duration::from_millis(250)).await
+                                }
+                            }
+                        }
+                    }
+                }
+
                 println!("[core配置更新] 应用新配置");
                 for i in 0..3 {
                     match clash_api::put_configs(run_path).await {

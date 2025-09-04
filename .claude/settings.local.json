@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(/D:\\Me\\clash-verge-rev\\src-tauri\\src\\core/**)",
+      "Bash(taskkill:*)",
+      "Bash(wmic:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

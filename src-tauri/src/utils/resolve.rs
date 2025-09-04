@@ -102,10 +102,8 @@ pub async fn resolve_setup(app: &mut App) {
     log::trace!(target: "app", "init hotkeys");
     log_err!(hotkey::Hotkey::global().init());
 
-    let silent_start = { Config::verge().data().enable_silent_start };
-    if !silent_start.unwrap_or(false) {
-        create_window();
-    }
+    // 始终创建主窗口（避免静默启动时用户感觉“无响应”）
+    create_window();
 
     log_err!(tray::Tray::global().update_part());
     log_err!(timer::Timer::global().init());

@@ -11,6 +11,22 @@ pub struct Rate {
     pub down: u64,
 }
 
+/// 检查核心控制端是否就绪：GET /configs 返回 200 视为就绪
+pub async fn check_ready() -> Result<()> {
+    let (url, headers) = clash_client_info()?;
+    let url = format!("{url}/configs");
+
+    let client = reqwest::ClientBuilder::new().no_proxy().build()?;
+    let response = client.get(&url).headers(headers).send().await?;
+    if response.status().is_success() {
+        Ok(())
+    } else {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        bail!("core not ready: {status} {url}\n{body}");
+    }
+}
+
 /// PUT /configs
 /// path 是绝对路径
 pub async fn put_configs(path: &str) -> Result<()> {
