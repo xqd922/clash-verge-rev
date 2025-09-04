@@ -13,7 +13,9 @@ import { useVisibility } from "@/hooks/use-visibility";
 const RulesPage = () => {
   const { t } = useTranslation();
   const { rules = [], refreshRules, refreshRuleProviders } = useAppData();
-  const [match, setMatch] = useState(() => (_: string) => true);
+  const [match, setMatch] = useState<(content: string) => boolean>(
+    () => () => true,
+  );
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const pageVisible = useVisibility();
@@ -40,8 +42,9 @@ const RulesPage = () => {
     });
   };
 
-  const handleScroll = (e: any) => {
-    setShowScrollTop(e.target.scrollTop > 100);
+  const handleScroll = (e: Event) => {
+    const target = e.target as HTMLElement;
+    setShowScrollTop(target.scrollTop > 100);
   };
 
   return (
@@ -70,7 +73,7 @@ const RulesPage = () => {
           alignItems: "center",
         }}
       >
-        <BaseSearchBox onSearch={(match) => setMatch(() => match)} />
+        <BaseSearchBox onSearch={(match) => setMatch(match)} />
       </Box>
 
       {filteredRules.length > 0 ? (

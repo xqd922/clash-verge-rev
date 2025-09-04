@@ -39,35 +39,36 @@ document.addEventListener("keydown", (event) => {
       ["F", "G", "H", "J", "P", "Q", "R", "U"].includes(
         event.key.toUpperCase(),
       ));
-  disabledShortcuts && event.preventDefault();
-});
+  if (disabledShortcuts) {
+    event.preventDefault();
+  }
+  const contexts = [
+    <ThemeModeProvider key="theme" />,
+    <LoadingCacheProvider key="loading" />,
+    <UpdateStateProvider key="update" />,
+  ];
 
-const contexts = [
-  <ThemeModeProvider />,
-  <LoadingCacheProvider />,
-  <UpdateStateProvider />,
-];
+  const root = createRoot(container);
+  root.render(
+    <React.StrictMode>
+      <ComposeContextProvider contexts={contexts}>
+        <BaseErrorBoundary>
+          <AppDataProvider>
+            <BrowserRouter>
+              <Layout />
+            </BrowserRouter>
+          </AppDataProvider>
+        </BaseErrorBoundary>
+      </ComposeContextProvider>
+    </React.StrictMode>,
+  );
 
-const root = createRoot(container);
-root.render(
-  <React.StrictMode>
-    <ComposeContextProvider contexts={contexts}>
-      <BaseErrorBoundary>
-        <AppDataProvider>
-          <BrowserRouter>
-            <Layout />
-          </BrowserRouter>
-        </AppDataProvider>
-      </BaseErrorBoundary>
-    </ComposeContextProvider>
-  </React.StrictMode>,
-);
+  // 错误处理
+  window.addEventListener("error", (event) => {
+    console.error("[main.tsx] 全局错误:", event.error);
+  });
 
-// 错误处理
-window.addEventListener("error", (event) => {
-  console.error("[main.tsx] 全局错误:", event.error);
-});
-
-window.addEventListener("unhandledrejection", (event) => {
-  console.error("[main.tsx] 未处理的Promise拒绝:", event.reason);
+  window.addEventListener("unhandledrejection", (event) => {
+    console.error("[main.tsx] 未处理的Promise拒绝:", event.reason);
+  });
 });

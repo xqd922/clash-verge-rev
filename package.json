@@ -24,7 +24,8 @@
     "publish-version": "node scripts/publish-version.mjs",
     "fmt": "cargo fmt --manifest-path ./src-tauri/Cargo.toml",
     "clippy": "cargo clippy  --manifest-path ./src-tauri/Cargo.toml",
-    "lint": "eslint src",
+    "lint": "eslint src --cache",
+    "lint:fix": "eslint src --cache --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

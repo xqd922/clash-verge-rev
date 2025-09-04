@@ -5,7 +5,6 @@ use tauri::Emitter;
 pub mod speed_rate;
 use crate::ipc::Rate;
 use crate::process::AsyncHandler;
-use crate::state::proxy::ProxyRequestCache;
 use crate::{
     cmd,
     config::Config,
