@@ -243,7 +243,8 @@ export const RulesEditorViewer = (props: Props) => {
   const [prevData, setPrevData] = useState("");
   const [currData, setCurrData] = useState("");
   const [visualization, setVisualization] = useState(true);
-  const [match, setMatch] = useState(() => (_: string) => true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [match, setMatch] = useState(() => (_content: string) => true);
 
   const [ruleType, setRuleType] = useState<(typeof rules)[number]>(rules[0]);
   const [ruleContent, setRuleContent] = useState("");
@@ -374,14 +375,16 @@ export const RulesEditorViewer = (props: Props) => {
       moreAppendGroups,
     );
 
-    const originRuleSetObj = yaml.load(data) as { "rule-providers": {} } | null;
+    const originRuleSetObj = yaml.load(data) as {
+      "rule-providers": Record<string, unknown>;
+    } | null;
     const originRuleSet = originRuleSetObj?.["rule-providers"] || {};
     const moreRuleSetObj = yaml.load(mergeData) as {
-      "rule-providers": {};
+      "rule-providers": Record<string, unknown>;
     } | null;
     const moreRuleSet = moreRuleSetObj?.["rule-providers"] || {};
     const globalRuleSetObj = yaml.load(globalMergeData) as {
-      "rule-providers": {};
+      "rule-providers": Record<string, unknown>;
     } | null;
     const globalRuleSet = globalRuleSetObj?.["rule-providers"] || {};
     const ruleSet = Object.assign(
@@ -391,12 +394,16 @@ export const RulesEditorViewer = (props: Props) => {
       globalRuleSet,
     );
 
-    const originSubRuleObj = yaml.load(data) as { "sub-rules": {} } | null;
+    const originSubRuleObj = yaml.load(data) as {
+      "sub-rules": Record<string, unknown>;
+    } | null;
     const originSubRule = originSubRuleObj?.["sub-rules"] || {};
-    const moreSubRuleObj = yaml.load(mergeData) as { "sub-rules": {} } | null;
+    const moreSubRuleObj = yaml.load(mergeData) as {
+      "sub-rules": Record<string, unknown>;
+    } | null;
     const moreSubRule = moreSubRuleObj?.["sub-rules"] || {};
     const globalSubRuleObj = yaml.load(globalMergeData) as {
-      "sub-rules": {};
+      "sub-rules": Record<string, unknown>;
     } | null;
     const globalSubRule = globalSubRuleObj?.["sub-rules"] || {};
     const subRule = Object.assign(

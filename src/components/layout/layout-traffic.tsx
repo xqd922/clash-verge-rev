@@ -161,7 +161,9 @@ export const LayoutTraffic = () => {
               }}
               color={isDebug ? "success.main" : "disabled"}
               onClick={async () => {
-                isDebug && (await gc());
+                if (isDebug) {
+                  await gc();
+                }
               }}
             >
               <MemoryRounded {...iconStyle} />

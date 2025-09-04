@@ -582,7 +582,9 @@ const ProfilePage = () => {
       await deleteProfile(uid);
       mutateProfiles();
       mutateLogs();
-      current && (await onEnhance(false));
+      if (current) {
+        await onEnhance(false);
+      }
     } catch (err: any) {
       showNotice("error", err?.message || err.toString());
     } finally {

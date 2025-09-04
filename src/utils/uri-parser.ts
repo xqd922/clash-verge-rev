@@ -354,7 +354,7 @@ function URI_VMESS(line: string): IProxyVmessConfig {
       );
       const match = /(^[^?]+?)\/?\?(.*)$/.exec(line);
       if (match) {
-        const [_, base64Line, qs] = match;
+        const [, base64Line, qs] = match;
         content = decodeBase64OrOriginal(base64Line);
 
         for (const addon of qs.split("&")) {
@@ -370,7 +370,7 @@ function URI_VMESS(line: string): IProxyVmessConfig {
         const contentMatch = /(^[^:]+?):([^:]+?)@(.*):(\d+)$/.exec(content);
 
         if (contentMatch) {
-          const [__, cipher, uuid, server, port] = contentMatch;
+          const [, cipher, uuid, server, port] = contentMatch;
 
           params.scy = cipher;
           params.id = uuid;
@@ -501,12 +501,14 @@ function URI_VLESS(line: string): IProxyVlessConfig {
   let isShadowrocket;
   let parsed = /^(.*?)@(.*?):(\d+)\/?(\?(.*?))?(?:#(.*?))?$/.exec(line)!;
   if (!parsed) {
-    const [_, base64, other] = /^(.*?)(\?.*?$)/.exec(line)!;
+    const [, base64, other] = /^(.*?)(\?.*?$)/.exec(line)!;
     line = `${atob(base64)}${other}`;
     parsed = /^(.*?)@(.*?):(\d+)\/?(\?(.*?))?(?:#(.*?))?$/.exec(line)!;
     isShadowrocket = true;
   }
-  let [__, uuid, server, portStr, ___, addons = "", name] = parsed;
+  const [, uuidRaw, server, portStr, , addons = "", nameRaw] = parsed;
+  let uuid = uuidRaw;
+  let name = nameRaw;
   if (isShadowrocket) {
     uuid = uuid.replace(/^.*?:/g, "");
   }
@@ -598,6 +600,8 @@ function URI_VLESS(line: string): IProxyVlessConfig {
         proxy.network = "grpc";
         break;
       default: {
+        // No specific network type handling needed
+        console.warn("Unknown network type, using default");
       }
     }
   }
@@ -645,8 +649,22 @@ function URI_VLESS(line: string): IProxyVlessConfig {
 
 function URI_Trojan(line: string): IProxyTrojanConfig {
   line = line.split("trojan://")[1];
-  let [__, password, server, ___, port, ____, addons = "", name] =
-    /^(.*?)@(.*?)(:(\d+))?\/?(\?(.*?))?(?:#(.*?))?$/.exec(line) || [];
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [
+    __,
+    password_temp,
+    server_temp,
+    ___,
+    port,
+    ____,
+    addons_temp = "",
+    name_temp,
+  ] = /^(.*?)@(.*?)(:(\d+))?\/?(\?(.*?))?(?:#(.*?))?$/.exec(line) || [];
+
+  const server = server_temp;
+  const addons = addons_temp;
+  let name = name_temp;
+  let password = password_temp;
 
   let portNum = parseInt(`${port}`, 10);
   if (isNaN(portNum)) {
@@ -669,39 +687,39 @@ function URI_Trojan(line: string): IProxyTrojanConfig {
   let path = "";
 
   for (const addon of addons.split("&")) {
-    let [key, value] = addon.split("=");
-    value = decodeURIComponent(value);
+    const [key, value] = addon.split("=");
+    const decodedValue = decodeURIComponent(value);
     switch (key) {
       case "type":
-        if (["ws", "h2"].includes(value)) {
-          proxy.network = value as NetworkType;
+        if (["ws", "h2"].includes(decodedValue)) {
+          proxy.network = decodedValue as NetworkType;
         } else {
           proxy.network = "tcp";
         }
         break;
       case "host":
-        host = value;
+        host = decodedValue;
         break;
       case "path":
-        path = value;
+        path = decodedValue;
         break;
       case "alpn":
-        proxy["alpn"] = value ? value.split(",") : undefined;
+        proxy["alpn"] = decodedValue ? decodedValue.split(",") : undefined;
         break;
       case "sni":
-        proxy["sni"] = value;
+        proxy["sni"] = decodedValue;
         break;
       case "skip-cert-verify":
-        proxy["skip-cert-verify"] = /(TRUE)|1/i.test(value);
+        proxy["skip-cert-verify"] = /(TRUE)|1/i.test(decodedValue);
         break;
       case "fingerprint":
-        proxy["fingerprint"] = value;
+        proxy["fingerprint"] = decodedValue;
         break;
       case "fp":
-        proxy["fingerprint"] = value;
+        proxy["fingerprint"] = decodedValue;
         break;
-      case "encryption":
-        const encryption = value.split(";");
+      case "encryption": {
+        const encryption = decodedValue.split(";");
         if (encryption.length === 3) {
           proxy["ss-opts"] = {
             enabled: true,
@@ -709,8 +727,10 @@ function URI_Trojan(line: string): IProxyTrojanConfig {
             password: encryption[2],
           };
         }
+        break;
+      }
       case "client-fingerprint":
-        proxy["client-fingerprint"] = value as ClientFingerprint;
+        proxy["client-fingerprint"] = decodedValue as ClientFingerprint;
         break;
       default:
         break;
@@ -733,8 +753,23 @@ function URI_Trojan(line: string): IProxyTrojanConfig {
 function URI_Hysteria2(line: string): IProxyHysteria2Config {
   line = line.split(/(hysteria2|hy2):\/\//)[2];
 
-  let [__, password, server, ___, port, ____, addons = "", name] =
-    /^(.*?)@(.*?)(:(\d+))?\/?(\?(.*?))?(?:#(.*?))?$/.exec(line) || [];
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [
+    __,
+    password_temp,
+    server_temp,
+    ___,
+    port,
+    ____,
+    addons_temp = "",
+    name_temp,
+  ] = /^(.*?)@(.*?)(:(\d+))?\/?(\?(.*?))?(?:#(.*?))?$/.exec(line) || [];
+
+  let password = password_temp;
+  const server = server_temp;
+  const addons = addons_temp;
+  let name = name_temp;
+
   let portNum = parseInt(`${port}`, 10);
   if (isNaN(portNum)) {
     portNum = 443;
@@ -780,8 +815,14 @@ function URI_Hysteria2(line: string): IProxyHysteria2Config {
 
 function URI_Hysteria(line: string): IProxyHysteriaConfig {
   line = line.split(/(hysteria|hy):\/\//)[2];
-  let [__, server, ___, port, ____, addons = "", name] =
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [__, server_temp, ___, port, ____, addons_temp = "", name_temp] =
     /^(.*?)(:(\d+))?\/?(\?(.*?))?(?:#(.*?))?$/.exec(line)!;
+
+  const server = server_temp;
+  const addons = addons_temp;
+  let name = name_temp;
+
   let portNum = parseInt(`${port}`, 10);
   if (isNaN(portNum)) {
     portNum = 443;
@@ -799,9 +840,9 @@ function URI_Hysteria(line: string): IProxyHysteriaConfig {
   const params: Record<string, string> = {};
 
   for (const addon of addons.split("&")) {
-    let [key, value] = addon.split("=");
-    key = key.replace(/_/, "-");
-    value = decodeURIComponent(value);
+    const [key_temp, value_temp] = addon.split("=");
+    const key = key_temp.replace(/_/, "-");
+    const value = decodeURIComponent(value_temp);
     switch (key) {
       case "alpn":
         proxy["alpn"] = value ? value.split(",") : undefined;
@@ -853,8 +894,10 @@ function URI_Hysteria(line: string): IProxyHysteriaConfig {
         break;
       case "protocol":
         proxy["protocol"] = value;
+        break;
       case "sni":
         proxy["sni"] = value;
+        break;
       default:
         break;
     }
@@ -876,8 +919,24 @@ function URI_Hysteria(line: string): IProxyHysteriaConfig {
 function URI_TUIC(line: string): IProxyTuicConfig {
   line = line.split(/tuic:\/\//)[1];
 
-  let [__, uuid, password, server, ___, port, ____, addons = "", name] =
-    /^(.*?):(.*?)@(.*?)(:(\d+))?\/?(\?(.*?))?(?:#(.*?))?$/.exec(line) || [];
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [
+    __,
+    uuid_temp,
+    password_temp,
+    server_temp,
+    ___,
+    port,
+    ____,
+    addons_temp = "",
+    name_temp,
+  ] = /^(.*?):(.*?)@(.*?)(:(\d+))?\/?(\?(.*?))?(?:#(.*?))?$/.exec(line) || [];
+
+  const uuid = uuid_temp;
+  let password = password_temp;
+  const server = server_temp;
+  const addons = addons_temp;
+  let name = name_temp;
 
   let portNum = parseInt(`${port}`, 10);
   if (isNaN(portNum)) {
@@ -955,8 +1014,11 @@ function URI_TUIC(line: string): IProxyTuicConfig {
 
 function URI_Wireguard(line: string): IProxyWireguardConfig {
   line = line.split(/(wireguard|wg):\/\//)[2];
-  let [__, ___, privateKey, server, ____, port, _____, addons = "", name] =
+  const [, , privateKeyRaw, server, , port, , addons = "", nameRaw] =
     /^((.*?)@)?(.*?)(:(\d+))?\/?(\?(.*?))?(?:#(.*?))?$/.exec(line)!;
+
+  let privateKey = privateKeyRaw;
+  let name = nameRaw;
 
   let portNum = parseInt(`${port}`, 10);
   if (isNaN(portNum)) {
@@ -1003,7 +1065,7 @@ function URI_Wireguard(line: string): IProxyWireguardConfig {
       case "pre-shared-key":
         proxy["pre-shared-key"] = value;
         break;
-      case "reserved":
+      case "reserved": {
         const parsed = value
           .split(",")
           .map((i) => parseInt(i.trim(), 10))
@@ -1012,6 +1074,7 @@ function URI_Wireguard(line: string): IProxyWireguardConfig {
           proxy["reserved"] = parsed;
         }
         break;
+      }
       case "udp":
         proxy["udp"] = /(TRUE)|1/i.test(value);
         break;
@@ -1037,8 +1100,11 @@ function URI_Wireguard(line: string): IProxyWireguardConfig {
 
 function URI_HTTP(line: string): IProxyHttpConfig {
   line = line.split(/(http|https):\/\//)[2];
-  let [__, ___, auth, server, ____, port, _____, addons = "", name] =
+  const [, , authRaw, server, , port, , addons = "", nameRaw] =
     /^((.*?)@)?(.*?)(:(\d+))?\/?(\?(.*?))?(?:#(.*?))?$/.exec(line)!;
+
+  let auth = authRaw;
+  let name = nameRaw;
 
   let portNum = parseInt(`${port}`, 10);
   if (isNaN(portNum)) {
@@ -1101,8 +1167,11 @@ function URI_HTTP(line: string): IProxyHttpConfig {
 
 function URI_SOCKS(line: string): IProxySocks5Config {
   line = line.split(/socks5:\/\//)[1];
-  let [__, ___, auth, server, ____, port, _____, addons = "", name] =
+  const [, , authRaw, server, , port, , addons = "", nameRaw] =
     /^((.*?)@)?(.*?)(:(\d+))?\/?(\?(.*?))?(?:#(.*?))?$/.exec(line)!;
+
+  let auth = authRaw;
+  let name = nameRaw;
 
   let portNum = parseInt(`${port}`, 10);
   if (isNaN(portNum)) {

@@ -688,7 +688,9 @@ export const ProfileItem = (props: Props) => {
           schema="clash"
           onSave={async (prev, curr) => {
             await saveProfileFile(uid, curr ?? "");
-            onSave && onSave(prev, curr);
+            if (onSave) {
+              onSave(prev, curr);
+            }
           }}
           onClose={() => setFileOpen(false)}
         />
@@ -734,7 +736,9 @@ export const ProfileItem = (props: Props) => {
           schema="clash"
           onSave={async (prev, curr) => {
             await saveProfileFile(option?.merge ?? "", curr ?? "");
-            onSave && onSave(prev, curr);
+            if (onSave) {
+              onSave(prev, curr);
+            }
           }}
           onClose={() => setMergeOpen(false)}
         />
@@ -746,7 +750,9 @@ export const ProfileItem = (props: Props) => {
           language="javascript"
           onSave={async (prev, curr) => {
             await saveProfileFile(option?.script ?? "", curr ?? "");
-            onSave && onSave(prev, curr);
+            if (onSave) {
+              onSave(prev, curr);
+            }
           }}
           onClose={() => setScriptOpen(false)}
         />

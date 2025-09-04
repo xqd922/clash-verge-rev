@@ -18,7 +18,10 @@ async function getInstancePromise() {
       else if (/^\d+$/.test(server)) server = `127.0.0.1:${server}`;
     }
     if (info?.secret) secret = info?.secret;
-  } catch {}
+  } catch (error) {
+    // Failed to get clash info, use defaults
+    console.warn("Failed to get clash info:", error);
+  }
 
   const axiosIns = axios.create({
     baseURL: `http://${server}`,

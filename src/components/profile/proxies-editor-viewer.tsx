@@ -56,7 +56,8 @@ export const ProxiesEditorViewer = (props: Props) => {
   const [prevData, setPrevData] = useState("");
   const [currData, setCurrData] = useState("");
   const [visualization, setVisualization] = useState(true);
-  const [match, setMatch] = useState(() => (_: string) => true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [match, setMatch] = useState(() => (_content: string) => true);
   const [proxyUri, setProxyUri] = useState<string>("");
 
   const [proxyList, setProxyList] = useState<IProxyConfig[]>([]);

@@ -28,7 +28,8 @@ interface Props {
 
 const OS = getSystem();
 
-const languageOptions = Object.entries(languages).map(([code, _]) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const languageOptions = Object.entries(languages).map(([code, _language]) => {
   const labels: { [key: string]: string } = {
     en: "English",
     ru: "Русский",

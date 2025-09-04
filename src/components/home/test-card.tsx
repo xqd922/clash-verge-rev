@@ -122,7 +122,10 @@ export const TestCard = () => {
         const patchFn = () => {
           try {
             patchVerge({ test_list: newList });
-          } catch {}
+          } catch (error) {
+            // Ignore patch errors to avoid UI blocking
+            console.warn("Failed to patch verge test_list:", error);
+          }
         };
         if (window.requestIdleCallback) {
           window.requestIdleCallback(patchFn);

@@ -73,7 +73,8 @@ export const GroupsEditorViewer = (props: Props) => {
   const [prevData, setPrevData] = useState("");
   const [currData, setCurrData] = useState("");
   const [visualization, setVisualization] = useState(true);
-  const [match, setMatch] = useState(() => (_: string) => true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [match, setMatch] = useState(() => (_content: string) => true);
   const [interfaceNameList, setInterfaceNameList] = useState<string[]>([]);
   const { control, ...formIns } = useForm<IProxyGroupConfig>({
     defaultValues: {
@@ -255,17 +256,17 @@ export const GroupsEditorViewer = (props: Props) => {
     } | null;
 
     const originProviderObj = yaml.load(data) as {
-      "proxy-providers": {};
+      "proxy-providers": Record<string, unknown>;
     } | null;
     const originProvider = originProviderObj?.["proxy-providers"] || {};
 
     const moreProviderObj = yaml.load(mergeData) as {
-      "proxy-providers": {};
+      "proxy-providers": Record<string, unknown>;
     } | null;
     const moreProvider = moreProviderObj?.["proxy-providers"] || {};
 
     const globalProviderObj = yaml.load(globalMergeData) as {
-      "proxy-providers": {};
+      "proxy-providers": Record<string, unknown>;
     } | null;
     const globalProvider = globalProviderObj?.["proxy-providers"] || {};
 

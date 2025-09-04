@@ -39,7 +39,7 @@ export function recordTrafficError(error: Error, component: string) {
  */
 function getMemoryUsage(): number {
   if ("memory" in performance) {
-    // @ts-ignore - 某些浏览器支持
+    // Some browsers support the memory property but it's not in standard types
     const memory = (performance as any).memory;
     if (memory && memory.usedJSHeapSize) {
       return memory.usedJSHeapSize / 1024 / 1024; // 转换为MB

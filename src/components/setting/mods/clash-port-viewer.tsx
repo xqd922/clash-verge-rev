@@ -19,6 +19,7 @@ import { useTranslation } from "react-i18next";
 
 const OS = getSystem();
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface ClashPortViewerProps {}
 
 interface ClashPortViewerRef {

@@ -63,13 +63,13 @@ const monacoInitialization = () => {
       {
         uri: "http://example.com/meta-json-schema.json",
         fileMatch: ["**/*.clash.yaml"],
-        // @ts-ignore
+        // @ts-expect-error schema type mismatch between JSONSchema7 and expected type
         schema: metaSchema as JSONSchema7,
       },
       {
         uri: "http://example.com/clash-verge-merge-json-schema.json",
         fileMatch: ["**/*.merge.yaml"],
-        // @ts-ignore
+        // @ts-expect-error schema type mismatch between JSONSchema7 and expected type
         schema: mergeSchema as JSONSchema7,
       },
     ],
@@ -133,7 +133,9 @@ export const EditorViewer = <T extends Language>(props: Props<T>) => {
 
   const handleSave = useLockFn(async () => {
     try {
-      !readOnly && onSave?.(prevData.current, currData.current);
+      if (!readOnly && onSave) {
+        onSave(prevData.current, currData.current);
+      }
       onClose();
     } catch (err: any) {
       showNotice("error", err.message || err.toString());

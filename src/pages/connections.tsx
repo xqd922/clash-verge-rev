@@ -37,8 +37,10 @@ const ConnectionsPage = () => {
   const { t } = useTranslation();
   const pageVisible = useVisibility();
   const theme = useTheme();
-  const _isDark = theme.palette.mode === "dark";
-  const [match, setMatch] = useState(() => (_: string) => true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const isDark_unused = theme.palette.mode === "dark";
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [match, setMatch] = useState(() => (_content: string) => true);
   const [curOrderOpt, setOrderOpt] = useState("Default");
 
   // 使用全局数据

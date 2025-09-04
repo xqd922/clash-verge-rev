@@ -31,7 +31,8 @@ const LogPage = () => {
     "log:log-level",
     "info",
   );
-  const [match, setMatch] = useState(() => (_: string) => true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [match, setMatch] = useState(() => (_content: string) => true);
   const logData = useGlobalLogData("all");
   const [searchState, setSearchState] = useState<SearchState>();
 

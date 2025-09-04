@@ -81,7 +81,7 @@ function getSignalIcon(delay: number) {
 }
 
 // 简单的防抖函数
-function debounce(fn: Function, ms = 100) {
+function debounce(fn: (...args: any[]) => any, ms = 100) {
   let timeoutId: ReturnType<typeof setTimeout>;
   return function (this: any, ...args: any[]) {
     clearTimeout(timeoutId);

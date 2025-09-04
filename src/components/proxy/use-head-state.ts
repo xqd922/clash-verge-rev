@@ -47,7 +47,11 @@ export function useHeadStateNew() {
       } else {
         setState({});
       }
-    } catch {}
+    } catch (error) {
+      // Failed to parse stored state, reset to empty
+      console.warn("Failed to parse head state from localStorage:", error);
+      setState({});
+    }
   }, [current]);
 
   const setHeadState = useCallback(
@@ -68,7 +72,10 @@ export function useHeadStateNew() {
             data[current] = ret;
 
             localStorage.setItem(HEAD_STATE_KEY, JSON.stringify(data));
-          } catch {}
+          } catch (error) {
+            // Failed to save head state to localStorage
+            console.warn("Failed to save head state to localStorage:", error);
+          }
         });
 
         return ret;

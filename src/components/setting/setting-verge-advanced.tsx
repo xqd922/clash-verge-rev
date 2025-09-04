@@ -29,7 +29,8 @@ interface Props {
   onError?: (err: Error) => void;
 }
 
-const SettingVergeAdvanced = ({ onError: _ }: Props) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const SettingVergeAdvanced = ({ onError: _onError }: Props) => {
   const { t } = useTranslation();
 
   const configRef = useRef<DialogRef>(null);

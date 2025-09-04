@@ -739,7 +739,7 @@ interface IProxySnellConfig extends IProxyBaseConfig {
   psk?: string;
   udp?: boolean;
   version?: number;
-  "obfs-opts"?: {};
+  "obfs-opts"?: Record<string, unknown>;
 }
 interface IProxyConfig
   extends IProxyBaseConfig,
