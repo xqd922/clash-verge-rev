@@ -35,8 +35,14 @@ jobs:
           node-version: "22"
           cache: "pnpm"
 
+      - name: Add npm global bin to PATH (Windows)
+        if: runner.os == 'Windows'
+        run: echo "$env:APPDATA\npm" >> $env:GITHUB_PATH
+
       - name: Install pnpm (global)
-        run: npm i -g pnpm@9
+        run: |
+          npm i -g pnpm@9
+          pnpm --version
 
       - name: Pnpm install and check
         run: |
