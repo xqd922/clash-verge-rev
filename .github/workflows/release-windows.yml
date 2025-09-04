@@ -1,104 +1,60 @@
-name: Release Build (Windows)
+name: Build Windows x64
 
 on:
-  push:
-    branches:
-      - main
-
-permissions:
-  contents: write
-
-env:
-  CARGO_INCREMENTAL: 0
-  RUST_BACKTRACE: short
+  workflow_dispatch:
 
 jobs:
-  release-windows:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-          - os: windows-latest
-            target: aarch64-pc-windows-msvc
-
-    runs-on: ${{ matrix.os }}
+  build-windows-x64:
+    runs-on: windows-latest
     steps:
-      # 拉取代码
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 安装 Rust
       - name: Install Rust Stable
         uses: dtolnay/rust-toolchain@stable
 
       - name: Add Rust Target
-        run: rustup target add ${{ matrix.target }}
+        run: rustup target add x86_64-pc-windows-msvc
 
-      # Rust 缓存
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
           cache-all-crates: true
 
-      # Node + pnpm
       - name: Install Node
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "pnpm"
 
-      - name: Enable Corepack (pnpm)
-        run: corepack enable
-
-      # 依赖安装
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # Web 构建缓存
-      - name: Cache Vite Build
-        uses: actions/cache@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
         with:
-          path: |
-            node_modules/.vite
-            .vite-cache
-          key: vite-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            vite-${{ runner.os }}-
+          version: 8 # 或者保持项目要求的版本
+          run_install: true
 
-      # 前端检查 + 构建
-      - name: Typecheck & Build Web
-        run: |
-          pnpm check ${{ matrix.target }}
-          pnpm run web:build
+      - name: Install JS dependencies
+        run: pnpm install
 
-      # Tauri 构建
-      - name: Tauri build
+      - name: Build Tauri (Windows Setup & Portable)
         uses: tauri-apps/tauri-action@v0
         env:
           NODE_OPTIONS: "--max_old_space_size=4096"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__ # 自动生成的 tag
+          tagName: v__VERSION__
           releaseName: "Clash Verge Rev v__VERSION__"
-          releaseBody: "Windows release build."
+          releaseBody: "Windows x64 构建"
           tauriScript: pnpm
-          args: --target ${{ matrix.target }} -- --no-sign
+          args: --target x86_64-pc-windows-msvc
 
-      # 生成便携版
-      - name: Portable Bundle
-        run: pnpm portable ${{ matrix.target }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build Portable
+        run: pnpm portable x86_64-pc-windows-msvc
 
-      # 上传产物，方便直接下载
-      - name: Upload Artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: clash-verge-${{ matrix.target }}
+          name: clash-verge-rev-win-x64
           path: |
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.exe
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
-            src-tauri/target/${{ matrix.target }}/release/*.zip
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+            src-tauri/target/x86_64-pc-windows-msvc/release/portable/*
