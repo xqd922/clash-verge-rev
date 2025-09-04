@@ -1,6 +1,9 @@
 name: Release Build (Windows)
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 permissions: write-all
 env:
