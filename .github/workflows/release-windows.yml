@@ -33,6 +33,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: "pnpm"
 
       - uses: pnpm/action-setup@v4
         name: Install pnpm
@@ -44,17 +45,14 @@ jobs:
           pnpm i
           pnpm check x86_64-pc-windows-msvc
 
-      - name: Tauri build
-        uses: tauri-apps/tauri-action@v0
+      - name: Disable updater signing (remove public key)
+        run: |
+          if (Test-Path .\myapp.key.pub) { Remove-Item -Force .\myapp.key.pub }
+
+      - name: Build (no release upload)
+        run: pnpm build --target x86_64-pc-windows-msvc
         env:
           NODE_OPTIONS: "--max_old_space_size=4096"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: v__VERSION__
-          releaseName: "Clash Verge Rev v__VERSION__"
-          releaseBody: "More new features are now supported."
-          tauriScript: pnpm
-          args: --target x86_64-pc-windows-msvc
 
       - name: Portable Bundle
         run: pnpm portable x86_64-pc-windows-msvc
