@@ -1,7 +1,9 @@
 name: Build Windows x64
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   build-windows-x64:
@@ -27,24 +29,17 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install pnpm
+      - name: Install pnpm (follow package.json)
         uses: pnpm/action-setup@v4
         with:
-          version: 8 # 或者保持项目要求的版本
           run_install: true
 
-      - name: Install JS dependencies
-        run: pnpm install
-
-      - name: Build Tauri (Windows Setup & Portable)
+      - name: Build Tauri (Windows Setup)
         uses: tauri-apps/tauri-action@v0
         env:
           NODE_OPTIONS: "--max_old_space_size=4096"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__
-          releaseName: "Clash Verge Rev v__VERSION__"
-          releaseBody: "Windows x64 构建"
           tauriScript: pnpm
           args: --target x86_64-pc-windows-msvc
 
