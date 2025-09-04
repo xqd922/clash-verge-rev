@@ -1,14 +1,19 @@
-name: Release Build (Unsigned)
+name: Release Build (Windows)
 
 on:
-  workflow_dispatch:
-permissions: write-all
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
 env:
   CARGO_INCREMENTAL: 0
   RUST_BACKTRACE: short
 
 jobs:
-  release:
+  release-windows:
     strategy:
       fail-fast: false
       matrix:
@@ -20,133 +25,80 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
+      # 拉取代码
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # 安装 Rust
       - name: Install Rust Stable
         uses: dtolnay/rust-toolchain@stable
 
       - name: Add Rust Target
         run: rustup target add ${{ matrix.target }}
 
+      # Rust 缓存
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
           cache-all-crates: true
 
+      # Node + pnpm
       - name: Install Node
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: "pnpm"
 
-      - uses: pnpm/action-setup@v4
-        name: Install pnpm
+      - name: Enable Corepack (pnpm)
+        run: corepack enable
+
+      # 依赖安装
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Web 构建缓存
+      - name: Cache Vite Build
+        uses: actions/cache@v4
         with:
-          run_install: false
+          path: |
+            node_modules/.vite
+            .vite-cache
+          key: vite-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            vite-${{ runner.os }}-
 
-      - name: Pnpm install and check
+      # 前端检查 + 构建
+      - name: Typecheck & Build Web
         run: |
-          pnpm i
           pnpm check ${{ matrix.target }}
+          pnpm run web:build
 
+      # Tauri 构建
       - name: Tauri build
         uses: tauri-apps/tauri-action@v0
         env:
           NODE_OPTIONS: "--max_old_space_size=4096"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__-unsigned
-          releaseName: "Clash Verge Rev v__VERSION__ (Unsigned)"
-          releaseBody: "Unsigned build for testing purposes."
+          tagName: v__VERSION__ # 自动生成的 tag
+          releaseName: "Clash Verge Rev v__VERSION__"
+          releaseBody: "Windows release build."
           tauriScript: pnpm
-          args: --target ${{ matrix.target }}
+          args: --target ${{ matrix.target }} -- --no-sign
 
-      - name: Create Portable Bundle
-        run: pnpm portable-local ${{ matrix.target }}
-
-      - name: Upload Portable to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ env.VERSION }}-unsigned
-          files: "*.zip"
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-  release-for-fixed-webview2:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            arch: x64
-          - os: windows-latest
-            target: i686-pc-windows-msvc
-            arch: x86
-          - os: windows-latest
-            target: aarch64-pc-windows-msvc
-            arch: arm64
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Add Rust Target
-        run: rustup target add ${{ matrix.target }}
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
-
-      - name: Install Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - uses: pnpm/action-setup@v4
-        name: Install pnpm
-        with:
-          run_install: false
-
-      - name: Pnpm install and check
-        run: |
-          pnpm i
-          pnpm check ${{ matrix.target }}
-
-      - name: Download WebView2 Runtime
-        run: |
-          invoke-webrequest -uri https://github.com/westinyang/WebView2RuntimeArchive/releases/download/109.0.1518.78/Microsoft.WebView2.FixedVersionRuntime.109.0.1518.78.${{ matrix.arch }}.cab -outfile Microsoft.WebView2.FixedVersionRuntime.109.0.1518.78.${{ matrix.arch }}.cab
-          Expand .\Microsoft.WebView2.FixedVersionRuntime.109.0.1518.78.${{ matrix.arch }}.cab -F:* ./src-tauri
-          Remove-Item .\src-tauri\tauri.windows.conf.json
-          Rename-Item .\src-tauri\webview2.${{ matrix.arch }}.json tauri.windows.conf.json
-
-      - name: Tauri build
-        id: build
-        uses: tauri-apps/tauri-action@v0
-        env:
-          NODE_OPTIONS: "--max_old_space_size=4096"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tauriScript: pnpm
-          args: --target ${{ matrix.target }}
-
-      - name: Rename
-        run: |
-          Rename-Item '.\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\Clash Verge_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}-setup.exe' 'Clash Verge_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}_fixed_webview2-setup.exe'
-          Rename-Item '.\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\Clash Verge_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}-setup.nsis.zip' 'Clash Verge_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}_fixed_webview2-setup.nsis.zip'
-          Rename-Item '.\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\Clash Verge_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}-setup.nsis.zip.sig' 'Clash Verge_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}_fixed_webview2-setup.nsis.zip.sig'
-
-      - name: Upload Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{steps.build.outputs.appVersion}}
-          name: "Clash Verge Rev v${{steps.build.outputs.appVersion}} (Unsigned)"
-          body: "Unsigned build with fixed WebView2 for testing purposes."
-          token: ${{ secrets.GITHUB_TOKEN }}
-          files: src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*setup*
-
+      # 生成便携版
       - name: Portable Bundle
-        run: pnpm portable-fixed-webview2 ${{ matrix.target }}
+        run: pnpm portable ${{ matrix.target }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 上传产物，方便直接下载
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: clash-verge-${{ matrix.target }}
+          path: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.exe
+            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
+            src-tauri/target/${{ matrix.target }}/release/*.zip
