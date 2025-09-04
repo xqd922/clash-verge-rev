@@ -1,0 +1,215 @@
+name: Windows 11 Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "版本号 (留空则自动获取)"
+        required: false
+        type: string
+      create_release:
+        description: "创建 GitHub Release"
+        required: false
+        default: true
+        type: boolean
+  push:
+    tags:
+      - "v*"
+    branches:
+      - main
+      - master
+      - v2.1.1-branch
+    paths:
+      - "src/**"
+      - "src-tauri/**"
+      - "package.json"
+      - ".github/workflows/windows.yml"
+
+permissions: write-all
+
+jobs:
+  windows11-build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            arch: x64
+          # 临时禁用 ARM64 构建以加快速度，后续可再启用
+          # - target: aarch64-pc-windows-msvc
+          #   arch: arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          cache-on-failure: true
+          shared-key: "windows-build"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Add Target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Node.js Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install Dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm check ${{ matrix.target }}
+
+      - name: Build
+        uses: tauri-apps/tauri-action@v0
+        timeout-minutes: 35
+        env:
+          NODE_OPTIONS: "--max_old_space_size=4096"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ""
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+          RUST_BACKTRACE: "1"
+          CARGO_INCREMENTAL: "1"
+          CARGO_NET_RETRY: "10"
+          TAURI_SKIP_UPDATER_SIGNATURE: "true"
+        with:
+          tauriScript: pnpm
+          args: --target ${{ matrix.target }} --bundles nsis
+
+      - name: Get Version
+        id: version
+        shell: pwsh
+        run: |
+          if ("${{ github.event.inputs.version }}" -ne "") {
+            $version = "${{ github.event.inputs.version }}"
+            Write-Host "使用手动指定版本: $version"
+          } else {
+            $version = (Get-Content package.json | ConvertFrom-Json).version
+            Write-Host "从 package.json 获取版本: $version"
+          }
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          echo "BUILD_TIME=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" >> $env:GITHUB_OUTPUT
+          echo "COMMIT_SHA=$($env:GITHUB_SHA.Substring(0,8))" >> $env:GITHUB_OUTPUT
+
+      - name: Create Windows 11 Package
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.VERSION }}"
+          $arch = "${{ matrix.arch }}"
+          $target = "${{ matrix.target }}"
+
+          # Create output directory
+          New-Item -ItemType Directory -Path "windows11-release" -Force
+
+          # Copy installer if exists
+          $installerPath = "src-tauri\target\$target\release\bundle\nsis\Clash Verge_${version}_${arch}-setup.exe"
+          if (Test-Path $installerPath) {
+            $newName = "Clash-Verge-Rev-${version}-Windows11-${arch}-setup.exe"
+            Copy-Item $installerPath "windows11-release\$newName"
+            Write-Host "Created installer: $newName"
+          }
+
+          # Create portable version
+          $exePath = "src-tauri\target\$target\release\clash-verge.exe"
+          if (Test-Path $exePath) {
+            $portableDir = "Clash-Verge-Rev-${version}-Windows11-${arch}-Portable"
+            New-Item -ItemType Directory -Path $portableDir -Force
+            
+            Copy-Item $exePath "$portableDir\Clash-Verge-Rev.exe"
+            
+            # Create README with simpler content to avoid encoding issues
+            $readmeContent = "# Clash Verge Rev - Windows 11 Edition`n`n"
+            $readmeContent += "Version: $version`n"
+            $readmeContent += "Architecture: $arch`n"
+            $readmeContent += "Build Time: ${{ steps.version.outputs.BUILD_TIME }}`n"
+            $readmeContent += "Git Commit: ${{ steps.version.outputs.COMMIT_SHA }}`n`n"
+            $readmeContent += "## Installation`n"
+            $readmeContent += "- For installer: Run the setup.exe file`n"
+            $readmeContent += "- For portable: Extract and run Clash-Verge-Rev.exe`n`n"
+            $readmeContent += "## System Requirements`n"
+            $readmeContent += "- Windows 11 (recommended)`n"
+            $readmeContent += "- Windows 10 version 1903 or higher`n"
+            $readmeContent += "- WebView2 runtime (usually pre-installed)`n"
+            
+            Set-Content -Path "$portableDir\README.txt" -Value $readmeContent -Encoding UTF8
+            
+            # Create portable zip
+            Compress-Archive -Path $portableDir -DestinationPath "windows11-release\Clash-Verge-Rev-${version}-Windows11-${arch}-Portable.zip"
+            Write-Host "Created portable: Clash-Verge-Rev-${version}-Windows11-${arch}-Portable.zip"
+          }
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: clash-verge-rev-windows11-${{ matrix.arch }}-v${{ steps.version.outputs.VERSION }}
+          path: windows11-release/*
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true')
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', steps.version.outputs.VERSION) }}
+          name: "Clash Verge Rev ${{ steps.version.outputs.VERSION }} - Windows 11 Edition"
+          body: |
+            ## 🎉 Clash Verge Rev Windows 11 Edition Release
+
+            ### 📦 Download Options
+            - **setup.exe**: Standard installer (recommended for new users)
+              - Automatic system integration
+              - Support for automatic updates
+              - Complete uninstall support
+
+            - **Portable.zip**: Portable version (recommended for advanced users)
+              - No installation required, extract and run
+              - Portable settings storage
+              - Support for multiple versions coexistence
+
+            ### 🏗️ Architecture Support
+            - **x64**: Intel/AMD 64-bit processors (recommended)
+            - **arm64**: ARM64 architecture processors (Surface Pro X, etc.)
+
+            ### 💻 System Requirements
+            - Windows 11 (recommended, full feature support)
+            - Windows 10 version 1903+ (basic feature support)
+            - WebView2 runtime (usually pre-installed on modern Windows)
+
+            ### 📋 Version Information
+            - Version: ${{ steps.version.outputs.VERSION }}
+            - Build Time: ${{ steps.version.outputs.BUILD_TIME }}
+            - Git Commit: ${{ steps.version.outputs.COMMIT_SHA }}
+
+            ### 🔄 Update Notes
+            This version is specifically optimized for Windows 11, providing better performance and user experience.
+
+            ---
+            **Note**: For first-time users, please refer to the [Usage Documentation](https://github.com/clash-verge-rev/clash-verge-rev/wiki) for configuration.
+          files: windows11-release/*
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.VERSION, 'alpha') || contains(steps.version.outputs.VERSION, 'beta') || contains(steps.version.outputs.VERSION, 'rc') }}
