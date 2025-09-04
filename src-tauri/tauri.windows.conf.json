@@ -3,6 +3,10 @@
   "identifier": "io.github.clash-verge-rev.clash-verge-rev",
   "bundle": {
     "targets": ["nsis"],
+    "externalBin": [
+      "sidecar/verge-mihomo-x86_64-pc-windows-msvc",
+      "sidecar/verge-mihomo-alpha-x86_64-pc-windows-msvc"
+    ],
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
