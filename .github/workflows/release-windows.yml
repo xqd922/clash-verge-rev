@@ -41,6 +41,10 @@ jobs:
           version: 9
           run_install: false
 
+      - name: Ensure pnpm available (fallback)
+        run: |
+          if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) { npm i -g pnpm@9 }
+
       - name: Pnpm install and check
         run: |
           pnpm i
