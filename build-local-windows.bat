@@ -35,6 +35,22 @@ if not exist "src-tauri\sidecar\verge-mihomo-alpha-x86_64-pc-windows-msvc.exe" (
     exit /b 1
 )
 echo Sidecar files verified successfully!
+
+echo Creating Tauri-compatible sidecar files...
+copy "src-tauri\sidecar\verge-mihomo-x86_64-pc-windows-msvc.exe" "src-tauri\sidecar\verge-mihomo.exe" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo ✓ Created verge-mihomo.exe
+) else (
+    echo Warning: Failed to create verge-mihomo.exe, may already exist
+)
+
+copy "src-tauri\sidecar\verge-mihomo-alpha-x86_64-pc-windows-msvc.exe" "src-tauri\sidecar\verge-mihomo-alpha.exe" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo ✓ Created verge-mihomo-alpha.exe
+) else (
+    echo Warning: Failed to create verge-mihomo-alpha.exe, may already exist
+)
+
 echo Checking Tauri configuration...
 tauri info >nul 2>&1
 if %errorlevel% neq 0 (
