@@ -174,7 +174,7 @@ export const ConnectionTable = (props: Props) => {
       {
         field: "download",
         headerName: t("shared.labels.downloaded"),
-        width: 76,
+        width: 80,
         minWidth: 60,
         align: "right",
         cell: (row) => parseTraffic(row.download).join(" "),
@@ -182,7 +182,7 @@ export const ConnectionTable = (props: Props) => {
       {
         field: "upload",
         headerName: t("shared.labels.uploaded"),
-        width: 76,
+        width: 80,
         minWidth: 60,
         align: "right",
         cell: (row) => parseTraffic(row.upload).join(" "),
@@ -190,7 +190,7 @@ export const ConnectionTable = (props: Props) => {
       {
         field: "dlSpeed",
         headerName: t("connections.components.fields.dlSpeed"),
-        width: 76,
+        width: 82,
         minWidth: 60,
         align: "right",
         cell: (row) => `${parseTraffic(row.curDownload).join(" ")}/s`,
@@ -198,7 +198,7 @@ export const ConnectionTable = (props: Props) => {
       {
         field: "ulSpeed",
         headerName: t("connections.components.fields.ulSpeed"),
-        width: 76,
+        width: 82,
         minWidth: 60,
         align: "right",
         cell: (row) => `${parseTraffic(row.curUpload).join(" ")}/s`,
