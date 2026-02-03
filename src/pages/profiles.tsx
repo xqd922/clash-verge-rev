@@ -24,7 +24,7 @@ import {
   TextSnippetOutlined,
 } from "@mui/icons-material";
 import { LoadingButton } from "@mui/lab";
-import { Box, Button, Divider, Grid, IconButton, Stack } from "@mui/material";
+import { Box, Button, Grid, IconButton, Stack } from "@mui/material";
 import { listen, TauriEvent } from "@tauri-apps/api/event";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
 import { readTextFile } from "@tauri-apps/plugin-fs";
@@ -38,7 +38,6 @@ import { closeAllConnections } from "tauri-plugin-mihomo-api";
 
 import { BasePage, BaseStyledTextField, DialogRef } from "@/components/base";
 import { ProfileItem } from "@/components/profile/profile-item";
-import { ProfileMore } from "@/components/profile/profile-more";
 import {
   ProfileViewer,
   ProfileViewerRef,
@@ -58,7 +57,7 @@ import {
   updateProfile,
 } from "@/services/cmds";
 import { showNotice } from "@/services/notice-service";
-import { useSetLoadingCache, useThemeMode } from "@/services/states";
+import { useSetLoadingCache } from "@/services/states";
 import { debugLog } from "@/utils/debug";
 
 // 记录profile切换状态
@@ -250,10 +249,7 @@ const ProfilePage = () => {
     }
   });
 
-  const { data: chainLogs = {}, mutate: mutateLogs } = useSWR(
-    "getRuntimeLogs",
-    getRuntimeLogs,
-  );
+  const { mutate: mutateLogs } = useSWR("getRuntimeLogs", getRuntimeLogs);
 
   const viewerRef = useRef<ProfileViewerRef>(null);
   const configRef = useRef<DialogRef>(null);
@@ -727,12 +723,6 @@ const ProfilePage = () => {
     }
   });
 
-  const mode = useThemeMode();
-  const isLight = mode === "light";
-  const dividercolor = isLight
-    ? "rgba(0, 0, 0, 0.06)"
-    : "rgba(255, 255, 255, 0.06)";
-
   // 监听后端配置变更
   useEffect(() => {
     let unlistenPromise: Promise<() => void> | undefined;
@@ -1030,36 +1020,6 @@ const ProfilePage = () => {
                   </Grid>
                 ))}
               </SortableContext>
-            </Grid>
-          </Box>
-          <Divider
-            variant="middle"
-            flexItem
-            sx={{ width: `calc(100% - 32px)`, borderColor: dividercolor }}
-          ></Divider>
-          <Box sx={{ mt: 1.5, mb: "10px" }}>
-            <Grid container spacing={{ xs: 1, lg: 1 }}>
-              <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-                <ProfileMore
-                  id="Merge"
-                  onSave={async (prev, curr) => {
-                    if (prev !== curr) {
-                      await onEnhance(false);
-                    }
-                  }}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-                <ProfileMore
-                  id="Script"
-                  logInfo={chainLogs["Script"]}
-                  onSave={async (prev, curr) => {
-                    if (prev !== curr) {
-                      await onEnhance(false);
-                    }
-                  }}
-                />
-              </Grid>
             </Grid>
           </Box>
         </Box>

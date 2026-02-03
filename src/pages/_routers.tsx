@@ -1,6 +1,5 @@
 import DnsRoundedIcon from "@mui/icons-material/DnsRounded";
 import ForkRightRoundedIcon from "@mui/icons-material/ForkRightRounded";
-import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import LockOpenRoundedIcon from "@mui/icons-material/LockOpenRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
@@ -9,7 +8,6 @@ import WifiRoundedIcon from "@mui/icons-material/WifiRounded";
 import { createBrowserRouter, RouteObject } from "react-router";
 
 import ConnectionsSvg from "@/assets/image/itemicon/connections.svg?react";
-import HomeSvg from "@/assets/image/itemicon/home.svg?react";
 import LogsSvg from "@/assets/image/itemicon/logs.svg?react";
 import ProfilesSvg from "@/assets/image/itemicon/profiles.svg?react";
 import ProxiesSvg from "@/assets/image/itemicon/proxies.svg?react";
@@ -19,7 +17,6 @@ import UnlockSvg from "@/assets/image/itemicon/unlock.svg?react";
 
 import Layout from "./_layout";
 import ConnectionsPage from "./connections";
-import HomePage from "./home";
 import LogsPage from "./logs";
 import ProfilesPage from "./profiles";
 import ProxiesPage from "./proxies";
@@ -29,14 +26,8 @@ import UnlockPage from "./unlock";
 
 export const navItems = [
   {
-    label: "layout.components.navigation.tabs.home",
-    path: "/",
-    icon: [<HomeRoundedIcon key="mui" />, <HomeSvg key="svg" />],
-    Component: HomePage,
-  },
-  {
     label: "layout.components.navigation.tabs.proxies",
-    path: "/proxies",
+    path: "/",
     icon: [<WifiRoundedIcon key="mui" />, <ProxiesSvg key="svg" />],
     Component: ProxiesPage,
   },
