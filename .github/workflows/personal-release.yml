@@ -1,0 +1,88 @@
+name: Personal Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "App version written into package/Cargo/Tauri config (e.g., 1.0.1)"
+        required: true
+        default: "1.0.1"
+      tag:
+        description: "Release tag (e.g., v1.0.1-personal)"
+        required: true
+        default: "v1.0.1-personal"
+
+permissions: write-all
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: short
+  HUSKY: 0
+
+jobs:
+  release:
+    name: Build and Release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: personal
+
+      - name: Install Rust Stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "personal-rust"
+          key: "${{ matrix.os }}-${{ matrix.target }}"
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          run_install: false
+
+      - name: Pnpm install and prebuild
+        run: |
+          pnpm i
+          pnpm run prebuild ${{ matrix.target }}
+
+      - name: Set app version
+        run: |
+          pnpm run release-version v${{ github.event.inputs.version }}
+
+      - name: Tauri build
+        uses: tauri-apps/tauri-action@v0.5
+        env:
+          NODE_OPTIONS: "--max_old_space_size=4096"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.event.inputs.tag }}
+          releaseName: "Personal ${{ github.event.inputs.tag }}"
+          releaseBody: |
+            个人精简版
+
+            - 移除首页
+            - 移除全局扩展脚本 (Merge/Script)
+            - 默认进入代理页面
+
+            基于 Clash Verge Rev
+          releaseDraft: false
+          prerelease: false
+          tauriScript: pnpm
+          args: --target ${{ matrix.target }}
