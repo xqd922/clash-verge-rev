@@ -67,7 +67,7 @@ jobs:
           pnpm run release-version v${{ github.event.inputs.version }}
 
       - name: Tauri build
-        uses: tauri-apps/tauri-action@v0.5
+        uses: tauri-apps/tauri-action@v0
         env:
           NODE_OPTIONS: "--max_old_space_size=4096"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -86,3 +86,4 @@ jobs:
           prerelease: false
           tauriScript: pnpm
           args: --target ${{ matrix.target }}
+          includeUpdaterJson: false
