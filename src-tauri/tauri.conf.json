@@ -30,7 +30,10 @@
   "identifier": "io.github.clash-verge-rev.clash-verge-rev",
   "plugins": {
     "updater": {
-      "endpoints": [],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE4NTJDMEQ3RTA5RTBCOUIKUldTYkM1N2cxOEJTR0ppZ3hpTVpiRkhIQnB6ZitIYkFsMmFKMkdlQkJKK2ZaZVBvdkh3RVJYd0UK",
+      "endpoints": [
+        "https://github.com/xqd922/clash-verge-rev/releases/download/updater/update.json"
+      ],
       "windows": {
         "installMode": "basicUi"
       }

@@ -71,6 +71,8 @@ jobs:
         env:
           NODE_OPTIONS: "--max_old_space_size=4096"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.event.inputs.tag }}
           releaseName: "Personal ${{ github.event.inputs.tag }}"
@@ -86,3 +88,46 @@ jobs:
           prerelease: false
           tauriScript: pnpm
           args: --target ${{ matrix.target }}
+          updaterJsonKeepUniversal: true
+
+      - name: Generate update.json
+        run: |
+          $version = "${{ github.event.inputs.version }}"
+          $tag = "${{ github.event.inputs.tag }}"
+          $releaseUrl = "https://github.com/xqd922/clash-verge-rev/releases/download/$tag"
+
+          # Find the nsis installer and sig file
+          $artifactsDir = "src-tauri/target/${{ matrix.target }}/release/bundle/nsis"
+          $installer = Get-ChildItem -Path $artifactsDir -Filter "*.exe" | Where-Object { $_.Name -notmatch "portable" } | Select-Object -First 1
+          $sigFile = "$($installer.FullName).sig"
+
+          if (Test-Path $sigFile) {
+            $signature = Get-Content $sigFile -Raw
+            $signature = $signature.Trim()
+          } else {
+            Write-Error "Signature file not found: $sigFile"
+            exit 1
+          }
+
+          $updateJson = @{
+            version = $version
+            notes = "Personal $tag"
+            pub_date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            platforms = @{
+              "windows-x86_64" = @{
+                signature = $signature
+                url = "$releaseUrl/$($installer.Name)"
+              }
+            }
+          } | ConvertTo-Json -Depth 4
+
+          $updateJson | Out-File -FilePath "update.json" -Encoding utf8
+          Write-Host "Generated update.json:"
+          Get-Content "update.json"
+
+      - name: Upload update.json to updater release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: updater
+          files: update.json
+          token: ${{ secrets.GITHUB_TOKEN }}
