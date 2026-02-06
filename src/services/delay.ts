@@ -2,7 +2,8 @@ import { delayProxyByName, ProxyDelay } from "tauri-plugin-mihomo-api";
 
 import { debugLog } from "@/utils/debug";
 
-const hashKey = (name: string, group: string) => `${group ?? ""}::${name}`;
+// 使用节点名作为缓存键，统一延迟显示（符合 mihomo 内核设计）
+const hashKey = (name: string, _group?: string) => name;
 
 export interface DelayUpdate {
   delay: number;
@@ -14,10 +15,15 @@ const CACHE_TTL = 30 * 60 * 1000;
 
 class DelayManager {
   private cache = new Map<string, DelayUpdate>();
-  private urlMap = new Map<string, string>();
+  // 全局统一测速 URL
+  private globalUrl: string = "http://www.gstatic.com/generate_204";
 
-  // 每个节点的监听
-  private listenerMap = new Map<string, (update: DelayUpdate) => void>();
+  // 每个节点的监听（一个节点可能有多个监听器，来自不同组）
+  // key: proxyName, value: Map<listenerId, listener>
+  private listenerMap = new Map<
+    string,
+    Map<string, (update: DelayUpdate) => void>
+  >();
 
   // 每个分组的监听
   private groupListenerMap = new Map<string, () => void>();
@@ -36,19 +42,22 @@ class DelayManager {
       const updates = this.pendingItemUpdates;
       this.pendingItemUpdates = new Map();
 
-      updates.forEach((queue, key) => {
-        const listener = this.listenerMap.get(key);
-        if (!listener) return;
+      updates.forEach((queue, proxyName) => {
+        const listeners = this.listenerMap.get(proxyName);
+        if (!listeners) return;
 
         queue.forEach((update) => {
-          try {
-            listener(update);
-          } catch (error) {
-            console.error(
-              `[DelayManager] 通知节点延迟监听器失败: ${key}`,
-              error,
-            );
-          }
+          // 通知所有监听这个节点的监听器
+          listeners.forEach((listener, listenerId) => {
+            try {
+              listener(update);
+            } catch (error) {
+              console.error(
+                `[DelayManager] 通知节点延迟监听器失败: ${proxyName}:${listenerId}`,
+                error,
+              );
+            }
+          });
         });
       });
     };
@@ -109,18 +118,17 @@ class DelayManager {
     this.scheduleGroupFlush();
   }
 
-  setUrl(group: string, url: string) {
-    debugLog(`[DelayManager] 设置测试URL，组: ${group}, URL: ${url}`);
-    this.urlMap.set(group, url);
+  // 设置全局测速 URL（优先使用配置文件的，只设置一次）
+  setUrl(_group: string, url: string) {
+    if (url && url.trim()) {
+      debugLog(`[DelayManager] 设置全局测试URL: ${url}`);
+      this.globalUrl = url.trim();
+    }
   }
 
-  getUrl(group: string) {
-    const url = this.urlMap.get(group);
-    debugLog(
-      `[DelayManager] 获取测试URL，组: ${group}, URL: ${url || "未设置"}`,
-    );
-    // 如果未设置URL，返回默认URL
-    return url || "https://cp.cloudflare.com/generate_204";
+  getUrl(_group?: string) {
+    debugLog(`[DelayManager] 获取全局测试URL: ${this.globalUrl}`);
+    return this.globalUrl;
   }
 
   setListener(
@@ -128,13 +136,25 @@ class DelayManager {
     group: string,
     listener: (update: DelayUpdate) => void,
   ) {
-    const key = hashKey(name, group);
-    this.listenerMap.set(key, listener);
+    // 使用 group 作为 listenerId，这样同一个节点在不同组都能收到更新
+    const listenerId = group;
+    let listeners = this.listenerMap.get(name);
+    if (!listeners) {
+      listeners = new Map();
+      this.listenerMap.set(name, listeners);
+    }
+    listeners.set(listenerId, listener);
   }
 
   removeListener(name: string, group: string) {
-    const key = hashKey(name, group);
-    this.listenerMap.delete(key);
+    const listenerId = group;
+    const listeners = this.listenerMap.get(name);
+    if (listeners) {
+      listeners.delete(listenerId);
+      if (listeners.size === 0) {
+        this.listenerMap.delete(name);
+      }
+    }
   }
 
   setGroupListener(group: string, listener: () => void) {
@@ -241,18 +261,10 @@ class DelayManager {
         timeoutPromise,
       ]);
 
-      // 确保至少显示500ms的加载动画
-      const elapsedTime = Date.now() - startTime;
-      if (elapsedTime < 500) {
-        await new Promise((resolve) => setTimeout(resolve, 500 - elapsedTime));
-      }
-
       delay = result.delay;
-      elapsed = elapsedTime;
+      elapsed = Date.now() - startTime;
       debugLog(`[DelayManager] 延迟测试完成，代理: ${name}, 结果: ${delay}ms`);
     } catch (error) {
-      // 确保至少显示500ms的加载动画
-      await new Promise((resolve) => setTimeout(resolve, 500));
       console.error(`[DelayManager] 延迟测试出错，代理: ${name}`, error);
       delay = 1e6; // error
       elapsed = Date.now() - startTime;
@@ -285,14 +297,6 @@ class DelayManager {
       try {
         // 确保API调用前状态为测试中
         this.setDelay(currName, group, -2);
-
-        // 添加一些随机延迟，避免所有请求同时发出和返回
-        if (index > 1) {
-          // 第一个不延迟，保持响应性
-          await new Promise((resolve) =>
-            setTimeout(resolve, Math.random() * 200),
-          );
-        }
 
         await this.checkDelay(currName, group, timeout);
         if (listener) {

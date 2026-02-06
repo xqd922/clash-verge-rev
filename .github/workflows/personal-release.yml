@@ -1,4 +1,4 @@
-name: Personal Release
+name: Personal Release (个人版)
 
 on:
   workflow_dispatch:

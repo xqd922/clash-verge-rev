@@ -67,11 +67,15 @@ export const ProxyHead = ({
   const { verge } = useVerge();
   const defaultLatencyUrl =
     verge?.default_latency_test?.trim() ||
-    "https://cp.cloudflare.com/generate_204";
+    "http://www.gstatic.com/generate_204";
 
   useEffect(() => {
-    delayManager.setUrl(groupName, testUrl?.trim() || url || defaultLatencyUrl);
-  }, [groupName, testUrl, defaultLatencyUrl, url]);
+    // 优先级: 用户设置 > 组配置 > 默认值
+    delayManager.setUrl(
+      groupName,
+      defaultLatencyUrl || url || "http://www.gstatic.com/generate_204",
+    );
+  }, [groupName, defaultLatencyUrl, url]);
 
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, ...sx }}>

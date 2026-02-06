@@ -1,6 +1,5 @@
 import { CheckCircleOutlineRounded } from "@mui/icons-material";
 import { alpha, Box, ListItemButton, styled, Typography } from "@mui/material";
-import { useLockFn } from "ahooks";
 import { useCallback, useEffect, useReducer } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -75,12 +74,12 @@ export const ProxyItemMini = (props: Props) => {
     updateDelay();
   }, [updateDelay]);
 
-  const onDelay = useLockFn(async () => {
+  const onDelay = useCallback(async () => {
     setDelayState({ delay: -2, updatedAt: Date.now() });
     setDelayState(
       await delayManager.checkDelay(proxy.name, group.name, timeout),
     );
-  });
+  }, [proxy.name, group.name, timeout]);
 
   const delayValue = delayState.delay;
 
@@ -100,7 +99,7 @@ export const ProxyItemMini = (props: Props) => {
         },
         ({ palette: { mode, primary } }) => {
           const bgcolor = mode === "light" ? "#ffffff" : "#24252f";
-          const showDelay = delayValue > 0;
+          const showDelay = delayValue >= 0;
           const selectColor = mode === "light" ? primary.main : primary.light;
 
           return {

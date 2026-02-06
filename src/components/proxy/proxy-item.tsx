@@ -10,7 +10,6 @@ import {
   SxProps,
   Theme,
 } from "@mui/material";
-import { useLockFn } from "ahooks";
 import { useCallback, useEffect, useReducer } from "react";
 
 import { BaseLoading } from "@/components/base";
@@ -100,12 +99,12 @@ export const ProxyItem = (props: Props) => {
     updateDelay();
   }, [updateDelay]);
 
-  const onDelay = useLockFn(async () => {
+  const onDelay = useCallback(async () => {
     setDelayState({ delay: -2, updatedAt: Date.now() });
     setDelayState(
       await delayManager.checkDelay(proxy.name, group.name, timeout),
     );
-  });
+  }, [proxy.name, group.name, timeout]);
 
   const delayValue = delayState.delay;
 
@@ -120,7 +119,7 @@ export const ProxyItem = (props: Props) => {
           ({ palette: { mode, primary } }) => {
             const bgcolor = mode === "light" ? "#ffffff" : "#24252f";
             const selectColor = mode === "light" ? primary.main : primary.light;
-            const showDelay = delayValue > 0;
+            const showDelay = delayValue >= 0;
 
             return {
               "&:hover .the-check": { display: !showDelay ? "block" : "none" },
@@ -201,7 +200,7 @@ export const ProxyItem = (props: Props) => {
             </Widget>
           )}
 
-          {delayValue > 0 && (
+          {delayValue >= 0 && (
             // 显示延迟
             <Widget
               className="the-delay"
@@ -222,7 +221,7 @@ export const ProxyItem = (props: Props) => {
             </Widget>
           )}
 
-          {delayValue !== -2 && delayValue <= 0 && selected && (
+          {delayValue !== -2 && delayValue < 0 && selected && (
             // 展示已选择的 icon
             <CheckCircleOutlineRounded
               className="the-icon"

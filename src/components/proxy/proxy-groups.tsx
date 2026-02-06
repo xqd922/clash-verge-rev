@@ -9,7 +9,6 @@ import {
   Snackbar,
   Typography,
 } from "@mui/material";
-import { useLockFn } from "ahooks";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
@@ -299,57 +298,62 @@ export const ProxyGroups = (props: Props) => {
   );
 
   // 测全部延迟
-  const handleCheckAll = useLockFn(async (groupName: string) => {
-    debugLog(`[ProxyGroups] 开始测试所有延迟，组: ${groupName}`);
+  const handleCheckAll = useCallback(
+    async (groupName: string) => {
+      debugLog(`[ProxyGroups] 开始测试所有延迟，组: ${groupName}`);
 
-    const proxies = renderList
-      .filter(
-        (e) => e.group?.name === groupName && (e.type === 2 || e.type === 4),
-      )
-      .flatMap((e) => e.proxyCol || e.proxy!)
-      .filter(Boolean);
+      const proxies = renderList
+        .filter(
+          (e) => e.group?.name === groupName && (e.type === 2 || e.type === 4),
+        )
+        .flatMap((e) => e.proxyCol || e.proxy!)
+        .filter(Boolean);
 
-    debugLog(`[ProxyGroups] 找到代理数量: ${proxies.length}`);
+      debugLog(`[ProxyGroups] 找到代理数量: ${proxies.length}`);
 
-    const providers = new Set(proxies.map((p) => p!.provider!).filter(Boolean));
+      const providers = new Set(
+        proxies.map((p) => p!.provider!).filter(Boolean),
+      );
 
-    if (providers.size) {
-      debugLog(`[ProxyGroups] 发现提供者，数量: ${providers.size}`);
-      Promise.allSettled(
-        [...providers].map((p) => healthcheckProxyProvider(p)),
-      ).then(() => {
-        debugLog(`[ProxyGroups] 提供者健康检查完成`);
-        onProxies();
-      });
-    }
-
-    const names = proxies.filter((p) => !p!.provider).map((p) => p!.name);
-    debugLog(`[ProxyGroups] 过滤后需要测试的代理数量: ${names.length}`);
-
-    const url = delayManager.getUrl(groupName);
-    debugLog(`[ProxyGroups] 测试URL: ${url}, 超时: ${timeout}ms`);
-
-    try {
-      await Promise.race([
-        delayManager.checkListDelay(names, groupName, timeout),
-        delayGroup(groupName, url, timeout).then((result) => {
-          debugLog(
-            `[ProxyGroups] getGroupProxyDelays返回结果数量:`,
-            Object.keys(result || {}).length,
-          );
-        }), // 查询group delays 将清除fixed(不关注调用结果)
-      ]);
-      debugLog(`[ProxyGroups] 延迟测试完成，组: ${groupName}`);
-    } catch (error) {
-      console.error(`[ProxyGroups] 延迟测试出错，组: ${groupName}`, error);
-    } finally {
-      const headState = getGroupHeadState(groupName);
-      if (headState?.sortType === 1) {
-        onHeadState(groupName, { sortType: headState.sortType });
+      if (providers.size) {
+        debugLog(`[ProxyGroups] 发现提供者，数量: ${providers.size}`);
+        Promise.allSettled(
+          [...providers].map((p) => healthcheckProxyProvider(p)),
+        ).then(() => {
+          debugLog(`[ProxyGroups] 提供者健康检查完成`);
+          onProxies();
+        });
       }
-      onProxies();
-    }
-  });
+
+      const names = proxies.filter((p) => !p!.provider).map((p) => p!.name);
+      debugLog(`[ProxyGroups] 过滤后需要测试的代理数量: ${names.length}`);
+
+      const url = delayManager.getUrl(groupName);
+      debugLog(`[ProxyGroups] 测试URL: ${url}, 超时: ${timeout}ms`);
+
+      try {
+        await Promise.race([
+          delayManager.checkListDelay(names, groupName, timeout),
+          delayGroup(groupName, url, timeout).then((result) => {
+            debugLog(
+              `[ProxyGroups] getGroupProxyDelays返回结果数量:`,
+              Object.keys(result || {}).length,
+            );
+          }), // 查询group delays 将清除fixed(不关注调用结果)
+        ]);
+        debugLog(`[ProxyGroups] 延迟测试完成，组: ${groupName}`);
+      } catch (error) {
+        console.error(`[ProxyGroups] 延迟测试出错，组: ${groupName}`, error);
+      } finally {
+        const headState = getGroupHeadState(groupName);
+        if (headState?.sortType === 1) {
+          onHeadState(groupName, { sortType: headState.sortType });
+        }
+        onProxies();
+      }
+    },
+    [renderList, timeout, getGroupHeadState, onHeadState, onProxies],
+  );
 
   // 滚到对应的节点
   const handleLocation = (group: IProxyGroupItem) => {
