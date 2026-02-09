@@ -32,39 +32,49 @@ const mergeConnectionSnapshot = (
 ): ConnectionMonitorData => {
   const nextConnections = payload.connections ?? [];
   const previousActive = previous.activeConnections ?? [];
-  const nextById = new Map(nextConnections.map((conn) => [conn.id, conn]));
-  const newIds = new Set(nextConnections.map((conn) => conn.id));
 
-  // Keep surviving connections in their previous relative order to reduce row reshuffle,
-  // but constrain the array to the incoming snapshot length.
-  const carried = previousActive
-    .map((prev) => {
-      const next = nextById.get(prev.id);
-      if (!next) return null;
+  // Build lookup map once, mutate in place to avoid extra allocations
+  const nextById = new Map<string, IConnectionsItem>();
+  for (const conn of nextConnections) {
+    nextById.set(conn.id, conn);
+  }
 
+  // Pre-allocate result array with estimated capacity
+  const activeConnections: IConnectionsItem[] = [];
+  const newlyClosed: IConnectionsItem[] = [];
+
+  // Process previously active connections
+  for (const prev of previousActive) {
+    const next = nextById.get(prev.id);
+    if (next) {
+      // Connection still active - compute speed delta, mutate in place
+      next.curUpload = next.upload - prev.upload;
+      next.curDownload = next.download - prev.download;
+      activeConnections.push(next);
       nextById.delete(prev.id);
-      return {
-        ...next,
-        curUpload: next.upload - prev.upload,
-        curDownload: next.download - prev.download,
-      } as IConnectionsItem;
-    })
-    .filter(Boolean) as IConnectionsItem[];
+    } else {
+      // Connection closed
+      newlyClosed.push(prev);
+    }
+  }
 
-  const newcomers = nextConnections
-    .filter((conn) => nextById.has(conn.id))
-    .map((conn) => ({
-      ...conn,
-      curUpload: 0,
-      curDownload: 0,
-    }));
+  // Add newcomers (remaining in the map are new connections)
+  for (const conn of nextById.values()) {
+    conn.curUpload = 0;
+    conn.curDownload = 0;
+    activeConnections.push(conn);
+  }
 
-  const activeConnections = [...carried, ...newcomers];
-
-  const closedConnections = trimClosedConnections([
-    ...(previous.closedConnections ?? []),
-    ...previousActive.filter((conn) => !newIds.has(conn.id)),
-  ]);
+  // Merge closed connections with trimming
+  const prevClosed = previous.closedConnections ?? [];
+  let closedConnections: IConnectionsItem[];
+  if (newlyClosed.length === 0) {
+    closedConnections = prevClosed;
+  } else {
+    const merged =
+      prevClosed.length > 0 ? prevClosed.concat(newlyClosed) : newlyClosed;
+    closedConnections = trimClosedConnections(merged);
+  }
 
   return {
     uploadTotal: payload.uploadTotal ?? 0,
@@ -74,6 +84,8 @@ const mergeConnectionSnapshot = (
   };
 };
 
+const CONN_THROTTLE_MS = 200;
+
 export const useConnectionData = () => {
   const { response, refresh, subscriptionCacheKey } =
     useMihomoWsSubscription<ConnectionMonitorData>({
@@ -81,24 +93,47 @@ export const useConnectionData = () => {
       buildSubscriptKey: (date) => `getClashConnection-${date}`,
       fallbackData: initConnData,
       connect: () => MihomoWebSocket.connect_connections(),
-      setupHandlers: ({ next, scheduleReconnect }) => ({
-        handleMessage: (data) => {
-          if (data.startsWith("Websocket error")) {
-            next(data);
-            void scheduleReconnect();
-            return;
-          }
+      setupHandlers: ({ next, scheduleReconnect, isMounted }) => {
+        let pendingPayload: IConnections | null = null;
+        let throttleTimer: ReturnType<typeof setTimeout> | null = null;
 
-          try {
-            const parsed = JSON.parse(data) as IConnections;
-            next(null, (old = initConnData) =>
-              mergeConnectionSnapshot(parsed, old),
-            );
-          } catch (error) {
-            next(error);
-          }
-        },
-      }),
+        const flush = () => {
+          throttleTimer = null;
+          if (!pendingPayload || !isMounted()) return;
+          const payload = pendingPayload;
+          pendingPayload = null;
+          next(null, (old = initConnData) =>
+            mergeConnectionSnapshot(payload, old),
+          );
+        };
+
+        return {
+          handleMessage: (data) => {
+            if (data.startsWith("Websocket error")) {
+              next(data);
+              void scheduleReconnect();
+              return;
+            }
+
+            try {
+              // Only keep the latest payload; skip intermediate snapshots
+              pendingPayload = JSON.parse(data) as IConnections;
+              if (!throttleTimer) {
+                throttleTimer = setTimeout(flush, CONN_THROTTLE_MS);
+              }
+            } catch (error) {
+              next(error);
+            }
+          },
+          cleanup: () => {
+            if (throttleTimer) {
+              clearTimeout(throttleTimer);
+              throttleTimer = null;
+            }
+            pendingPayload = null;
+          },
+        };
+      },
     });
 
   const clearClosedConnections = () => {
