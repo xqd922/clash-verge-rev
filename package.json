@@ -120,11 +120,11 @@
     "vite-plugin-svgr": "^4.5.0"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,jsx}": [
+    "!(crates/**)*.{ts,tsx,js,jsx}": [
       "eslint --fix --max-warnings=0",
       "prettier --write"
     ],
-    "*.{css,scss,json,md}": [
+    "!(crates/**)*.{css,scss,json,md}": [
       "prettier --write"
     ]
   },

@@ -255,7 +255,20 @@ impl CoreConfigValidator {
 
         // 检查进程退出状态和错误输出
         let error_keywords = ["FATA", "fatal", "Parse config error", "level=fatal"];
-        let has_error = !status.success() || contains_any_keyword(stderr, &error_keywords);
+        // Smart 内核在 -t 测试模式下会尝试初始化 DB 缓存，如果已有实例运行会导致
+        // "[Smart] DB Cache file load failed" 这个 fatal 错误，但这不是配置问题
+        let smart_db_ignorable = {
+            let output_str = std::str::from_utf8(stdout).unwrap_or_default();
+            let stderr_str = std::str::from_utf8(stderr).unwrap_or_default();
+            let combined = format!("{}{}", output_str, stderr_str);
+            combined.contains("[Smart] DB Cache file load failed")
+                && !combined.contains("Parse config error")
+        };
+        let has_error = if smart_db_ignorable {
+            false
+        } else {
+            !status.success() || contains_any_keyword(stderr, &error_keywords)
+        };
 
         logging!(info, Type::Validate, "-------- 验证结果 --------");
 

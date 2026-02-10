@@ -34,6 +34,11 @@ const VALID_CORE = [
     core: "verge-mihomo-alpha",
     chipKey: "settings.modals.clashCore.variants.alpha",
   },
+  {
+    name: "Mihomo Smart",
+    core: "verge-mihomo-smart",
+    chipKey: "settings.modals.clashCore.variants.smart",
+  },
 ];
 
 export function ClashCoreViewer({ ref }: { ref?: Ref<DialogRef> }) {
@@ -147,7 +152,7 @@ export function ClashCoreViewer({ ref }: { ref?: Ref<DialogRef> }) {
       contentSx={{
         pb: 0,
         width: 400,
-        height: 180,
+        height: 230,
         overflowY: "auto",
         userSelect: "text",
         marginTop: "-8px",

@@ -289,7 +289,8 @@
     "clashCore": {
       "variants": {
         "release": "안정 버전",
-        "alpha": "알파 버전"
+        "alpha": "알파 버전",
+        "smart": "스마트 버전"
       }
     },
     "liteMode": {

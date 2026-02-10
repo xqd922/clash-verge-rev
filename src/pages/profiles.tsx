@@ -380,9 +380,11 @@ const ProfilePage = () => {
       abortController: AbortController,
     ) => {
       try {
+        // Note: switchingProfileRef.current is already null here because
+        // cleanupSwitchState in the finally block runs before this setTimeout callback.
+        // Only check sequence and abort status.
         if (
           sequence === requestSequenceRef.current &&
-          switchingProfileRef.current === profile &&
           !abortController.signal.aborted
         ) {
           await activateSelected();

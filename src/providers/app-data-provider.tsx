@@ -110,24 +110,54 @@ export const AppDataProvider = ({
       const newProfileId = event.payload;
       const now = Date.now();
 
-      if (
-        lastProfileId === newProfileId &&
-        now - lastUpdateTime < refreshThrottle
-      ) {
+      // Only throttle truly duplicate events within a very short window (200ms)
+      // to prevent double-firing, but always allow refresh for profile changes
+      if (lastProfileId === newProfileId && now - lastUpdateTime < 200) {
         return;
       }
 
       lastProfileId = newProfileId;
       lastUpdateTime = now;
 
-      scheduleTimeout(() => {
-        refreshRules().catch((error) =>
-          console.warn("[DataProvider] Rules refresh failed:", error),
-        );
-        refreshRuleProviders().catch((error) =>
-          console.warn("[DataProvider] Rule providers refresh failed:", error),
-        );
-      }, 200);
+      // Use longer delay (500ms) to ensure mihomo has fully loaded the new config
+      scheduleTimeout(async () => {
+        // Directly call calcuProxies with retry to bypass SWR deduplication
+        // and handle slow core initialization (e.g., Smart core loading LightGBM model)
+        const maxRetries = 3;
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          try {
+            const newProxies = await calcuProxies();
+            await refreshProxy(newProxies, { revalidate: false });
+            break;
+          } catch {
+            if (attempt < maxRetries) {
+              // eslint-disable-next-line @eslint-react/web-api/no-leaked-timeout
+              await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+            }
+          }
+        }
+        // Refresh other data in parallel
+        Promise.all([
+          refreshClashConfig().catch((error) =>
+            console.warn("[DataProvider] Clash config refresh failed:", error),
+          ),
+          refreshProxyProviders().catch((error) =>
+            console.warn(
+              "[DataProvider] Proxy providers refresh failed:",
+              error,
+            ),
+          ),
+          refreshRules().catch((error) =>
+            console.warn("[DataProvider] Rules refresh failed:", error),
+          ),
+          refreshRuleProviders().catch((error) =>
+            console.warn(
+              "[DataProvider] Rule providers refresh failed:",
+              error,
+            ),
+          ),
+        ]);
+      }, 500);
     };
 
     const handleRefreshClash = () => {
@@ -222,7 +252,13 @@ export const AppDataProvider = ({
         );
       }
     };
-  }, [refreshProxy, refreshClashConfig, refreshRules, refreshRuleProviders]);
+  }, [
+    refreshProxy,
+    refreshClashConfig,
+    refreshProxyProviders,
+    refreshRules,
+    refreshRuleProviders,
+  ]);
 
   const { data: sysproxy, mutate: refreshSysproxy } = useSWR(
     "getSystemProxy",
