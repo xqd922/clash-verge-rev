@@ -261,8 +261,7 @@ impl CoreConfigValidator {
             let output_str = std::str::from_utf8(stdout).unwrap_or_default();
             let stderr_str = std::str::from_utf8(stderr).unwrap_or_default();
             let combined = format!("{}{}", output_str, stderr_str);
-            combined.contains("[Smart] DB Cache file load failed")
-                && !combined.contains("Parse config error")
+            combined.contains("[Smart] DB Cache file load failed") && !combined.contains("Parse config error")
         };
         let has_error = if smart_db_ignorable {
             false

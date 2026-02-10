@@ -90,6 +90,27 @@ jobs:
           args: --target ${{ matrix.target }}
           updaterJsonKeepUniversal: true
 
+      - name: Portable Bundle
+        run: |
+          $releaseDir = "target/${{ matrix.target }}/release"
+          $configDir = Join-Path $releaseDir ".config"
+          New-Item -ItemType Directory -Force -Path $configDir | Out-Null
+          Set-Content -Path (Join-Path $configDir "PORTABLE") -Value ""
+
+          $version = "${{ github.event.inputs.version }}"
+          $zipFile = "Clash.Verge_${version}_x64_portable.zip"
+
+          Compress-Archive -Path @(
+            (Join-Path $releaseDir "Clash Verge.exe"),
+            (Join-Path $releaseDir "verge-mihomo.exe"),
+            (Join-Path $releaseDir "verge-mihomo-alpha.exe"),
+            (Join-Path $releaseDir "verge-mihomo-smart.exe"),
+            (Join-Path $releaseDir "resources"),
+            $configDir
+          ) -DestinationPath $zipFile -Force
+
+          Write-Host "Created portable zip: $zipFile"
+
       - name: Generate update.json
         run: |
           $version = "${{ github.event.inputs.version }}"
@@ -97,7 +118,7 @@ jobs:
           $releaseUrl = "https://github.com/xqd922/clash-verge-rev/releases/download/$tag"
 
           # Find the nsis installer and sig file
-          $artifactsDir = "src-tauri/target/${{ matrix.target }}/release/bundle/nsis"
+          $artifactsDir = "target/${{ matrix.target }}/release/bundle/nsis"
           $installer = Get-ChildItem -Path $artifactsDir -Filter "*.exe" | Where-Object { $_.Name -notmatch "portable" } | Select-Object -First 1
           $sigFile = "$($installer.FullName).sig"
 
@@ -124,6 +145,14 @@ jobs:
           $updateJson | Out-File -FilePath "update.json" -Encoding utf8
           Write-Host "Generated update.json:"
           Get-Content "update.json"
+
+      - name: Upload portable and update.json
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          files: |
+            Clash.Verge_${{ github.event.inputs.version }}_x64_portable.zip
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload update.json to updater release
         uses: softprops/action-gh-release@v2
