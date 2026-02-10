@@ -70,12 +70,14 @@ export const ProxyHead = ({
     "http://www.gstatic.com/generate_204";
 
   useEffect(() => {
-    // 优先级: 用户设置 > 组配置 > 默认值
-    delayManager.setUrl(
-      groupName,
-      defaultLatencyUrl || url || "http://www.gstatic.com/generate_204",
-    );
-  }, [groupName, defaultLatencyUrl, url]);
+    // 优先级: 自定义测试URL > 组配置URL > 用户全局设置 > 默认值
+    const effectiveUrl =
+      testUrl?.trim() ||
+      url ||
+      defaultLatencyUrl ||
+      "http://www.gstatic.com/generate_204";
+    delayManager.setUrl(groupName, effectiveUrl);
+  }, [groupName, testUrl, url, defaultLatencyUrl]);
 
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, ...sx }}>

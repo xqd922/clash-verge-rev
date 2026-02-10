@@ -1,6 +1,6 @@
 import { CheckCircleOutlineRounded } from "@mui/icons-material";
 import { alpha, Box, ListItemButton, styled, Typography } from "@mui/material";
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { BaseLoading } from "@/components/base";
@@ -74,11 +74,18 @@ export const ProxyItemMini = (props: Props) => {
     updateDelay();
   }, [updateDelay]);
 
+  const delayLockRef = useRef(false);
   const onDelay = useCallback(async () => {
-    setDelayState({ delay: -2, updatedAt: Date.now() });
-    setDelayState(
-      await delayManager.checkDelay(proxy.name, group.name, timeout),
-    );
+    if (delayLockRef.current) return;
+    delayLockRef.current = true;
+    try {
+      setDelayState({ delay: -2, updatedAt: Date.now() });
+      setDelayState(
+        await delayManager.checkDelay(proxy.name, group.name, timeout),
+      );
+    } finally {
+      delayLockRef.current = false;
+    }
   }, [proxy.name, group.name, timeout]);
 
   const delayValue = delayState.delay;

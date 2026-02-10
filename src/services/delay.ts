@@ -3,7 +3,7 @@ import { delayProxyByName, ProxyDelay } from "tauri-plugin-mihomo-api";
 import { debugLog } from "@/utils/debug";
 
 // 使用节点名作为缓存键，统一延迟显示（符合 mihomo 内核设计）
-const hashKey = (name: string, _group?: string) => name;
+const hashKey = (name: string) => name;
 
 export interface DelayUpdate {
   delay: number;
@@ -15,8 +15,9 @@ const CACHE_TTL = 30 * 60 * 1000;
 
 class DelayManager {
   private cache = new Map<string, DelayUpdate>();
-  // 全局统一测速 URL
+  // 全局默认测速 URL + 每组可覆盖
   private globalUrl: string = "http://www.gstatic.com/generate_204";
+  private groupUrls = new Map<string, string>();
 
   // 每个节点的监听（一个节点可能有多个监听器，来自不同组）
   // key: proxyName, value: Map<listenerId, listener>
@@ -118,17 +119,28 @@ class DelayManager {
     this.scheduleGroupFlush();
   }
 
-  // 设置全局测速 URL（优先使用配置文件的，只设置一次）
-  setUrl(_group: string, url: string) {
-    if (url && url.trim()) {
-      debugLog(`[DelayManager] 设置全局测试URL: ${url}`);
-      this.globalUrl = url.trim();
+  // 设置测速 URL（支持每组独立 URL）
+  setUrl(group: string, url: string) {
+    if (!url?.trim()) return;
+    const trimmed = url.trim();
+    // 如果与全局默认相同，不需要存储每组 URL
+    if (trimmed === this.globalUrl) {
+      this.groupUrls.delete(group);
+    } else {
+      this.groupUrls.set(group, trimmed);
+    }
+    // 同时更新全局 URL（第一次设置时生效）
+    if (
+      !this.groupUrls.size ||
+      this.globalUrl === "http://www.gstatic.com/generate_204"
+    ) {
+      this.globalUrl = trimmed;
     }
   }
 
-  getUrl(_group?: string) {
-    debugLog(`[DelayManager] 获取全局测试URL: ${this.globalUrl}`);
-    return this.globalUrl;
+  getUrl(group?: string) {
+    const url = (group && this.groupUrls.get(group)) || this.globalUrl;
+    return url;
   }
 
   setListener(
@@ -171,7 +183,7 @@ class DelayManager {
     delay: number,
     meta?: { elapsed?: number },
   ): DelayUpdate {
-    const key = hashKey(name, group);
+    const key = hashKey(name);
     debugLog(
       `[DelayManager] 设置延迟，代理: ${name}, 组: ${group}, 延迟: ${delay}`,
     );
@@ -194,8 +206,8 @@ class DelayManager {
     return update;
   }
 
-  getDelayUpdate(name: string, group: string) {
-    const key = hashKey(name, group);
+  getDelayUpdate(name: string, _group: string) {
+    const key = hashKey(name);
     const entry = this.cache.get(key);
     if (!entry) return undefined;
 

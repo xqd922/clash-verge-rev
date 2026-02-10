@@ -264,7 +264,8 @@ impl CoreConfigValidator {
             combined.contains("[Smart] DB Cache file load failed") && !combined.contains("Parse config error")
         };
         let has_error = if smart_db_ignorable {
-            false
+            // 仅忽略 DB Cache 导致的 fatal 关键字匹配，仍检查其他真实错误
+            contains_any_keyword(stderr, &["Parse config error"])
         } else {
             !status.success() || contains_any_keyword(stderr, &error_keywords)
         };

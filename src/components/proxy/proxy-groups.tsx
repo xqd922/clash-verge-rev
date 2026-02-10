@@ -85,7 +85,7 @@ export const ProxyGroups = (props: Props) => {
     if (!groups) return [];
     // 在链式代理模式下，仅显示支持选择节点的 Selector 代理组
     return isChainMode
-      ? groups.filter((g: any) => g.type === "Selector")
+      ? groups.filter((g: IProxyGroupItem) => g.type === "Selector")
       : groups;
   }, [groups, isChainMode]);
 
@@ -209,6 +209,7 @@ export const ProxyGroups = (props: Props) => {
 
     return () => {
       node.removeEventListener("scroll", listener, options);
+      handleScroll.cancel();
     };
   }, [handleScroll]);
 
@@ -230,7 +231,7 @@ export const ProxyGroups = (props: Props) => {
     if (!activeSelectedGroup) return null;
     return (
       availableGroups.find(
-        (group: any) => group.name === activeSelectedGroup,
+        (group: IProxyGroupItem) => group.name === activeSelectedGroup,
       ) ?? null
     );
   }, [activeSelectedGroup, availableGroups]);
@@ -297,9 +298,12 @@ export const ProxyGroups = (props: Props) => {
     [handleProxyGroupChange, isChainMode, t],
   );
 
-  // 测全部延迟
+  // 测全部延迟（带并发锁防止重复触发）
+  const checkAllLockRef = useRef(false);
   const handleCheckAll = useCallback(
     async (groupName: string) => {
+      if (checkAllLockRef.current) return;
+      checkAllLockRef.current = true;
       debugLog(`[ProxyGroups] 开始测试所有延迟，组: ${groupName}`);
 
       const proxies = renderList
@@ -350,6 +354,7 @@ export const ProxyGroups = (props: Props) => {
           onHeadState(groupName, { sortType: headState.sortType });
         }
         onProxies();
+        checkAllLockRef.current = false;
       }
     },
     [renderList, timeout, getGroupHeadState, onHeadState, onProxies],
@@ -557,7 +562,7 @@ export const ProxyGroups = (props: Props) => {
             },
           }}
         >
-          {availableGroups.map((group: any) => (
+          {availableGroups.map((group: IProxyGroupItem) => (
             <MenuItem
               key={group.name}
               onClick={() => handleGroupSelect(group.name)}
@@ -642,15 +647,18 @@ export const ProxyGroups = (props: Props) => {
   );
 };
 
-// 替换简单防抖函数为更优的节流函数
+type ThrottledFn<T extends (...args: any[]) => any> = ((
+  ...args: Parameters<T>
+) => void) & { cancel: () => void };
+
 function throttle<T extends (...args: any[]) => any>(
   func: T,
   wait: number,
-): (...args: Parameters<T>) => void {
+): ThrottledFn<T> {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let previous = 0;
 
-  return function (...args: Parameters<T>) {
+  const throttled = function (...args: Parameters<T>) {
     const now = Date.now();
     const remaining = wait - (now - previous);
 
@@ -668,5 +676,14 @@ function throttle<T extends (...args: any[]) => any>(
         func(...args);
       }, remaining);
     }
+  } as ThrottledFn<T>;
+
+  throttled.cancel = () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
   };
+
+  return throttled;
 }

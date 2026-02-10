@@ -10,7 +10,7 @@ import {
   SxProps,
   Theme,
 } from "@mui/material";
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 
 import { BaseLoading } from "@/components/base";
 import { useVerge } from "@/hooks/use-verge";
@@ -99,11 +99,18 @@ export const ProxyItem = (props: Props) => {
     updateDelay();
   }, [updateDelay]);
 
+  const delayLockRef = useRef(false);
   const onDelay = useCallback(async () => {
-    setDelayState({ delay: -2, updatedAt: Date.now() });
-    setDelayState(
-      await delayManager.checkDelay(proxy.name, group.name, timeout),
-    );
+    if (delayLockRef.current) return;
+    delayLockRef.current = true;
+    try {
+      setDelayState({ delay: -2, updatedAt: Date.now() });
+      setDelayState(
+        await delayManager.checkDelay(proxy.name, group.name, timeout),
+      );
+    } finally {
+      delayLockRef.current = false;
+    }
   }, [proxy.name, group.name, timeout]);
 
   const delayValue = delayState.delay;

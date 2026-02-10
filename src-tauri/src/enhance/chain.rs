@@ -23,11 +23,10 @@ pub enum ChainType {
 }
 
 #[derive(Debug, Clone)]
-#[allow(clippy::enum_variant_names)]
 pub enum ChainSupport {
-    ClashMeta,
-    ClashMetaAlpha,
-    ClashMetaSmart,
+    Stable,
+    Alpha,
+    Smart,
 }
 
 // impl From<&PrfItem> for Option<ChainItem> {
@@ -136,12 +135,12 @@ impl ChainItem {
         let hy_alpn_smart = Self::to_script("verge_hy_alpn", include_str!("./builtin/meta_hy_alpn.js"));
 
         vec![
-            (ChainSupport::ClashMeta, hy_alpn),
-            (ChainSupport::ClashMeta, meta_guard),
-            (ChainSupport::ClashMetaAlpha, hy_alpn_alpha),
-            (ChainSupport::ClashMetaAlpha, meta_guard_alpha),
-            (ChainSupport::ClashMetaSmart, hy_alpn_smart),
-            (ChainSupport::ClashMetaSmart, meta_guard_smart),
+            (ChainSupport::Stable, hy_alpn),
+            (ChainSupport::Stable, meta_guard),
+            (ChainSupport::Alpha, hy_alpn_alpha),
+            (ChainSupport::Alpha, meta_guard_alpha),
+            (ChainSupport::Smart, hy_alpn_smart),
+            (ChainSupport::Smart, meta_guard_smart),
         ]
     }
 
@@ -158,9 +157,9 @@ impl ChainSupport {
         match core {
             Some(core) => matches!(
                 (self, core.as_str()),
-                (Self::ClashMeta, "verge-mihomo")
-                    | (Self::ClashMetaAlpha, "verge-mihomo-alpha")
-                    | (Self::ClashMetaSmart, "verge-mihomo-smart")
+                (Self::Stable, "verge-mihomo")
+                    | (Self::Alpha, "verge-mihomo-alpha")
+                    | (Self::Smart, "verge-mihomo-smart")
             ),
             None => true,
         }

@@ -129,10 +129,15 @@ export const AppDataProvider = ({
             const newProxies = await calcuProxies();
             await refreshProxy(newProxies, { revalidate: false });
             break;
-          } catch {
+          } catch (error) {
             if (attempt < maxRetries) {
               // eslint-disable-next-line @eslint-react/web-api/no-leaked-timeout
               await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+            } else {
+              console.warn(
+                `[DataProvider] All ${maxRetries + 1} proxy refresh attempts failed:`,
+                error,
+              );
             }
           }
         }

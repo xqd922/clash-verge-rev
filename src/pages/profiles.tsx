@@ -357,7 +357,7 @@ const ProfilePage = () => {
     } catch (finalError) {
       console.error(`[导入刷新] 最终刷新尝试失败:`, finalError);
       showNotice.error(
-        "profiles.page.feedback.notifications.importSuccess",
+        "profiles.page.feedback.notifications.importNeedsRefresh",
         5000,
       );
     }
