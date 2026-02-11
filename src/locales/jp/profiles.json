@@ -151,7 +151,13 @@
         "excludeType": "除外ノードタイプ",
         "includeAll": "すべての出力プロキシ、プロキシプロバイダーを導入",
         "includeAllProxies": "すべての出力プロキシを導入",
-        "includeAllProviders": "すべてのプロキシプロバイダーを導入"
+        "includeAllProviders": "すべてのプロキシプロバイダーを導入",
+        "policyPriority": "Policy Priority",
+        "policyPriorityHint": "Regex patterns like 'Premium:0.9;SG:1.3' (<1 higher priority)",
+        "useLightGBM": "Use LightGBM",
+        "collectData": "Collect Data",
+        "sampleRate": "Sample Rate",
+        "preferAsn": "Prefer ASN"
       },
       "toggles": {
         "lazy": "遅延モード",

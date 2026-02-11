@@ -102,6 +102,7 @@
           "external": "Eksternal",
           "webUI": "Antarmuka Web",
           "clashCore": "Inti Clash",
+          "enableSmartConvert": "Auto-Convert to Smart",
           "openUwpTool": "Buka alat UWP",
           "updateGeoData": "Perbarui GeoData",
           "tunnels": {
@@ -133,7 +134,8 @@
           "networkInterface": "Antarmuka Jaringan",
           "unifiedDelay": "Saat keterlambatan terpadu diaktifkan, dua tes keterlambatan akan dilakukan untuk menghilangkan perbedaan keterlambatan antara berbagai jenis node yang disebabkan oleh jabat tangan koneksi, dll.",
           "logLevel": "Ini hanya berlaku untuk file log kernel di folder layanan di direktori log.",
-          "openUwpTool": "Sejak Windows 8, aplikasi UWP (seperti Microsoft Store) dibatasi dari mengakses layanan jaringan host lokal secara langsung, dan alat ini dapat digunakan untuk melewati pembatasan ini"
+          "openUwpTool": "Sejak Windows 8, aplikasi UWP (seperti Microsoft Store) dibatasi dari mengakses layanan jaringan host lokal secara langsung, dan alat ini dapat digunakan untuk melewati pembatasan ini",
+          "enableSmartConvert": "Auto-convert url-test, fallback, and load-balance proxy groups to smart type when using Smart core"
         },
         "options": {
           "logLevel": {
@@ -291,6 +293,9 @@
         "release": "Versi Rilis",
         "alpha": "Versi Alpha",
         "smart": "Versi Smart"
+      },
+      "actions": {
+        "flushSmartCache": "Flush Cache"
       }
     },
     "liteMode": {
@@ -627,7 +632,8 @@
         "alreadyLatestVersion": "Sudah menggunakan versi inti terbaru",
         "changeSuccess": "Inti berhasil diubah",
         "changeFailed": "Gagal mengubah inti",
-        "geoDataUpdated": "GeoData Diperbarui"
+        "geoDataUpdated": "GeoData Diperbarui",
+        "smartCacheFlushed": "Smart Cache Flushed"
       },
       "clashService": {
         "installSuccess": "Layanan Berhasil Diinstal",

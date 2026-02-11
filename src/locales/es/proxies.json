@@ -36,10 +36,17 @@
       "delayCheckUrl": "URL de prueba de latencia",
       "showBasic": "Ocultar detalles del nodo",
       "showDetail": "Mostrar detalles del nodo",
-      "filter": "Filtrar nodos"
+      "filter": "Filtrar nodos",
+      "viewWeights": "View Smart Weights"
     },
     "placeholders": {
       "delayCheckUrl": "URL de prueba de latencia"
+    },
+    "smart": {
+      "weightsTitle": "Smart Group Weights",
+      "noData": "No weight data available",
+      "nodeName": "Node",
+      "weight": "Weight"
     },
     "chain": {
       "header": "Chain Proxy Config",
@@ -77,7 +84,8 @@
         "url-test": "Seleccionar proxy según la prueba de latencia de la URL",
         "fallback": "Cambiar a otro proxy cuando no esté disponible",
         "load-balance": "Asignar proxy según el equilibrio de carga",
-        "relay": "Transferir según la cadena de proxy definida"
+        "relay": "Transferir según la cadena de proxy definida",
+        "smart": "Selección inteligente de nodos basada en IA"
       },
       "policies": {
         "DIRECT": "Conexión directa",

@@ -1,5 +1,6 @@
 import {
   AccessTimeRounded,
+  InsightsRounded,
   MyLocationRounded,
   NetworkCheckRounded,
   FilterAltRounded,
@@ -20,6 +21,7 @@ import { useVerge } from "@/hooks/use-verge";
 import delayManager from "@/services/delay";
 import { debugLog } from "@/utils/debug";
 
+import { SmartWeightsViewer } from "./smart-weights-viewer";
 import type { ProxySortType } from "./use-filter-sort";
 import type { HeadState } from "./use-head-state";
 
@@ -27,6 +29,7 @@ interface Props {
   sx?: SxProps;
   url?: string;
   groupName: string;
+  groupType?: string;
   headState: HeadState;
   onLocation: () => void;
   onCheckDelay: () => void;
@@ -39,6 +42,7 @@ export const ProxyHead = ({
   sx = defaultSx,
   url,
   groupName,
+  groupType,
   headState,
   onHeadState,
   onLocation,
@@ -68,6 +72,9 @@ export const ProxyHead = ({
   const defaultLatencyUrl =
     verge?.default_latency_test?.trim() ||
     "http://www.gstatic.com/generate_204";
+  const isSmartCore = verge?.clash_core === "verge-mihomo-smart";
+  const isSmartGroup = groupType === "Smart";
+  const [weightsOpen, setWeightsOpen] = useState(false);
 
   useEffect(() => {
     // 优先级: 自定义测试URL > 组配置URL > 用户全局设置 > 默认值
@@ -169,6 +176,17 @@ export const ProxyHead = ({
         )}
       </IconButton>
 
+      {isSmartCore && isSmartGroup && (
+        <IconButton
+          size="small"
+          color="inherit"
+          title={t("proxies.page.tooltips.viewWeights")}
+          onClick={() => setWeightsOpen(true)}
+        >
+          <InsightsRounded />
+        </IconButton>
+      )}
+
       {textState === "filter" && (
         <Box sx={{ ml: 0.5, flex: "1 1 auto" }}>
           <BaseSearchBox
@@ -205,6 +223,12 @@ export const ProxyHead = ({
           sx={{ ml: 0.5, flex: "1 1 auto", input: { py: 0.65, px: 1 } }}
         />
       )}
+
+      <SmartWeightsViewer
+        groupName={groupName}
+        open={weightsOpen}
+        onClose={() => setWeightsOpen(false)}
+      />
     </Box>
   );
 };

@@ -36,10 +36,17 @@
       "delayCheckUrl": "Delay check URL",
       "showBasic": "Proxy basic",
       "showDetail": "Proxy detail",
-      "filter": "Filter"
+      "filter": "Filter",
+      "viewWeights": "View Smart Weights"
     },
     "placeholders": {
       "delayCheckUrl": "Delay check URL"
+    },
+    "smart": {
+      "weightsTitle": "Smart Group Weights",
+      "noData": "No weight data available",
+      "nodeName": "Node",
+      "weight": "Weight"
     },
     "chain": {
       "header": "Chain Proxy Config",
@@ -77,7 +84,8 @@
         "url-test": "Select proxy based on URL test delay",
         "fallback": "Switch to another proxy on error",
         "load-balance": "Distribute proxy based on load balancing",
-        "relay": "Pass through the defined proxy chain"
+        "relay": "Pass through the defined proxy chain",
+        "smart": "AI-based smart node selection"
       },
       "policies": {
         "DIRECT": "Data goes directly outbound (DIRECT)",

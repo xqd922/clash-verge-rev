@@ -151,7 +151,13 @@
         "excludeType": "Чыгару төре",
         "includeAll": "Барлык прокси һәм провайдерларны кертү",
         "includeAllProxies": "Барлык проксины кертү",
-        "includeAllProviders": "Барлык провайдерларны кертү"
+        "includeAllProviders": "Барлык провайдерларны кертү",
+        "policyPriority": "Policy Priority",
+        "policyPriorityHint": "Regex patterns like 'Premium:0.9;SG:1.3' (<1 higher priority)",
+        "useLightGBM": "Use LightGBM",
+        "collectData": "Collect Data",
+        "sampleRate": "Sample Rate",
+        "preferAsn": "Prefer ASN"
       },
       "toggles": {
         "lazy": "Сак режим (lazy)",

@@ -151,7 +151,13 @@
         "excludeType": "Typ der auszuschließenden Knoten",
         "includeAll": "Alle Ausgangsproxy und Proxy-Sammlungen einführen",
         "includeAllProxies": "Alle Ausgangsproxy einführen",
-        "includeAllProviders": "Alle Proxy-Sammlungen einführen"
+        "includeAllProviders": "Alle Proxy-Sammlungen einführen",
+        "policyPriority": "Policy Priority",
+        "policyPriorityHint": "Regex patterns like 'Premium:0.9;SG:1.3' (<1 higher priority)",
+        "useLightGBM": "Use LightGBM",
+        "collectData": "Collect Data",
+        "sampleRate": "Sample Rate",
+        "preferAsn": "Prefer ASN"
       },
       "toggles": {
         "lazy": "Lazy-Status",

@@ -38,6 +38,20 @@ pub(crate) async fn flush_dns(state: State<'_, RwLock<Mihomo>>) -> Result<()> {
     state.read().await.flush_dns().await
 }
 
+// smart
+#[command]
+pub(crate) async fn get_smart_weights(
+    state: State<'_, RwLock<Mihomo>>,
+    group_name: String,
+) -> Result<serde_json::Value> {
+    state.read().await.get_smart_weights(&group_name).await
+}
+
+#[command]
+pub(crate) async fn flush_smart_cache(state: State<'_, RwLock<Mihomo>>) -> Result<()> {
+    state.read().await.flush_smart_cache().await
+}
+
 // connections
 #[command]
 pub(crate) async fn get_connections(state: State<'_, RwLock<Mihomo>>) -> Result<Connections> {

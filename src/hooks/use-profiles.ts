@@ -116,6 +116,7 @@ export const useProfiles = () => {
         "URLTest",
         "Fallback",
         "LoadBalance",
+        "Smart",
       ]);
 
       // 处理所有代理组

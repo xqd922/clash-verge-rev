@@ -36,10 +36,17 @@
       "delayCheckUrl": "آدرس بررسی تأخیر",
       "showBasic": "پراکسی پایه",
       "showDetail": "جزئیات پراکسی",
-      "filter": "فیلتر"
+      "filter": "فیلتر",
+      "viewWeights": "View Smart Weights"
     },
     "placeholders": {
       "delayCheckUrl": "آدرس بررسی تأخیر"
+    },
+    "smart": {
+      "weightsTitle": "Smart Group Weights",
+      "noData": "No weight data available",
+      "nodeName": "Node",
+      "weight": "Weight"
     },
     "chain": {
       "header": "Chain Proxy Config",
@@ -77,7 +84,8 @@
         "url-test": "انتخاب پروکسی بر اساس تأخیر آزمایش URL",
         "fallback": "تعویض به پروکسی دیگر در صورت بروز خطا",
         "load-balance": "توزیع پراکسی بر اساس توازن بار",
-        "relay": "عبور از زنجیره پروکسی تعریف شده"
+        "relay": "عبور از زنجیره پروکسی تعریف شده",
+        "smart": "انتخاب هوشمند گره مبتنی بر هوش مصنوعی"
       },
       "policies": {
         "DIRECT": "داده‌ها به صورت مستقیم خروجی می‌شوند",

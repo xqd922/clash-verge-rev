@@ -151,7 +151,13 @@
         "excludeType": "제외 유형",
         "includeAll": "모든 프록시 및 제공자 포함",
         "includeAllProxies": "모든 프록시 포함",
-        "includeAllProviders": "모든 제공자 포함"
+        "includeAllProviders": "모든 제공자 포함",
+        "policyPriority": "Policy Priority",
+        "policyPriorityHint": "Regex patterns like 'Premium:0.9;SG:1.3' (<1 higher priority)",
+        "useLightGBM": "Use LightGBM",
+        "collectData": "Collect Data",
+        "sampleRate": "Sample Rate",
+        "preferAsn": "Prefer ASN"
       },
       "toggles": {
         "lazy": "지연 로딩",

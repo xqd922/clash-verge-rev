@@ -102,6 +102,9 @@ impl Builder {
                 commands::get_version,
                 commands::flush_fakeip,
                 commands::flush_dns,
+                // smart
+                commands::get_smart_weights,
+                commands::flush_smart_cache,
                 // connections
                 commands::get_connections,
                 commands::close_all_connections,

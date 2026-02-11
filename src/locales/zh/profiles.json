@@ -151,7 +151,13 @@
         "excludeType": "排除节点类型",
         "includeAll": "引入所有出站代理、代理集合",
         "includeAllProxies": "引入所有出站代理",
-        "includeAllProviders": "引入所有代理集合"
+        "includeAllProviders": "引入所有代理集合",
+        "policyPriority": "策略优先级",
+        "policyPriorityHint": "正则模式如 'Premium:0.9;SG:1.3'（<1 优先级更高）",
+        "useLightGBM": "使用 LightGBM",
+        "collectData": "数据收集",
+        "sampleRate": "采样率",
+        "preferAsn": "优先 ASN"
       },
       "toggles": {
         "lazy": "懒惰状态",

@@ -1,4 +1,5 @@
 import {
+  CachedRounded,
   RestartAltRounded,
   SwitchAccessShortcutRounded,
 } from "@mui/icons-material";
@@ -16,7 +17,11 @@ import type { Ref } from "react";
 import { useImperativeHandle, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { mutate } from "swr";
-import { closeAllConnections, upgradeCore } from "tauri-plugin-mihomo-api";
+import {
+  closeAllConnections,
+  flushSmartCache,
+  upgradeCore,
+} from "tauri-plugin-mihomo-api";
 
 import { BaseDialog, DialogRef } from "@/components/base";
 import { useVerge } from "@/hooks/use-verge";
@@ -49,6 +54,7 @@ export function ClashCoreViewer({ ref }: { ref?: Ref<DialogRef> }) {
   const [open, setOpen] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
   const [restarting, setRestarting] = useState(false);
+  const [flushingCache, setFlushingCache] = useState(false);
   const [changingCore, setChangingCore] = useState<string | null>(null);
 
   useImperativeHandle(ref, () => ({
@@ -116,6 +122,20 @@ export function ClashCoreViewer({ ref }: { ref?: Ref<DialogRef> }) {
     }
   });
 
+  const onFlushSmartCache = useLockFn(async () => {
+    try {
+      setFlushingCache(true);
+      await flushSmartCache();
+      setFlushingCache(false);
+      showNotice.success(
+        t("settings.feedback.notifications.clash.smartCacheFlushed"),
+      );
+    } catch (err: any) {
+      setFlushingCache(false);
+      showNotice.error(err);
+    }
+  });
+
   return (
     <BaseDialog
       open={open}
@@ -123,6 +143,20 @@ export function ClashCoreViewer({ ref }: { ref?: Ref<DialogRef> }) {
         <Box display="flex" justifyContent="space-between">
           {t("settings.sections.clash.form.fields.clashCore")}
           <Box>
+            {clash_core === "verge-mihomo-smart" && (
+              <LoadingButton
+                variant="contained"
+                size="small"
+                startIcon={<CachedRounded />}
+                loadingPosition="start"
+                loading={flushingCache}
+                disabled={restarting || changingCore !== null || upgrading}
+                sx={{ marginRight: "8px" }}
+                onClick={onFlushSmartCache}
+              >
+                {t("settings.modals.clashCore.actions.flushSmartCache")}
+              </LoadingButton>
+            )}
             <LoadingButton
               variant="contained"
               size="small"

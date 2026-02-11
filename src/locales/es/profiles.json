@@ -151,7 +151,13 @@
         "excludeType": "Tipo de nodo a excluir",
         "includeAll": "Incluir todos los proxies de salida y proveedores de proxies",
         "includeAllProxies": "Incluir todos los proxies de salida",
-        "includeAllProviders": "Incluir todos los proveedores de proxies"
+        "includeAllProviders": "Incluir todos los proveedores de proxies",
+        "policyPriority": "Policy Priority",
+        "policyPriorityHint": "Regex patterns like 'Premium:0.9;SG:1.3' (<1 higher priority)",
+        "useLightGBM": "Use LightGBM",
+        "collectData": "Collect Data",
+        "sampleRate": "Sample Rate",
+        "preferAsn": "Prefer ASN"
       },
       "toggles": {
         "lazy": "Estado de inactividad",

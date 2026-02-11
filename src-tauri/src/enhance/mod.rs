@@ -30,6 +30,7 @@ struct ConfigValues {
     clash_core: Option<String>,
     enable_tun: bool,
     enable_builtin: bool,
+    enable_smart_convert: bool,
     socks_enabled: bool,
     http_enabled: bool,
     enable_dns_settings: bool,
@@ -102,16 +103,18 @@ async fn get_config_values() -> ConfigValues {
     let IVerge {
         ref enable_tun_mode,
         ref enable_builtin_enhanced,
+        ref enable_smart_convert,
         ref verge_socks_enabled,
         ref verge_http_enabled,
         ref enable_dns_settings,
         ..
     } = *verge_arc;
 
-    let (clash_core, enable_tun, enable_builtin, socks_enabled, http_enabled, enable_dns_settings) = (
+    let (clash_core, enable_tun, enable_builtin, enable_smart_convert, socks_enabled, http_enabled, enable_dns_settings) = (
         Some(verge_arc.get_valid_clash_core()),
         enable_tun_mode.unwrap_or(false),
         enable_builtin_enhanced.unwrap_or(true),
+        enable_smart_convert.unwrap_or(false),
         verge_socks_enabled.unwrap_or(false),
         verge_http_enabled.unwrap_or(false),
         enable_dns_settings.unwrap_or(false),
@@ -131,6 +134,7 @@ async fn get_config_values() -> ConfigValues {
         clash_core,
         enable_tun,
         enable_builtin,
+        enable_smart_convert,
         socks_enabled,
         http_enabled,
         enable_dns_settings,
@@ -455,11 +459,23 @@ async fn merge_default_config(
     config
 }
 
-fn apply_builtin_scripts(mut config: Mapping, clash_core: Option<String>, enable_builtin: bool) -> Mapping {
+fn apply_builtin_scripts(
+    mut config: Mapping,
+    clash_core: Option<String>,
+    enable_builtin: bool,
+    enable_smart_convert: bool,
+) -> Mapping {
     if enable_builtin {
         ChainItem::builtin()
             .into_iter()
             .filter(|(s, _)| s.is_support(clash_core.as_ref()))
+            .filter(|(_, item)| {
+                // 仅在用户开启时运行 smart_convert 脚本
+                if item.uid.as_str() == "verge_smart_convert" && !enable_smart_convert {
+                    return false;
+                }
+                true
+            })
             .map(|(_, c)| c)
             .for_each(|item| {
                 logging!(debug, Type::Core, "run builtin script {}", item.uid);
@@ -599,6 +615,7 @@ pub async fn enhance() -> (Mapping, HashSet<String>, HashMap<String, ResultLog>)
         clash_core,
         enable_tun,
         enable_builtin,
+        enable_smart_convert,
         socks_enabled,
         http_enabled,
         enable_dns_settings,
@@ -650,7 +667,7 @@ pub async fn enhance() -> (Mapping, HashSet<String>, HashMap<String, ResultLog>)
     .await;
 
     // builtin scripts
-    let mut config = apply_builtin_scripts(config, clash_core, enable_builtin);
+    let mut config = apply_builtin_scripts(config, clash_core, enable_builtin, enable_smart_convert);
 
     config = cleanup_proxy_groups(config);
 

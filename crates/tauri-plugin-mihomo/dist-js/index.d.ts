@@ -24,6 +24,16 @@ export declare function flushFakeIp(): Promise<void>;
  */
 export declare function flushDNS(): Promise<void>;
 /**
+ * 获取 Smart 代理组权重 (仅 Smart 核心)
+ * @param groupName Smart 代理组名称
+ * @returns 权重数据
+ */
+export declare function getSmartWeights(groupName: string): Promise<Record<string, any>>;
+/**
+ * 清除 Smart 缓存数据 (仅 Smart 核心)
+ */
+export declare function flushSmartCache(): Promise<void>;
+/**
  * 获取所有连接信息
  * @returns 所有连接信息
  */

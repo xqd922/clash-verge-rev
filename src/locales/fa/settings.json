@@ -102,6 +102,7 @@
           "external": "خارجی",
           "webUI": "رابط وب",
           "clashCore": "هسته Clash",
+          "enableSmartConvert": "Auto-Convert to Smart",
           "openUwpTool": "باز کردن ابزار UWP",
           "updateGeoData": "به‌روزرسانی GeoData",
           "tunnels": {
@@ -133,7 +134,8 @@
           "networkInterface": "رابط شبکه",
           "unifiedDelay": "معادلDELAY را فعال کنید تا ترافیک شبکه به سرعت رسید",
           "logLevel": "این فقط روی فایل‌های لاگ هسته تحت فایل سرویس در فهرست ورود اثر می‌گذارد.",
-          "openUwpTool": "از ویندوز 8 به بعد، برنامه‌های UWP (مانند Microsoft Store) از دسترسی مستقیم به خدمات شبکه محلی محدود شده‌اند و این ابزار می‌تواند برای دور زدن این محدودیت استفاده شود"
+          "openUwpTool": "از ویندوز 8 به بعد، برنامه‌های UWP (مانند Microsoft Store) از دسترسی مستقیم به خدمات شبکه محلی محدود شده‌اند و این ابزار می‌تواند برای دور زدن این محدودیت استفاده شود",
+          "enableSmartConvert": "Auto-convert url-test, fallback, and load-balance proxy groups to smart type when using Smart core"
         },
         "options": {
           "logLevel": {
@@ -291,6 +293,9 @@
         "release": "نسخه نهایی",
         "alpha": "نسخه آلفا",
         "smart": "نسخه هوشمند"
+      },
+      "actions": {
+        "flushSmartCache": "Flush Cache"
       }
     },
     "liteMode": {
@@ -627,7 +632,8 @@
         "alreadyLatestVersion": "در حال حاضر از آخرین نسخه هسته استفاده می‌کنید",
         "changeSuccess": "هسته با موفقیت تغییر کرد",
         "changeFailed": "تغییر هسته ناموفق بود",
-        "geoDataUpdated": "GeoData به‌روزرسانی شد"
+        "geoDataUpdated": "GeoData به‌روزرسانی شد",
+        "smartCacheFlushed": "Smart Cache Flushed"
       },
       "clashService": {
         "installSuccess": "سرویس با موفقیت نصب شد",

@@ -36,10 +36,17 @@
       "delayCheckUrl": "URL проверки задержки",
       "showBasic": "Отображать меньше сведений о прокси",
       "showDetail": "Отображать больше сведений о прокси",
-      "filter": "Фильтр"
+      "filter": "Фильтр",
+      "viewWeights": "View Smart Weights"
     },
     "placeholders": {
       "delayCheckUrl": "URL проверки задержки"
+    },
+    "smart": {
+      "weightsTitle": "Smart Group Weights",
+      "noData": "No weight data available",
+      "nodeName": "Node",
+      "weight": "Weight"
     },
     "chain": {
       "header": "Конфигурация цепочки прокси",
@@ -77,7 +84,8 @@
         "url-test": "url-test",
         "fallback": "fallback",
         "load-balance": "load-balance",
-        "relay": "relay"
+        "relay": "relay",
+        "smart": "Интеллектуальный выбор узла на основе ИИ"
       },
       "policies": {
         "DIRECT": "DIRECT",

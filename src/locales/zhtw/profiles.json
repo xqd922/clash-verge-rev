@@ -151,7 +151,13 @@
         "excludeType": "排除節點類型",
         "includeAll": "包含所有輸出代理、代理集合",
         "includeAllProxies": "包含所有輸出代理",
-        "includeAllProviders": "包含所有代理集合"
+        "includeAllProviders": "包含所有代理集合",
+        "policyPriority": "Policy Priority",
+        "policyPriorityHint": "Regex patterns like 'Premium:0.9;SG:1.3' (<1 higher priority)",
+        "useLightGBM": "Use LightGBM",
+        "collectData": "Collect Data",
+        "sampleRate": "Sample Rate",
+        "preferAsn": "Prefer ASN"
       },
       "toggles": {
         "lazy": "延遲載入",

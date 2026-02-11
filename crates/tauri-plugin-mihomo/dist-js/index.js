@@ -35,6 +35,21 @@ async function flushFakeIp() {
 async function flushDNS() {
     await invoke("plugin:mihomo|flush_dns");
 }
+// smart
+/**
+ * 获取 Smart 代理组权重 (仅 Smart 核心)
+ * @param groupName Smart 代理组名称
+ * @returns 权重数据
+ */
+async function getSmartWeights(groupName) {
+    return await invoke("plugin:mihomo|get_smart_weights", { groupName });
+}
+/**
+ * 清除 Smart 缓存数据 (仅 Smart 核心)
+ */
+async function flushSmartCache() {
+    await invoke("plugin:mihomo|flush_smart_cache");
+}
 // connections
 /**
  * 获取所有连接信息
@@ -437,4 +452,4 @@ class MihomoWebSocket {
 }
 MihomoWebSocket.instances = new Set();
 
-export { MihomoWebSocket, clearAllWsConnections, closeAllConnections, closeConnection, delayGroup, delayProxyByName, flushDNS, flushFakeIp, getBaseConfig, getConnections, getGroupByName, getGroups, getProxies, getProxyByName, getProxyProviderByName, getProxyProviders, getRuleProviders, getRules, getVersion, healthcheckNodeInProvider, healthcheckProxyProvider, patchBaseConfig, reloadConfig, restart, selectNodeForGroup, unfixedProxy, updateController, updateGeo, updateProxyProvider, updateRuleProvider, updateSecret, upgradeCore, upgradeGeo, upgradeUi };
+export { MihomoWebSocket, clearAllWsConnections, closeAllConnections, closeConnection, delayGroup, delayProxyByName, flushDNS, flushFakeIp, flushSmartCache, getBaseConfig, getConnections, getGroupByName, getGroups, getProxies, getProxyByName, getProxyProviderByName, getProxyProviders, getRuleProviders, getRules, getSmartWeights, getVersion, healthcheckNodeInProvider, healthcheckProxyProvider, patchBaseConfig, reloadConfig, restart, selectNodeForGroup, unfixedProxy, updateController, updateGeo, updateProxyProvider, updateRuleProvider, updateSecret, upgradeCore, upgradeGeo, upgradeUi };

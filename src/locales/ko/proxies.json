@@ -36,10 +36,17 @@
       "delayCheckUrl": "지연 확인 URL",
       "showBasic": "프록시 기본",
       "showDetail": "프록시 상세",
-      "filter": "필터"
+      "filter": "필터",
+      "viewWeights": "View Smart Weights"
     },
     "placeholders": {
       "delayCheckUrl": "지연 확인 URL"
+    },
+    "smart": {
+      "weightsTitle": "Smart Group Weights",
+      "noData": "No weight data available",
+      "nodeName": "Node",
+      "weight": "Weight"
     },
     "chain": {
       "header": "체인 프록시 구성",
@@ -77,7 +84,8 @@
         "url-test": "URL 테스트 지연을 기준으로 프록시 선택",
         "fallback": "오류 발생 시 다른 프록시로 전환",
         "load-balance": "부하 분산에 따라 프록시 분배",
-        "relay": "정의된 프록시 체인을 통과"
+        "relay": "정의된 프록시 체인을 통과",
+        "smart": "AI 기반 스마트 노드 선택"
       },
       "policies": {
         "DIRECT": "데이터가 직접 아웃바운드로 이동",

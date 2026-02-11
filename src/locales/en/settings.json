@@ -102,6 +102,7 @@
           "external": "External",
           "webUI": "Web UI",
           "clashCore": "Clash Core",
+          "enableSmartConvert": "Auto-Convert to Smart",
           "openUwpTool": "Open UWP tool",
           "updateGeoData": "Update GeoData",
           "tunnels": {
@@ -133,7 +134,8 @@
           "networkInterface": "Network Interface",
           "unifiedDelay": "When unified delay is turned on, two delay tests will be performed to eliminate the delay differences between different types of nodes caused by connection handshakes, etc",
           "logLevel": "This parameter is valid only for kernel log files in the log directory Service folder",
-          "openUwpTool": "Since Windows 8, UWP apps (such as Microsoft Store) are restricted from directly accessing local host network services, and this tool can be used to bypass this restriction"
+          "openUwpTool": "Since Windows 8, UWP apps (such as Microsoft Store) are restricted from directly accessing local host network services, and this tool can be used to bypass this restriction",
+          "enableSmartConvert": "Auto-convert url-test, fallback, and load-balance proxy groups to smart type when using Smart core"
         },
         "options": {
           "logLevel": {
@@ -291,6 +293,9 @@
         "release": "Release Version",
         "alpha": "Alpha Version",
         "smart": "Smart Version"
+      },
+      "actions": {
+        "flushSmartCache": "Flush Cache"
       }
     },
     "liteMode": {
@@ -627,7 +632,8 @@
         "alreadyLatestVersion": "Already Using Latest Core Version",
         "changeSuccess": "Core changed successfully",
         "changeFailed": "Failed to change core",
-        "geoDataUpdated": "GeoData Updated"
+        "geoDataUpdated": "GeoData Updated",
+        "smartCacheFlushed": "Smart Cache Flushed"
       },
       "clashService": {
         "installSuccess": "Service Installed Successfully",

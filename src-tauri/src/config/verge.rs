@@ -161,6 +161,9 @@ pub struct IVerge {
     /// 是否使用内部的脚本支持，默认为真
     pub enable_builtin_enhanced: Option<bool>,
 
+    /// 是否自动将 url-test/fallback/load-balance 组转为 smart 类型（仅 Smart 核心）
+    pub enable_smart_convert: Option<bool>,
+
     /// proxy 页面布局 列数
     pub proxy_layout_column: Option<u8>,
 
@@ -428,6 +431,7 @@ impl IVerge {
             auto_close_connection: Some(true),
             auto_check_update: Some(true),
             enable_builtin_enhanced: Some(true),
+            enable_smart_convert: Some(false),
             auto_log_clean: Some(2), // 1: 1天, 2: 7天, 3: 30天, 4: 90天
             enable_auto_backup_schedule: Some(false),
             auto_backup_interval_hours: Some(24),
@@ -529,6 +533,7 @@ impl IVerge {
         patch!(enable_auto_delay_detection);
         patch!(auto_delay_detection_interval_minutes);
         patch!(enable_builtin_enhanced);
+        patch!(enable_smart_convert);
         patch!(proxy_layout_column);
         patch!(test_list);
         patch!(auto_log_clean);

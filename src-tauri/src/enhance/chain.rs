@@ -134,6 +134,10 @@ impl ChainItem {
         let meta_guard_smart = Self::to_script("verge_meta_guard", include_str!("./builtin/meta_guard.js"));
         let hy_alpn_smart = Self::to_script("verge_hy_alpn", include_str!("./builtin/meta_hy_alpn.js"));
 
+        // smart 核心专用: 将 url-test/fallback/load-balance 组转换为 smart 类型
+        let smart_convert =
+            Self::to_script("verge_smart_convert", include_str!("./builtin/smart_convert.js"));
+
         vec![
             (ChainSupport::Stable, hy_alpn),
             (ChainSupport::Stable, meta_guard),
@@ -141,6 +145,7 @@ impl ChainItem {
             (ChainSupport::Alpha, meta_guard_alpha),
             (ChainSupport::Smart, hy_alpn_smart),
             (ChainSupport::Smart, meta_guard_smart),
+            (ChainSupport::Smart, smart_convert),
         ]
     }
 

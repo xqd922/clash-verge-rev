@@ -276,6 +276,7 @@ export interface TranslationResources {
             nameRequired: string;
           };
           fields: {
+            collectData: string;
             excludeFilter: string;
             excludeType: string;
             expectedStatus: string;
@@ -289,10 +290,15 @@ export interface TranslationResources {
             interval: string;
             maxFailedTimes: string;
             name: string;
+            policyPriority: string;
+            policyPriorityHint: string;
+            preferAsn: string;
             provider: string;
             proxies: string;
             routingMark: string;
+            sampleRate: string;
             type: string;
+            useLightGBM: string;
           };
           title: string;
           toggles: {
@@ -401,6 +407,7 @@ export interface TranslationResources {
             "load-balance": string;
             relay: string;
             select: string;
+            smart: string;
             "url-test": string;
           };
         };
@@ -460,6 +467,12 @@ export interface TranslationResources {
           select: string;
           title: string;
         };
+        smart: {
+          noData: string;
+          nodeName: string;
+          weight: string;
+          weightsTitle: string;
+        };
         title: {
           chainMode: string;
           default: string;
@@ -474,6 +487,7 @@ export interface TranslationResources {
           sortDefault: string;
           sortDelay: string;
           sortName: string;
+          viewWeights: string;
         };
       };
     };
@@ -688,6 +702,7 @@ export interface TranslationResources {
             changeSuccess: string;
             geoDataUpdated: string;
             restartSuccess: string;
+            smartCacheFlushed: string;
             versionUpdated: string;
           };
           clashService: {
@@ -781,9 +796,13 @@ export interface TranslationResources {
           };
         };
         clashCore: {
+          actions: {
+            flushSmartCache: string;
+          };
           variants: {
             alpha: string;
             release: string;
+            smart: string;
           };
         };
         clashPort: {
@@ -1071,6 +1090,7 @@ export interface TranslationResources {
               allowLan: string;
               clashCore: string;
               dnsOverwrite: string;
+              enableSmartConvert: string;
               external: string;
               ipv6: string;
               logLevel: string;
@@ -1114,6 +1134,7 @@ export interface TranslationResources {
               };
             };
             tooltips: {
+              enableSmartConvert: string;
               logLevel: string;
               networkInterface: string;
               openUwpTool: string;

@@ -36,10 +36,17 @@
       "delayCheckUrl": "延迟测试链接",
       "showBasic": "隐藏节点细节",
       "showDetail": "展示节点细节",
-      "filter": "过滤节点"
+      "filter": "过滤节点",
+      "viewWeights": "查看 Smart 权重"
     },
     "placeholders": {
       "delayCheckUrl": "延迟测试链接"
+    },
+    "smart": {
+      "weightsTitle": "Smart 组权重",
+      "noData": "暂无权重数据",
+      "nodeName": "节点",
+      "weight": "权重"
     },
     "chain": {
       "header": "代理链配置",
@@ -77,7 +84,8 @@
         "url-test": "根据 URL 测试延迟选择代理",
         "fallback": "不可用时切换到另一个代理",
         "load-balance": "根据负载均衡分配代理",
-        "relay": "根据定义的代理链传递"
+        "relay": "根据定义的代理链传递",
+        "smart": "AI 智能节点选择"
       },
       "policies": {
         "DIRECT": "直接连接 (DIRECT)",

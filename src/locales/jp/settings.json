@@ -102,6 +102,7 @@
           "external": "外部制御",
           "webUI": "Webインターフェース",
           "clashCore": "Clashコア",
+          "enableSmartConvert": "Auto-Convert to Smart",
           "openUwpTool": "UWPツールを開く",
           "updateGeoData": "GeoDataを更新",
           "tunnels": {
@@ -133,7 +134,8 @@
           "networkInterface": "ネットワークインターフェース",
           "unifiedDelay": "統一遅延を有効にすると、2回の遅延テストが行われ、接続ハンドシェイクなどによる異なるタイプのノードの遅延差を解消します。",
           "logLevel": "ログディレクトリのServiceフォルダ内のコアログファイルにのみ適用されます。",
-          "openUwpTool": "Windows 8以降では、UWPアプリケーション（Microsoft Storeなど）がローカルホストのネットワークサービスに直接アクセスすることが制限されています。このツールを使用すると、この制限を回避できます。"
+          "openUwpTool": "Windows 8以降では、UWPアプリケーション（Microsoft Storeなど）がローカルホストのネットワークサービスに直接アクセスすることが制限されています。このツールを使用すると、この制限を回避できます。",
+          "enableSmartConvert": "Auto-convert url-test, fallback, and load-balance proxy groups to smart type when using Smart core"
         },
         "options": {
           "logLevel": {
@@ -291,6 +293,9 @@
         "release": "正式版",
         "alpha": "アルファ版",
         "smart": "スマート版"
+      },
+      "actions": {
+        "flushSmartCache": "Flush Cache"
       }
     },
     "liteMode": {
@@ -627,7 +632,8 @@
         "alreadyLatestVersion": "すでに最新のコアバージョンを使用しています。",
         "changeSuccess": "コアの切り替えに成功しました。",
         "changeFailed": "コアの切り替えに失敗しました。",
-        "geoDataUpdated": "GeoDataが更新されました。"
+        "geoDataUpdated": "GeoDataが更新されました。",
+        "smartCacheFlushed": "Smart Cache Flushed"
       },
       "clashService": {
         "installSuccess": "サービスのインストールに成功しました。",

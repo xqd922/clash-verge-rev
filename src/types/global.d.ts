@@ -340,7 +340,7 @@ interface ISeqProfileConfig {
 
 interface IProxyGroupConfig {
   name: string;
-  type: "select" | "url-test" | "fallback" | "load-balance" | "relay";
+  type: "select" | "url-test" | "fallback" | "load-balance" | "relay" | "smart";
   proxies?: string[];
   use?: string[];
   url?: string;
@@ -360,6 +360,12 @@ interface IProxyGroupConfig {
   "expected-status"?: string;
   hidden?: boolean;
   icon?: string;
+  // Smart-specific fields
+  "policy-priority"?: string;
+  uselightgbm?: boolean;
+  collectdata?: boolean;
+  "sample-rate"?: number;
+  "prefer-asn"?: boolean;
 }
 
 interface WsOptions {
@@ -955,6 +961,7 @@ interface IVergeConfig {
   enable_auto_delay_detection?: boolean;
   auto_delay_detection_interval_minutes?: number;
   enable_builtin_enhanced?: boolean;
+  enable_smart_convert?: boolean;
   auto_log_clean?: 0 | 1 | 2 | 3 | 4;
   enable_auto_backup_schedule?: boolean;
   auto_backup_interval_hours?: number;

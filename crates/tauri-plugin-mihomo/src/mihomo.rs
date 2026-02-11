@@ -428,6 +428,35 @@ impl Mihomo {
         Ok(())
     }
 
+    /// 获取 Smart 代理组权重 (仅 Smart 核心)
+    pub async fn get_smart_weights(&self, group_name: &str) -> Result<serde_json::Value> {
+        let group_name_encode = urlencoding::encode(group_name);
+        let client = self.build_request(Method::GET, &format!("/group/{group_name_encode}/weights"))?;
+        let response = self.send_by_protocol(client).await?;
+        if !response.status().is_success() {
+            let err_msg = response.json::<ErrorResponse>().await.map_or_else(
+                |e| format!("get smart weights for group[{}] failed, {}", group_name, e),
+                |err_res| err_res.message,
+            );
+            ret_failed_resp!("{}", err_msg);
+        }
+        Ok(response.json::<serde_json::Value>().await?)
+    }
+
+    /// 清除 Smart 缓存数据 (仅 Smart 核心)
+    pub async fn flush_smart_cache(&self) -> Result<()> {
+        let client = self.build_request(Method::POST, "/cache/smart/flush")?;
+        let response = self.send_by_protocol(client).await?;
+        if !response.status().is_success() {
+            let err_msg = response.json::<ErrorResponse>().await.map_or_else(
+                |e| format!("flush smart cache failed, {}", e),
+                |err_res| err_res.message,
+            );
+            ret_failed_resp!("{}", err_msg);
+        }
+        Ok(())
+    }
+
     /// 获取全部连接信息
     pub async fn get_connections(&self) -> Result<Connections> {
         let client = self.build_request(Method::GET, "/connections")?;

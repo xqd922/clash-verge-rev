@@ -36,10 +36,17 @@
       "delayCheckUrl": "Latenztest-URL",
       "showBasic": "Knotendetails ausblenden",
       "showDetail": "Knotendetails anzeigen",
-      "filter": "Knoten filtern"
+      "filter": "Knoten filtern",
+      "viewWeights": "View Smart Weights"
     },
     "placeholders": {
       "delayCheckUrl": "Latenztest-URL"
+    },
+    "smart": {
+      "weightsTitle": "Smart Group Weights",
+      "noData": "No weight data available",
+      "nodeName": "Node",
+      "weight": "Weight"
     },
     "chain": {
       "header": "Chain Proxy Config",
@@ -77,7 +84,8 @@
         "url-test": "Proxy basierend auf URL-Latenztest auswählen",
         "fallback": "Bei Nichtverfügbarkeit zu einem anderen Proxy wechseln",
         "load-balance": "Proxy basierend auf Lastverteilung zuweisen",
-        "relay": "Basierend auf definiertem Proxy-Kette weiterleiten"
+        "relay": "Basierend auf definiertem Proxy-Kette weiterleiten",
+        "smart": "KI-basierte intelligente Knotenauswahl"
       },
       "policies": {
         "DIRECT": "Direktverbindung",

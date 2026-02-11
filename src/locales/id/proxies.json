@@ -36,10 +36,17 @@
       "delayCheckUrl": "URL Periksa Keterlambatan",
       "showBasic": "Dasar Proksi",
       "showDetail": "Detail Proksi",
-      "filter": "Filter"
+      "filter": "Filter",
+      "viewWeights": "View Smart Weights"
     },
     "placeholders": {
       "delayCheckUrl": "URL Periksa Keterlambatan"
+    },
+    "smart": {
+      "weightsTitle": "Smart Group Weights",
+      "noData": "No weight data available",
+      "nodeName": "Node",
+      "weight": "Weight"
     },
     "chain": {
       "header": "Chain Proxy Config",
@@ -77,7 +84,8 @@
         "url-test": "Pilih proksi berdasarkan keterlambatan tes URL",
         "fallback": "Beralih ke proksi lain saat terjadi kesalahan",
         "load-balance": "Distribusikan proksi berdasarkan penyeimbangan beban",
-        "relay": "Lewatkan melalui rantai proksi yang ditentukan"
+        "relay": "Lewatkan melalui rantai proksi yang ditentukan",
+        "smart": "Pemilihan node cerdas berbasis AI"
       },
       "policies": {
         "DIRECT": "Data langsung keluar",

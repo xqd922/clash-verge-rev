@@ -170,6 +170,7 @@ export const ProxyRender = (props: RenderProps) => {
         sx={{ pl: 2, pr: 3, mt: indent ? 1 : 0.5, mb: 1 }}
         url={group.testUrl}
         groupName={group.name}
+        groupType={group.type}
         headState={headState!}
         onLocation={() => onLocation(group)}
         onCheckDelay={() => onCheckAll(group.name)}

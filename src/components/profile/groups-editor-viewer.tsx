@@ -78,6 +78,7 @@ const PROXY_STRATEGY_LABEL_KEYS: Record<string, TranslationKey> = {
   fallback: "proxies.components.enums.strategies.fallback",
   "load-balance": "proxies.components.enums.strategies.load-balance",
   relay: "proxies.components.enums.strategies.relay",
+  smart: "proxies.components.enums.strategies.smart",
 };
 
 const PROXY_POLICY_LABEL_KEYS: Record<string, TranslationKey> =
@@ -158,7 +159,7 @@ export const GroupsEditorViewer = (props: Props) => {
   const [visualization, setVisualization] = useState(true);
   const [match, setMatch] = useState(() => (_: string) => true);
   const [interfaceNameList, setInterfaceNameList] = useState<string[]>([]);
-  const { control, ...formIns } = useForm<IProxyGroupConfig>({
+  const { control, watch, ...formIns } = useForm<IProxyGroupConfig>({
     defaultValues: {
       type: "select",
       name: "",
@@ -166,8 +167,14 @@ export const GroupsEditorViewer = (props: Props) => {
       timeout: 5000,
       "max-failed-times": 5,
       lazy: true,
+      // Smart defaults
+      uselightgbm: false,
+      collectdata: false,
+      "sample-rate": 1,
+      "prefer-asn": false,
     },
   });
+  const currentType = watch("type");
   const [groupList, setGroupList] = useState<IProxyGroupConfig[]>([]);
   const [proxyPolicyList, setProxyPolicyList] = useState<string[]>([]);
   const [proxyProviderList, setProxyProviderList] = useState<string[]>([]);
@@ -487,6 +494,7 @@ export const GroupsEditorViewer = (props: Props) => {
                           "fallback",
                           "load-balance",
                           "relay",
+                          "smart",
                         ]}
                         value={field.value}
                         getOptionLabel={translateStrategy}
@@ -834,6 +842,7 @@ export const GroupsEditorViewer = (props: Props) => {
                           "Fallback",
                           "URLTest",
                           "LoadBalance",
+                          "Smart",
                           "Ssh",
                         ]}
                         size="small"
@@ -930,6 +939,108 @@ export const GroupsEditorViewer = (props: Props) => {
                     </Item>
                   )}
                 />
+
+                {currentType === "smart" && (
+                  <>
+                    <Controller
+                      name="policy-priority"
+                      control={control}
+                      render={({ field }) => (
+                        <Item>
+                          <ListItemText
+                            primary={t(
+                              "profiles.modals.groupsEditor.fields.policyPriority",
+                            )}
+                            secondary={t(
+                              "profiles.modals.groupsEditor.fields.policyPriorityHint",
+                            )}
+                          />
+                          <TextField
+                            autoComplete="new-password"
+                            placeholder="Premium:0.9;SG:1.3"
+                            size="small"
+                            sx={{ width: "calc(100% - 150px)" }}
+                            {...field}
+                          />
+                        </Item>
+                      )}
+                    />
+                    <Controller
+                      name="uselightgbm"
+                      control={control}
+                      render={({ field }) => (
+                        <Item>
+                          <ListItemText
+                            primary={t(
+                              "profiles.modals.groupsEditor.fields.useLightGBM",
+                            )}
+                          />
+                          <Switch checked={field.value} {...field} />
+                        </Item>
+                      )}
+                    />
+                    <Controller
+                      name="collectdata"
+                      control={control}
+                      render={({ field }) => (
+                        <Item>
+                          <ListItemText
+                            primary={t(
+                              "profiles.modals.groupsEditor.fields.collectData",
+                            )}
+                          />
+                          <Switch checked={field.value} {...field} />
+                        </Item>
+                      )}
+                    />
+                    <Controller
+                      name="sample-rate"
+                      control={control}
+                      render={({ field }) => (
+                        <Item>
+                          <ListItemText
+                            primary={t(
+                              "profiles.modals.groupsEditor.fields.sampleRate",
+                            )}
+                          />
+                          <TextField
+                            type="number"
+                            size="small"
+                            placeholder="1"
+                            sx={{ width: 100 }}
+                            slotProps={{
+                              input: {
+                                inputProps: {
+                                  min: 0,
+                                  max: 1,
+                                  step: 0.1,
+                                },
+                              },
+                            }}
+                            value={field.value ?? ""}
+                            onChange={(e) =>
+                              field.onChange(parseFloat(e.target.value))
+                            }
+                          />
+                        </Item>
+                      )}
+                    />
+                    <Controller
+                      name="prefer-asn"
+                      control={control}
+                      render={({ field }) => (
+                        <Item>
+                          <ListItemText
+                            primary={t(
+                              "profiles.modals.groupsEditor.fields.preferAsn",
+                            )}
+                          />
+                          <Switch checked={field.value} {...field} />
+                        </Item>
+                      )}
+                    />
+                  </>
+                )}
               </Box>
               <Item>
                 <Button

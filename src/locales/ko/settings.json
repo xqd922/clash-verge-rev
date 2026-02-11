@@ -102,6 +102,7 @@
           "external": "외부",
           "webUI": "Web UI",
           "clashCore": "Clash 코어",
+          "enableSmartConvert": "Auto-Convert to Smart",
           "openUwpTool": "UWP 도구 열기",
           "updateGeoData": "GeoData 업데이트",
           "tunnels": {
@@ -133,7 +134,8 @@
           "networkInterface": "네트워크 인터페이스",
           "unifiedDelay": "지연 통합을 켜면, 서로 다른 유형의 노드에서 연결 핸드셰이크 등으로 발생하는 지연 차이를 제거하기 위해 두 번의 지연 테스트를 수행합니다",
           "logLevel": "이 매개변수는 로그 디렉터리 Service 폴더의 커널 로그 파일에만 적용됩니다",
-          "openUwpTool": "Windows 8 이후 UWP 앱(예: Microsoft Store)은 로컬 호스트 네트워크 서비스에 직접 접근이 제한됩니다. 이 도구로 해당 제한을 우회할 수 있습니다"
+          "openUwpTool": "Windows 8 이후 UWP 앱(예: Microsoft Store)은 로컬 호스트 네트워크 서비스에 직접 접근이 제한됩니다. 이 도구로 해당 제한을 우회할 수 있습니다",
+          "enableSmartConvert": "Auto-convert url-test, fallback, and load-balance proxy groups to smart type when using Smart core"
         },
         "options": {
           "logLevel": {
@@ -291,6 +293,9 @@
         "release": "안정 버전",
         "alpha": "알파 버전",
         "smart": "스마트 버전"
+      },
+      "actions": {
+        "flushSmartCache": "Flush Cache"
       }
     },
     "liteMode": {
@@ -627,7 +632,8 @@
         "alreadyLatestVersion": "이미 최신 코어 버전을 사용 중입니다",
         "changeSuccess": "코어 변경 성공",
         "changeFailed": "코어 변경 실패",
-        "geoDataUpdated": "GeoData가 업데이트되었습니다"
+        "geoDataUpdated": "GeoData가 업데이트되었습니다",
+        "smartCacheFlushed": "Smart Cache Flushed"
       },
       "clashService": {
         "installSuccess": "서비스가 설치되었습니다",

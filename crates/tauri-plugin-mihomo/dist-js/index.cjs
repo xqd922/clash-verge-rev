@@ -37,6 +37,21 @@ async function flushFakeIp() {
 async function flushDNS() {
     await core.invoke("plugin:mihomo|flush_dns");
 }
+// smart
+/**
+ * 获取 Smart 代理组权重 (仅 Smart 核心)
+ * @param groupName Smart 代理组名称
+ * @returns 权重数据
+ */
+async function getSmartWeights(groupName) {
+    return await core.invoke("plugin:mihomo|get_smart_weights", { groupName });
+}
+/**
+ * 清除 Smart 缓存数据 (仅 Smart 核心)
+ */
+async function flushSmartCache() {
+    await core.invoke("plugin:mihomo|flush_smart_cache");
+}
 // connections
 /**
  * 获取所有连接信息
@@ -447,6 +462,7 @@ exports.delayGroup = delayGroup;
 exports.delayProxyByName = delayProxyByName;
 exports.flushDNS = flushDNS;
 exports.flushFakeIp = flushFakeIp;
+exports.flushSmartCache = flushSmartCache;
 exports.getBaseConfig = getBaseConfig;
 exports.getConnections = getConnections;
 exports.getGroupByName = getGroupByName;
@@ -457,6 +473,7 @@ exports.getProxyProviderByName = getProxyProviderByName;
 exports.getProxyProviders = getProxyProviders;
 exports.getRuleProviders = getRuleProviders;
 exports.getRules = getRules;
+exports.getSmartWeights = getSmartWeights;
 exports.getVersion = getVersion;
 exports.healthcheckNodeInProvider = healthcheckNodeInProvider;
 exports.healthcheckProxyProvider = healthcheckProxyProvider;

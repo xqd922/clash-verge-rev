@@ -36,10 +36,17 @@
       "delayCheckUrl": "延遲測試網址",
       "showBasic": "隱藏節點細節",
       "showDetail": "展示節點細節",
-      "filter": "篩選節點"
+      "filter": "篩選節點",
+      "viewWeights": "View Smart Weights"
     },
     "placeholders": {
       "delayCheckUrl": "延遲測試網址"
+    },
+    "smart": {
+      "weightsTitle": "Smart Group Weights",
+      "noData": "No weight data available",
+      "nodeName": "Node",
+      "weight": "Weight"
     },
     "chain": {
       "header": "鏈式代理設定",
@@ -77,7 +84,8 @@
         "url-test": "根據網址測試延遲選擇代理",
         "fallback": "切換至另一個備用代理",
         "load-balance": "根據負載平衡分配代理",
-        "relay": "根據定義的代理鏈傳送"
+        "relay": "根據定義的代理鏈傳送",
+        "smart": "AI 智慧節點選擇"
       },
       "policies": {
         "DIRECT": "直接連線 (DIRECT)",

@@ -102,6 +102,7 @@
           "external": "Control externo",
           "webUI": "Interfaz web",
           "clashCore": "Núcleo de Clash",
+          "enableSmartConvert": "Auto-Convert to Smart",
           "openUwpTool": "Abrir herramienta UWP",
           "updateGeoData": "Actualizar GeoData",
           "tunnels": {
@@ -133,7 +134,8 @@
           "networkInterface": "Interfaz de red",
           "unifiedDelay": "Al habilitar la latencia unificada, se realizarán dos pruebas de latencia para eliminar las diferencias de latencia entre diferentes tipos de nodos causadas por el handshake de conexión, etc.",
           "logLevel": "Solo se aplica al archivo de registro del núcleo en la carpeta Service del directorio de registros.",
-          "openUwpTool": "A partir de Windows 8, las aplicaciones UWP (como la Tienda de Microsoft) tienen restricciones para acceder directamente a los servicios de red del host local. Use esta herramienta para evitar esta restricción."
+          "openUwpTool": "A partir de Windows 8, las aplicaciones UWP (como la Tienda de Microsoft) tienen restricciones para acceder directamente a los servicios de red del host local. Use esta herramienta para evitar esta restricción.",
+          "enableSmartConvert": "Auto-convert url-test, fallback, and load-balance proxy groups to smart type when using Smart core"
         },
         "options": {
           "logLevel": {
@@ -291,6 +293,9 @@
         "release": "Versión estable",
         "alpha": "Versión alfa",
         "smart": "Versión Smart"
+      },
+      "actions": {
+        "flushSmartCache": "Flush Cache"
       }
     },
     "liteMode": {
@@ -627,7 +632,8 @@
         "alreadyLatestVersion": "Ya estás utilizando la versión más reciente del núcleo",
         "changeSuccess": "Núcleo cambiado con éxito",
         "changeFailed": "No se pudo cambiar el núcleo",
-        "geoDataUpdated": "GeoData actualizado"
+        "geoDataUpdated": "GeoData actualizado",
+        "smartCacheFlushed": "Smart Cache Flushed"
       },
       "clashService": {
         "installSuccess": "Servicio instalado con éxito",

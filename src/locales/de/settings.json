@@ -102,6 +102,7 @@
           "external": "Externe Steuerung",
           "webUI": "Web-Oberfläche",
           "clashCore": "Clash-Kern",
+          "enableSmartConvert": "Auto-Convert to Smart",
           "openUwpTool": "UWP-Tool öffnen",
           "updateGeoData": "Geo-Daten aktualisieren",
           "tunnels": {
@@ -133,7 +134,8 @@
           "networkInterface": "Netzwerkschnittstelle",
           "unifiedDelay": "Wenn die einheitliche Latenz aktiviert ist, werden zwei Latenztests durchgeführt, um die Latenzunterschiede zwischen verschiedenen Knotentypen aufgrund von Verbindungsaufbau und anderen Faktoren zu eliminieren.",
           "logLevel": "Dies wirkt sich nur auf die Kernprotokolldateien im Verzeichnis Service im Protokollverzeichnis aus.",
-          "openUwpTool": "Ab Windows 8 wird die direkte Netzwerkverbindung von UWP-Anwendungen (z. B. Microsoft Store) zu lokalen Hosts eingeschränkt. Mit diesem Tool können Sie diese Einschränkung umgehen."
+          "openUwpTool": "Ab Windows 8 wird die direkte Netzwerkverbindung von UWP-Anwendungen (z. B. Microsoft Store) zu lokalen Hosts eingeschränkt. Mit diesem Tool können Sie diese Einschränkung umgehen.",
+          "enableSmartConvert": "Auto-convert url-test, fallback, and load-balance proxy groups to smart type when using Smart core"
         },
         "options": {
           "logLevel": {
@@ -291,6 +293,9 @@
         "release": "Stabile Version",
         "alpha": "Alpha-Version",
         "smart": "Smart-Version"
+      },
+      "actions": {
+        "flushSmartCache": "Flush Cache"
       }
     },
     "liteMode": {
@@ -627,7 +632,8 @@
         "alreadyLatestVersion": "Bereits die neueste Kernversion in Verwendung",
         "changeSuccess": "Kern erfolgreich gewechselt",
         "changeFailed": "Kernwechsel fehlgeschlagen",
-        "geoDataUpdated": "Geo-Daten wurden aktualisiert"
+        "geoDataUpdated": "Geo-Daten wurden aktualisiert",
+        "smartCacheFlushed": "Smart Cache Flushed"
       },
       "clashService": {
         "installSuccess": "Service erfolgreich installiert",

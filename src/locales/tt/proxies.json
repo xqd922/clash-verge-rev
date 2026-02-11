@@ -36,10 +36,17 @@
       "delayCheckUrl": "Задержканы тикшерү URL-ы",
       "showBasic": "Прокси турында кыскача мәгълүмат",
       "showDetail": "Прокси турында тулы мәгълүмат",
-      "filter": "Фильтр"
+      "filter": "Фильтр",
+      "viewWeights": "View Smart Weights"
     },
     "placeholders": {
       "delayCheckUrl": "Задержканы тикшерү URL-ы"
+    },
+    "smart": {
+      "weightsTitle": "Smart Group Weights",
+      "noData": "No weight data available",
+      "nodeName": "Node",
+      "weight": "Weight"
     },
     "chain": {
       "header": "Chain Proxy Config",
@@ -77,7 +84,8 @@
         "url-test": "URL-тест задержкасына карап прокси сайлау",
         "fallback": "Хата булган очракта башка проксига күчү",
         "load-balance": "Трафикны баланслау нигезендә прокси тарату",
-        "relay": "Билгеле прокси чылбыры аша тапшыру"
+        "relay": "Билгеле прокси чылбыры аша тапшыру",
+        "smart": "AI 基底之智能節點選擇"
       },
       "policies": {
         "DIRECT": "Туры чыгу",

@@ -85,7 +85,9 @@ export const ProxyGroups = (props: Props) => {
     if (!groups) return [];
     // 在链式代理模式下，仅显示支持选择节点的 Selector 代理组
     return isChainMode
-      ? groups.filter((g: IProxyGroupItem) => g.type === "Selector")
+      ? groups.filter(
+          (g: IProxyGroupItem) => g.type === "Selector" || g.type === "Smart",
+        )
       : groups;
   }, [groups, isChainMode]);
 
@@ -283,7 +285,8 @@ export const ProxyGroups = (props: Props) => {
         return;
       }
 
-      if (!["Selector", "URLTest", "Fallback"].includes(group.type)) return;
+      if (!["Selector", "URLTest", "Fallback", "Smart"].includes(group.type))
+        return;
 
       handleProxyGroupChange(group, proxy);
     },

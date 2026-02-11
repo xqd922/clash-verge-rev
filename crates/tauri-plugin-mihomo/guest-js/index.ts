@@ -59,6 +59,28 @@ export async function flushDNS(): Promise<void> {
   await invoke<void>("plugin:mihomo|flush_dns");
 }
 
+// smart
+/**
+ * 获取 Smart 代理组权重 (仅 Smart 核心)
+ * @param groupName Smart 代理组名称
+ * @returns 权重数据
+ */
+export async function getSmartWeights(
+  groupName: string,
+): Promise<Record<string, any>> {
+  return await invoke<Record<string, any>>(
+    "plugin:mihomo|get_smart_weights",
+    { groupName },
+  );
+}
+
+/**
+ * 清除 Smart 缓存数据 (仅 Smart 核心)
+ */
+export async function flushSmartCache(): Promise<void> {
+  await invoke<void>("plugin:mihomo|flush_smart_cache");
+}
+
 // connections
 /**
  * 获取所有连接信息

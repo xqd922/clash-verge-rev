@@ -36,10 +36,17 @@
       "delayCheckUrl": "رابط فحص التأخير",
       "showBasic": "إعدادات الوكيل الأساسية",
       "showDetail": "تفاصيل الوكيل",
-      "filter": "تصفية"
+      "filter": "تصفية",
+      "viewWeights": "View Smart Weights"
     },
     "placeholders": {
       "delayCheckUrl": "رابط فحص التأخير"
+    },
+    "smart": {
+      "weightsTitle": "Smart Group Weights",
+      "noData": "No weight data available",
+      "nodeName": "Node",
+      "weight": "Weight"
     },
     "chain": {
       "header": "Chain Proxy Config",
@@ -77,7 +84,8 @@
         "url-test": "اختيار الوكيل بناءً على تأخير اختبار الرابط",
         "fallback": "التبديل إلى وكيل آخر عند حدوث خطأ",
         "load-balance": "توزيع التحميل بين الوكلاء",
-        "relay": "التمرير عبر سلسلة الوكلاء المحددة"
+        "relay": "التمرير عبر سلسلة الوكلاء المحددة",
+        "smart": "اختيار العقدة الذكي بالذكاء الاصطناعي"
       },
       "policies": {
         "DIRECT": "البيانات تخرج مباشرة",

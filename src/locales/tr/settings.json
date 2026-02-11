@@ -102,6 +102,7 @@
           "external": "Harici",
           "webUI": "Web Arayüzü",
           "clashCore": "Clash Çekirdeği",
+          "enableSmartConvert": "Auto-Convert to Smart",
           "openUwpTool": "UWP Aracını Aç",
           "updateGeoData": "GeoData'yı Güncelle",
           "tunnels": {
@@ -133,7 +134,8 @@
           "networkInterface": "Ağ Arayüzü",
           "unifiedDelay": "Birleşik gecikme açıldığında, bağlantı el sıkışmaları vb. nedeniyle farklı tür düğümler arasındaki gecikme farklarını ortadan kaldırmak için iki gecikme testi gerçekleştirilir",
           "logLevel": "Bu parametre yalnızca günlük dizini Hizmet klasöründeki çekirdek günlük dosyaları için geçerlidir",
-          "openUwpTool": "Windows 8'den beri, UWP uygulamaları (Microsoft Store gibi) yerel ana bilgisayar ağ hizmetlerine doğrudan erişmekten kısıtlanmıştır ve bu araç bu kısıtlamayı atlatmak için kullanılabilir"
+          "openUwpTool": "Windows 8'den beri, UWP uygulamaları (Microsoft Store gibi) yerel ana bilgisayar ağ hizmetlerine doğrudan erişmekten kısıtlanmıştır ve bu araç bu kısıtlamayı atlatmak için kullanılabilir",
+          "enableSmartConvert": "Auto-convert url-test, fallback, and load-balance proxy groups to smart type when using Smart core"
         },
         "options": {
           "logLevel": {
@@ -291,6 +293,9 @@
         "release": "Kararlı Sürüm",
         "alpha": "Alfa Sürümü",
         "smart": "Akıllı Sürüm"
+      },
+      "actions": {
+        "flushSmartCache": "Flush Cache"
       }
     },
     "liteMode": {
@@ -627,7 +632,8 @@
         "alreadyLatestVersion": "Zaten en yeni çekirdek sürümünü kullanıyorsunuz",
         "changeSuccess": "Çekirdek başarıyla değiştirildi",
         "changeFailed": "Çekirdek değiştirilemedi",
-        "geoDataUpdated": "GeoData Güncellendi"
+        "geoDataUpdated": "GeoData Güncellendi",
+        "smartCacheFlushed": "Smart Cache Flushed"
       },
       "clashService": {
         "installSuccess": "Hizmet Başarıyla Kuruldu",
