@@ -101,7 +101,7 @@ jobs:
           $zipFile = "Clash.Verge_${version}_x64_portable.zip"
 
           Compress-Archive -Path @(
-            (Join-Path $releaseDir "Clash Verge.exe"),
+            (Join-Path $releaseDir "clash-verge.exe"),
             (Join-Path $releaseDir "verge-mihomo.exe"),
             (Join-Path $releaseDir "verge-mihomo-alpha.exe"),
             (Join-Path $releaseDir "verge-mihomo-smart.exe"),
