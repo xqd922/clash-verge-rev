@@ -288,6 +288,9 @@ export interface TranslationResources {
             includeAllProxies: string;
             interfaceName: string;
             interval: string;
+            lgbmAutoUpdate: string;
+            lgbmModelUrl: string;
+            lgbmUpdateInterval: string;
             maxFailedTimes: string;
             name: string;
             policyPriority: string;

@@ -15,6 +15,14 @@ function main(config, _name) {
         if (config["proxy-groups"][i].collectdata === undefined) {
           config["proxy-groups"][i].collectdata = true;
         }
+        // Enable LightGBM ML model (if not explicitly set)
+        if (config["proxy-groups"][i].uselightgbm === undefined) {
+          config["proxy-groups"][i].uselightgbm = true;
+        }
+        // Enable LightGBM auto-update (if not explicitly set)
+        if (config["proxy-groups"][i]["lgbm-auto-update"] === undefined) {
+          config["proxy-groups"][i]["lgbm-auto-update"] = true;
+        }
       }
     });
   }

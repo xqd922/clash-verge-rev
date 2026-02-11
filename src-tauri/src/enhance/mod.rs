@@ -110,7 +110,15 @@ async fn get_config_values() -> ConfigValues {
         ..
     } = *verge_arc;
 
-    let (clash_core, enable_tun, enable_builtin, enable_smart_convert, socks_enabled, http_enabled, enable_dns_settings) = (
+    let (
+        clash_core,
+        enable_tun,
+        enable_builtin,
+        enable_smart_convert,
+        socks_enabled,
+        http_enabled,
+        enable_dns_settings,
+    ) = (
         Some(verge_arc.get_valid_clash_core()),
         enable_tun_mode.unwrap_or(false),
         enable_builtin_enhanced.unwrap_or(true),

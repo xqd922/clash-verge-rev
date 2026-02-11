@@ -366,6 +366,9 @@ interface IProxyGroupConfig {
   collectdata?: boolean;
   "sample-rate"?: number;
   "prefer-asn"?: boolean;
+  "lgbm-auto-update"?: boolean;
+  "lgbm-update-interval"?: number;
+  "lgbm-model-url"?: string;
 }
 
 interface WsOptions {

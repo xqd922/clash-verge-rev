@@ -172,6 +172,9 @@ export const GroupsEditorViewer = (props: Props) => {
       collectdata: false,
       "sample-rate": 1,
       "prefer-asn": false,
+      "lgbm-auto-update": false,
+      "lgbm-update-interval": 72,
+      "lgbm-model-url": "",
     },
   });
   const currentType = watch("type");
@@ -1036,6 +1039,61 @@ export const GroupsEditorViewer = (props: Props) => {
                             )}
                           />
                           <Switch checked={field.value} {...field} />
+                        </Item>
+                      )}
+                    />
+                    <Controller
+                      name="lgbm-auto-update"
+                      control={control}
+                      render={({ field }) => (
+                        <Item>
+                          <ListItemText
+                            primary={t(
+                              "profiles.modals.groupsEditor.fields.lgbmAutoUpdate",
+                            )}
+                          />
+                          <Switch checked={field.value} {...field} />
+                        </Item>
+                      )}
+                    />
+                    <Controller
+                      name="lgbm-update-interval"
+                      control={control}
+                      render={({ field }) => (
+                        <Item>
+                          <ListItemText
+                            primary={t(
+                              "profiles.modals.groupsEditor.fields.lgbmUpdateInterval",
+                            )}
+                          />
+                          <TextField
+                            autoComplete="off"
+                            size="small"
+                            type="number"
+                            sx={{ width: 100 }}
+                            inputProps={{ min: 1 }}
+                            {...field}
+                          />
+                        </Item>
+                      )}
+                    />
+                    <Controller
+                      name="lgbm-model-url"
+                      control={control}
+                      render={({ field }) => (
+                        <Item>
+                          <ListItemText
+                            primary={t(
+                              "profiles.modals.groupsEditor.fields.lgbmModelUrl",
+                            )}
+                          />
+                          <TextField
+                            autoComplete="off"
+                            size="small"
+                            sx={{ width: 250 }}
+                            placeholder="https://..."
+                            {...field}
+                          />
                         </Item>
                       )}
                     />

@@ -157,7 +157,10 @@
         "useLightGBM": "Use LightGBM",
         "collectData": "Collect Data",
         "sampleRate": "Sample Rate",
-        "preferAsn": "Prefer ASN"
+        "preferAsn": "Prefer ASN",
+        "lgbmAutoUpdate": "Auto-Update Model",
+        "lgbmUpdateInterval": "Update Interval (hours)",
+        "lgbmModelUrl": "Model URL"
       },
       "toggles": {
         "lazy": "Tembel",

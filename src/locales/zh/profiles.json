@@ -157,7 +157,10 @@
         "useLightGBM": "使用 LightGBM",
         "collectData": "数据收集",
         "sampleRate": "采样率",
-        "preferAsn": "优先 ASN"
+        "preferAsn": "优先 ASN",
+        "lgbmAutoUpdate": "自动更新模型",
+        "lgbmUpdateInterval": "更新间隔（小时）",
+        "lgbmModelUrl": "模型地址"
       },
       "toggles": {
         "lazy": "懒惰状态",
