@@ -6,6 +6,8 @@ permissions = [
   "allow-get-version",
   "allow-flush-fakeip",
   "allow-flush-dns",
+  "allow-get-smart-weights",
+  "allow-flush-smart-cache",
   "allow-get-connections",
   "allow-close-all-connections",
   "allow-close-connection",
