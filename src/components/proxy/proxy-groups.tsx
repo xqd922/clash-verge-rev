@@ -131,41 +131,33 @@ export const ProxyGroups = (props: Props) => {
   const timeout = verge?.default_latency_timeout || 10000;
 
   const virtuosoRef = useRef<VirtuosoHandle>(null);
-  const scrollPositionRef = useRef<Record<string, number>>({});
+  const scrollPositionRef = useRef<Record<string, number>>(
+    (() => {
+      try {
+        const saved = localStorage.getItem("proxy-scroll-positions");
+        return saved ? JSON.parse(saved) : {};
+      } catch {
+        return {};
+      }
+    })(),
+  );
   const [showScrollTop, setShowScrollTop] = useState(false);
   const scrollerRef = useRef<Element | null>(null);
 
-  // 从 localStorage 恢复滚动位置
+  // 仅在 mode 切换时恢复滚动位置（首次挂载由 initialScrollTop 处理）
+  const prevModeRef = useRef(mode);
   useEffect(() => {
+    if (prevModeRef.current === mode) return;
+    prevModeRef.current = mode;
     if (renderList.length === 0) return;
 
-    let restoreTimer: ReturnType<typeof setTimeout> | null = null;
-
-    try {
-      const savedPositions = localStorage.getItem("proxy-scroll-positions");
-      if (savedPositions) {
-        const positions = JSON.parse(savedPositions);
-        scrollPositionRef.current = positions;
-        const savedPosition = positions[mode];
-
-        if (savedPosition !== undefined) {
-          restoreTimer = setTimeout(() => {
-            virtuosoRef.current?.scrollTo({
-              top: savedPosition,
-              behavior: "auto",
-            });
-          }, 100);
-        }
-      }
-    } catch (e) {
-      console.error("Error restoring scroll position:", e);
+    const savedPosition = scrollPositionRef.current[mode];
+    if (savedPosition !== undefined) {
+      virtuosoRef.current?.scrollTo({
+        top: savedPosition,
+        behavior: "auto",
+      });
     }
-
-    return () => {
-      if (restoreTimer) {
-        clearTimeout(restoreTimer);
-      }
-    };
   }, [mode, renderList.length]);
 
   // 改为使用节流函数保存滚动位置

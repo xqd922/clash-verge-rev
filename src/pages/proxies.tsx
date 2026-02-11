@@ -130,7 +130,7 @@ const ProxyPage = () => {
   return (
     <BasePage
       full
-      contentStyle={{ height: "101.5%" }}
+      contentStyle={{ height: "100%" }}
       title={
         isChainMode
           ? t("proxies.page.title.chainMode")

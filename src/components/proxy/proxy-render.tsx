@@ -53,6 +53,7 @@ export const ProxyRender = (props: RenderProps) => {
   const { type, group, headState, proxy, proxyCol } = item;
   const { verge } = useVerge();
   const enable_group_icon = verge?.enable_group_icon ?? true;
+  const timeout = verge?.default_latency_timeout || 10000;
   const mode = useThemeMode();
   const isDark = mode === "light" ? false : true;
   const itembackgroundcolor = isDark ? "#282A36" : "#ffffff";
@@ -74,10 +75,11 @@ export const ProxyRender = (props: RenderProps) => {
         proxy={proxyItem!}
         selected={group.now === proxyItem?.name}
         showType={headState?.showType}
+        timeout={timeout}
         onClick={() => onChangeProxy(group, proxyItem!)}
       />
     ));
-  }, [type, proxyCol, item.key, group, headState, onChangeProxy]);
+  }, [type, proxyCol, item.key, group, headState, onChangeProxy, timeout]);
 
   if (type === 0) {
     return (
@@ -183,6 +185,7 @@ export const ProxyRender = (props: RenderProps) => {
         proxy={proxy!}
         selected={group.now === proxy?.name}
         showType={headState?.showType}
+        timeout={timeout}
         sx={{ py: 0, pl: 2 }}
         onClick={() => onChangeProxy(group, proxy!)}
       />

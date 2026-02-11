@@ -4,7 +4,6 @@ import { useCallback, useEffect, useReducer, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { BaseLoading } from "@/components/base";
-import { useVerge } from "@/hooks/use-verge";
 import delayManager, { DelayUpdate } from "@/services/delay";
 
 interface Props {
@@ -12,12 +11,20 @@ interface Props {
   proxy: IProxyItem;
   selected: boolean;
   showType?: boolean;
+  timeout?: number;
   onClick?: (name: string) => void;
 }
 
 // 多列布局
 export const ProxyItemMini = (props: Props) => {
-  const { group, proxy, selected, showType = true, onClick } = props;
+  const {
+    group,
+    proxy,
+    selected,
+    showType = true,
+    timeout = 10000,
+    onClick,
+  } = props;
 
   const { t } = useTranslation();
 
@@ -28,8 +35,6 @@ export const ProxyItemMini = (props: Props) => {
     (_: DelayUpdate, next: DelayUpdate) => next,
     { delay: -1, updatedAt: 0 },
   );
-  const { verge } = useVerge();
-  const timeout = verge?.default_latency_timeout || 10000;
 
   useEffect(() => {
     if (isPreset) return;
@@ -103,6 +108,7 @@ export const ProxyItemMini = (props: Props) => {
           pr: 1,
           justifyContent: "space-between",
           alignItems: "center",
+          borderLeft: "3px solid transparent",
         },
         ({ palette: { mode, primary } }) => {
           const bgcolor = mode === "light" ? "#ffffff" : "#24252f";
@@ -121,8 +127,6 @@ export const ProxyItemMini = (props: Props) => {
             },
             "& .the-unpin": { filter: "grayscale(1)" },
             "&.Mui-selected": {
-              width: `calc(100% + 3px)`,
-              marginLeft: `-3px`,
               borderLeft: `3px solid ${selectColor}`,
               bgcolor:
                 mode === "light"

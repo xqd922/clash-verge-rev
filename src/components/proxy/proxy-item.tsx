@@ -13,7 +13,6 @@ import {
 import { useCallback, useEffect, useReducer, useRef } from "react";
 
 import { BaseLoading } from "@/components/base";
-import { useVerge } from "@/hooks/use-verge";
 import delayManager, { DelayUpdate } from "@/services/delay";
 
 interface Props {
@@ -21,6 +20,7 @@ interface Props {
   proxy: IProxyItem;
   selected: boolean;
   showType?: boolean;
+  timeout?: number;
   sx?: SxProps<Theme>;
   onClick?: (name: string) => void;
 }
@@ -44,7 +44,15 @@ const TypeBox = styled("span")(({ theme }) => ({
 }));
 
 export const ProxyItem = (props: Props) => {
-  const { group, proxy, selected, showType = true, sx, onClick } = props;
+  const {
+    group,
+    proxy,
+    selected,
+    showType = true,
+    timeout = 10000,
+    sx,
+    onClick,
+  } = props;
 
   const presetList = ["DIRECT", "REJECT", "REJECT-DROP", "PASS", "COMPATIBLE"];
   const isPreset = presetList.includes(proxy.name);
@@ -53,8 +61,6 @@ export const ProxyItem = (props: Props) => {
     (_: DelayUpdate, next: DelayUpdate) => next,
     { delay: -1, updatedAt: 0 },
   );
-  const { verge } = useVerge();
-  const timeout = verge?.default_latency_timeout || 10000;
 
   useEffect(() => {
     if (isPreset) return;
@@ -122,7 +128,7 @@ export const ProxyItem = (props: Props) => {
         selected={selected}
         onClick={() => onClick?.(proxy.name)}
         sx={[
-          { borderRadius: 1 },
+          { borderRadius: 1, borderLeft: "3px solid transparent" },
           ({ palette: { mode, primary } }) => {
             const bgcolor = mode === "light" ? "#ffffff" : "#24252f";
             const selectColor = mode === "light" ? primary.main : primary.light;
@@ -133,8 +139,6 @@ export const ProxyItem = (props: Props) => {
               "&:hover .the-delay": { display: showDelay ? "block" : "none" },
               "&:hover .the-icon": { display: "none" },
               "&.Mui-selected": {
-                width: `calc(100% + 3px)`,
-                marginLeft: `-3px`,
                 borderLeft: `3px solid ${selectColor}`,
                 bgcolor:
                   mode === "light"
