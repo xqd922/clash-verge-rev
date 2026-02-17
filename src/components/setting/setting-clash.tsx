@@ -267,30 +267,6 @@ const SettingClash = ({ onError }: Props) => {
         <Typography sx={{ py: "7px", pr: 1 }}>{version}</Typography>
       </SettingItem>
 
-      {verge?.clash_core === "verge-mihomo-smart" && (
-        <SettingItem
-          label={t("settings.sections.clash.form.fields.enableSmartConvert")}
-          extra={
-            <TooltipIcon
-              title={t(
-                "settings.sections.clash.form.tooltips.enableSmartConvert",
-              )}
-              sx={{ opacity: "0.7" }}
-            />
-          }
-        >
-          <GuardState
-            value={verge?.enable_smart_convert ?? false}
-            valueProps="checked"
-            onCatch={onError}
-            onFormat={onSwitchFormat}
-            onGuard={(e) => patchVerge({ enable_smart_convert: e })}
-          >
-            <Switch edge="end" />
-          </GuardState>
-        </SettingItem>
-      )}
-
       {isWIN && (
         <SettingItem
           onClick={invoke_uwp_tool}

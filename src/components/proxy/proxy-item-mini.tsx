@@ -276,12 +276,12 @@ export const ProxyItemMini = (props: Props) => {
             />
           )}
       </Box>
-      {group.fixed && group.fixed === proxy.name && (
+      {group.fixed && group.fixed === proxy.name && group.type !== "Smart" && (
         // 展示 fixed 状态
         <span
           className={proxy.name === group.now ? "the-pin" : "the-unpin"}
           title={
-            group.type === "URLTest" || group.type === "Smart"
+            group.type === "URLTest"
               ? t("proxies.page.labels.delayCheckReset")
               : ""
           }

@@ -1,5 +1,5 @@
 import useSWR, { mutate } from "swr";
-import { selectNodeForGroup } from "tauri-plugin-mihomo-api";
+import { selectNodeForGroup, unfixedProxy } from "tauri-plugin-mihomo-api";
 
 import {
   getProfiles,
@@ -167,6 +167,10 @@ export const useProfiles = () => {
           );
           hasChange = true;
           selectNodeForGroup(name, savedProxy);
+          // Smart groups should not be fixed after restoring selection
+          if (type === "Smart") {
+            unfixedProxy(name);
+          }
         }
 
         newSelected.push({ name, now: savedProxy });

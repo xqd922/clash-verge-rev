@@ -30,7 +30,6 @@ struct ConfigValues {
     clash_core: Option<String>,
     enable_tun: bool,
     enable_builtin: bool,
-    enable_smart_convert: bool,
     socks_enabled: bool,
     http_enabled: bool,
     enable_dns_settings: bool,
@@ -103,7 +102,6 @@ async fn get_config_values() -> ConfigValues {
     let IVerge {
         ref enable_tun_mode,
         ref enable_builtin_enhanced,
-        ref enable_smart_convert,
         ref verge_socks_enabled,
         ref verge_http_enabled,
         ref enable_dns_settings,
@@ -114,7 +112,6 @@ async fn get_config_values() -> ConfigValues {
         clash_core,
         enable_tun,
         enable_builtin,
-        enable_smart_convert,
         socks_enabled,
         http_enabled,
         enable_dns_settings,
@@ -122,7 +119,6 @@ async fn get_config_values() -> ConfigValues {
         Some(verge_arc.get_valid_clash_core()),
         enable_tun_mode.unwrap_or(false),
         enable_builtin_enhanced.unwrap_or(true),
-        enable_smart_convert.unwrap_or(false),
         verge_socks_enabled.unwrap_or(false),
         verge_http_enabled.unwrap_or(false),
         enable_dns_settings.unwrap_or(false),
@@ -142,7 +138,6 @@ async fn get_config_values() -> ConfigValues {
         clash_core,
         enable_tun,
         enable_builtin,
-        enable_smart_convert,
         socks_enabled,
         http_enabled,
         enable_dns_settings,
@@ -471,19 +466,11 @@ fn apply_builtin_scripts(
     mut config: Mapping,
     clash_core: Option<String>,
     enable_builtin: bool,
-    enable_smart_convert: bool,
 ) -> Mapping {
     if enable_builtin {
         ChainItem::builtin()
             .into_iter()
             .filter(|(s, _)| s.is_support(clash_core.as_ref()))
-            .filter(|(_, item)| {
-                // 仅在用户开启时运行 smart_convert 脚本
-                if item.uid.as_str() == "verge_smart_convert" && !enable_smart_convert {
-                    return false;
-                }
-                true
-            })
             .map(|(_, c)| c)
             .for_each(|item| {
                 logging!(debug, Type::Core, "run builtin script {}", item.uid);
@@ -498,6 +485,48 @@ fn apply_builtin_scripts(
                     }
                 }
             });
+    }
+
+    config
+}
+
+/// When not using Smart core, revert any `type: smart` proxy groups to `url-test`
+/// so that standard mihomo can accept the config.
+fn revert_smart_groups(mut config: Mapping, clash_core: &Option<String>) -> Mapping {
+    let is_smart_core = matches!(clash_core.as_deref(), Some("verge-mihomo-smart"));
+    if is_smart_core {
+        return config;
+    }
+
+    if let Some(Value::Sequence(groups)) = config.get_mut("proxy-groups") {
+        for group in groups {
+            if let Some(group_map) = group.as_mapping_mut() {
+                let is_smart = group_map
+                    .get("type")
+                    .and_then(Value::as_str)
+                    .is_some_and(|t| t == "smart");
+
+                if is_smart {
+                    group_map.insert(
+                        Value::String("type".into()),
+                        Value::String("url-test".into()),
+                    );
+                    // Remove Smart-specific fields
+                    for key in &[
+                        "uselightgbm",
+                        "collectdata",
+                        "sample-rate",
+                        "policy-priority",
+                        "prefer-asn",
+                        "lgbm-auto-update",
+                        "lgbm-update-interval",
+                        "lgbm-model-url",
+                    ] {
+                        group_map.remove(*key);
+                    }
+                }
+            }
+        }
     }
 
     config
@@ -623,7 +652,6 @@ pub async fn enhance() -> (Mapping, HashSet<String>, HashMap<String, ResultLog>)
         clash_core,
         enable_tun,
         enable_builtin,
-        enable_smart_convert,
         socks_enabled,
         http_enabled,
         enable_dns_settings,
@@ -675,7 +703,10 @@ pub async fn enhance() -> (Mapping, HashSet<String>, HashMap<String, ResultLog>)
     .await;
 
     // builtin scripts
-    let mut config = apply_builtin_scripts(config, clash_core, enable_builtin, enable_smart_convert);
+    let mut config = apply_builtin_scripts(config, clash_core.clone(), enable_builtin);
+
+    // Revert smart groups to url-test when not using Smart core
+    config = revert_smart_groups(config, &clash_core);
 
     config = cleanup_proxy_groups(config);
 

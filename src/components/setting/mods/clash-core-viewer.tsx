@@ -20,6 +20,8 @@ import { mutate } from "swr";
 import {
   closeAllConnections,
   flushSmartCache,
+  getProxies,
+  unfixedProxy,
   upgradeCore,
 } from "tauri-plugin-mihomo-api";
 
@@ -82,6 +84,19 @@ export function ClashCoreViewer({ ref }: { ref?: Ref<DialogRef> }) {
       setTimeout(async () => {
         mutate("getClashConfig");
         mutate("getVersion");
+        // After switching to Smart core, unfix all Smart groups
+        if (core === "verge-mihomo-smart") {
+          try {
+            const proxiesData = await getProxies();
+            const groups = Object.values(proxiesData.proxies).filter(
+              (p) => p?.type === "Smart" && p?.all,
+            );
+            await Promise.allSettled(groups.map((g) => unfixedProxy(g!.name)));
+            mutate("getProxies");
+          } catch {
+            // ignore — core might still be starting
+          }
+        }
         setChangingCore(null);
       }, 500);
     } catch (err) {

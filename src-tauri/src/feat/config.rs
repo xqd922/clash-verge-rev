@@ -117,7 +117,6 @@ fn determine_update_flags(patch: &IVerge) -> UpdateFlags {
     let log_max_size = patch.app_log_max_size;
     let log_max_count = patch.app_log_max_count;
     let enable_builtin_enhanced = patch.enable_builtin_enhanced;
-    let enable_smart_convert = patch.enable_smart_convert;
 
     #[cfg(target_os = "windows")]
     let restart_core_needed = socks_enabled.is_some()
@@ -126,8 +125,7 @@ fn determine_update_flags(patch: &IVerge) -> UpdateFlags {
         || http_port.is_some()
         || mixed_port.is_some()
         || enable_external_controller.is_some()
-        || enable_builtin_enhanced.is_some()
-        || enable_smart_convert.is_some();
+        || enable_builtin_enhanced.is_some();
     #[cfg(not(target_os = "windows"))]
     let mut restart_core_needed = socks_enabled.is_some()
         || http_enabled.is_some()
@@ -135,8 +133,7 @@ fn determine_update_flags(patch: &IVerge) -> UpdateFlags {
         || http_port.is_some()
         || mixed_port.is_some()
         || enable_external_controller.is_some()
-        || enable_builtin_enhanced.is_some()
-        || enable_smart_convert.is_some();
+        || enable_builtin_enhanced.is_some();
     #[cfg(not(target_os = "windows"))]
     {
         restart_core_needed |= redir_enabled.is_some() || redir_port.is_some();

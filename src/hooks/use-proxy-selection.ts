@@ -4,6 +4,7 @@ import {
   closeConnection,
   getConnections,
   selectNodeForGroup,
+  unfixedProxy,
 } from "tauri-plugin-mihomo-api";
 
 import { useProfiles } from "@/hooks/use-profiles";
@@ -57,6 +58,7 @@ export const useProxySelection = (options: ProxySelectionOptions = {}) => {
       proxyName: string,
       previousProxy?: string,
       skipConfigSave: boolean = false,
+      groupType?: string,
     ) => {
       debugLog(`[ProxySelection] 代理切换: ${groupName} -> ${proxyName}`);
 
@@ -74,6 +76,10 @@ export const useProxySelection = (options: ProxySelectionOptions = {}) => {
         }
 
         await selectNodeForGroup(groupName, proxyName);
+        // Smart groups should not be fixed, immediately unfix after selection
+        if (groupType === "Smart") {
+          await unfixedProxy(groupName);
+        }
         await syncTrayProxySelection();
         debugLog(
           `[ProxySelection] 代理和状态同步完成: ${groupName} -> ${proxyName}`,
@@ -96,6 +102,9 @@ export const useProxySelection = (options: ProxySelectionOptions = {}) => {
 
         try {
           await selectNodeForGroup(groupName, proxyName);
+          if (groupType === "Smart") {
+            await unfixedProxy(groupName);
+          }
           await syncTrayProxySelection();
           onSuccess?.();
           debugLog(
@@ -126,8 +135,11 @@ export const useProxySelection = (options: ProxySelectionOptions = {}) => {
   );
 
   const handleProxyGroupChange = useCallback(
-    (group: { name: string; now?: string }, proxy: { name: string }) => {
-      changeProxy(group.name, proxy.name, group.now);
+    (
+      group: { name: string; now?: string; type?: string },
+      proxy: { name: string },
+    ) => {
+      changeProxy(group.name, proxy.name, group.now, false, group.type);
     },
     [changeProxy],
   );
