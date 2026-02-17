@@ -24,8 +24,7 @@
     "actions": {
       "active": "Active",
       "closed": "Closed",
-      "closeConnection": "Cerrar conexión",
-      "smartBlock": "Smart Block"
+      "closeConnection": "Cerrar conexión"
     },
     "columnManager": {
       "title": "Columnas",

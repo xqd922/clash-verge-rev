@@ -24,8 +24,7 @@
     "actions": {
       "active": "活跃",
       "closed": "已关闭",
-      "closeConnection": "关闭连接",
-      "smartBlock": "智能阻断"
+      "closeConnection": "关闭连接"
     },
     "columnManager": {
       "title": "列设置",

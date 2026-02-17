@@ -34,16 +34,6 @@ export declare function getSmartWeights(groupName: string): Promise<Record<strin
  */
 export declare function flushSmartCache(): Promise<void>;
 /**
- * 清除指定配置的 Smart 缓存 (仅 Smart 核心)
- * @param configName 配置名称
- */
-export declare function flushSmartCacheConfig(configName: string): Promise<void>;
-/**
- * 获取全部 Smart 代理组权重 (仅 Smart 核心)
- * @returns 所有 Smart 组的权重数据
- */
-export declare function getAllSmartWeights(): Promise<Record<string, any>>;
-/**
  * 获取所有连接信息
  * @returns 所有连接信息
  */
@@ -57,11 +47,6 @@ export declare function closeAllConnections(): Promise<void>;
  * @param connectionId 连接 ID
  */
 export declare function closeConnection(connectionId: string): Promise<void>;
-/**
- * Smart 阻断指定连接，降低节点权重 (仅 Smart 核心)
- * @param connectionId 连接 ID
- */
-export declare function smartBlockConnection(connectionId: string): Promise<void>;
 /**
  * 获取所有代理组信息
  * @returns 所有代理组信息
@@ -208,10 +193,6 @@ export declare function upgradeUi(): Promise<void>;
  * 更新 Geo
  */
 export declare function upgradeGeo(): Promise<void>;
-/**
- * 升级 LightGBM 模型 (仅 Smart 核心)
- */
-export declare function upgradeLgbm(): Promise<void>;
 /**
  * 清除 Rust 侧中所有的 WebSocket 连接
  */

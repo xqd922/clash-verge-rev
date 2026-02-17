@@ -24,8 +24,7 @@
     "actions": {
       "active": "Active",
       "closed": "Closed",
-      "closeConnection": "Bağlantıyı Kapat",
-      "smartBlock": "Smart Block"
+      "closeConnection": "Bağlantıyı Kapat"
     },
     "columnManager": {
       "title": "Sütunlar",

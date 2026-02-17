@@ -24,8 +24,7 @@
     "actions": {
       "active": "Active",
       "closed": "Closed",
-      "closeConnection": "Tutup Koneksi",
-      "smartBlock": "Smart Block"
+      "closeConnection": "Tutup Koneksi"
     },
     "columnManager": {
       "title": "Kolom",

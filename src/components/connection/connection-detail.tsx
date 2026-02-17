@@ -3,9 +3,8 @@ import { useLockFn } from "ahooks";
 import dayjs from "dayjs";
 import { useImperativeHandle, useState, type Ref } from "react";
 import { useTranslation } from "react-i18next";
-import { closeConnection, smartBlockConnection } from "tauri-plugin-mihomo-api";
+import { closeConnection } from "tauri-plugin-mihomo-api";
 
-import { useVerge } from "@/hooks/use-verge";
 import parseTraffic from "@/utils/parse-traffic";
 
 export interface ConnectionDetailRef {
@@ -124,11 +123,7 @@ const InnerConnectionDetail = ({ data, closed, onClose }: InnerProps) => {
     },
   ];
 
-  const { verge } = useVerge();
-  const isSmartCore = verge?.clash_core === "verge-mihomo-smart";
-
   const onDelete = useLockFn(async () => closeConnection(data.id));
-  const onSmartBlock = useLockFn(async () => smartBlockConnection(data.id));
 
   return (
     <Box sx={{ userSelect: "text", color: theme.palette.text.secondary }}>
@@ -147,20 +142,7 @@ const InnerConnectionDetail = ({ data, closed, onClose }: InnerProps) => {
       ))}
 
       {!closed && (
-        <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-          {isSmartCore && (
-            <Button
-              variant="contained"
-              color="warning"
-              title={t("connections.components.actions.smartBlock")}
-              onClick={() => {
-                onSmartBlock();
-                onClose?.();
-              }}
-            >
-              {t("connections.components.actions.smartBlock")}
-            </Button>
-          )}
+        <Box sx={{ textAlign: "right" }}>
           <Button
             variant="contained"
             title={t("connections.components.actions.closeConnection")}

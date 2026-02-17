@@ -295,15 +295,7 @@
         "smart": "スマート版"
       },
       "actions": {
-        "flushSmartCache": "Flush Cache",
-        "upgradeLgbm": "Update Model"
-      },
-      "smartConfig": {
-        "title": "Smart Config",
-        "lgbmAutoUpdate": "LightGBM Auto Update",
-        "lgbmUpdateInterval": "Update Interval (hours)",
-        "lgbmUrl": "Model URL",
-        "smartCollectorSize": "Collector Size (MB)"
+        "flushSmartCache": "Flush Cache"
       }
     },
     "liteMode": {
@@ -641,8 +633,7 @@
         "changeSuccess": "コアの切り替えに成功しました。",
         "changeFailed": "コアの切り替えに失敗しました。",
         "geoDataUpdated": "GeoDataが更新されました。",
-        "smartCacheFlushed": "Smart Cache Flushed",
-        "lgbmModelUpdated": "LightGBM Model Updated"
+        "smartCacheFlushed": "Smart Cache Flushed"
       },
       "clashService": {
         "installSuccess": "サービスのインストールに成功しました。",

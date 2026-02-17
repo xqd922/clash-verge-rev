@@ -1,5 +1,4 @@
 import {
-  AutoGraphRounded,
   CachedRounded,
   RestartAltRounded,
   SwitchAccessShortcutRounded,
@@ -9,13 +8,9 @@ import {
   Box,
   Chip,
   CircularProgress,
-  Divider,
   List,
   ListItemButton,
   ListItemText,
-  Switch,
-  TextField,
-  Typography,
 } from "@mui/material";
 import { useLockFn } from "ahooks";
 import type { Ref } from "react";
@@ -28,7 +23,6 @@ import {
   getProxies,
   unfixedProxy,
   upgradeCore,
-  upgradeLgbm,
 } from "tauri-plugin-mihomo-api";
 
 import { BaseDialog, DialogRef } from "@/components/base";
@@ -57,11 +51,10 @@ const VALID_CORE = [
 export function ClashCoreViewer({ ref }: { ref?: Ref<DialogRef> }) {
   const { t } = useTranslation();
 
-  const { verge, mutateVerge, patchVerge } = useVerge();
+  const { verge, mutateVerge } = useVerge();
 
   const [open, setOpen] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
-  const [upgradingLgbm, setUpgradingLgbm] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const [flushingCache, setFlushingCache] = useState(false);
   const [changingCore, setChangingCore] = useState<string | null>(null);
@@ -71,14 +64,7 @@ export function ClashCoreViewer({ ref }: { ref?: Ref<DialogRef> }) {
     close: () => setOpen(false),
   }));
 
-  const {
-    clash_core = "verge-mihomo",
-    lgbm_auto_update,
-    lgbm_update_interval,
-    lgbm_url,
-    smart_collector_size,
-  } = verge ?? {};
-  const isSmartCore = clash_core === "verge-mihomo-smart";
+  const { clash_core = "verge-mihomo" } = verge ?? {};
 
   const onCoreChange = useLockFn(async (core: string) => {
     if (core === clash_core) return;
@@ -165,20 +151,6 @@ export function ClashCoreViewer({ ref }: { ref?: Ref<DialogRef> }) {
     }
   });
 
-  const onUpgradeLgbm = useLockFn(async () => {
-    try {
-      setUpgradingLgbm(true);
-      await upgradeLgbm();
-      setUpgradingLgbm(false);
-      showNotice.success(
-        t("settings.feedback.notifications.clash.lgbmModelUpdated"),
-      );
-    } catch (err: any) {
-      setUpgradingLgbm(false);
-      showNotice.error(err);
-    }
-  });
-
   return (
     <BaseDialog
       open={open}
@@ -186,33 +158,19 @@ export function ClashCoreViewer({ ref }: { ref?: Ref<DialogRef> }) {
         <Box display="flex" justifyContent="space-between">
           {t("settings.sections.clash.form.fields.clashCore")}
           <Box>
-            {isSmartCore && (
-              <>
-                <LoadingButton
-                  variant="contained"
-                  size="small"
-                  startIcon={<CachedRounded />}
-                  loadingPosition="start"
-                  loading={flushingCache}
-                  disabled={restarting || changingCore !== null || upgrading}
-                  sx={{ marginRight: "8px" }}
-                  onClick={onFlushSmartCache}
-                >
-                  {t("settings.modals.clashCore.actions.flushSmartCache")}
-                </LoadingButton>
-                <LoadingButton
-                  variant="contained"
-                  size="small"
-                  startIcon={<AutoGraphRounded />}
-                  loadingPosition="start"
-                  loading={upgradingLgbm}
-                  disabled={restarting || changingCore !== null || upgrading}
-                  sx={{ marginRight: "8px" }}
-                  onClick={onUpgradeLgbm}
-                >
-                  {t("settings.modals.clashCore.actions.upgradeLgbm")}
-                </LoadingButton>
-              </>
+            {clash_core === "verge-mihomo-smart" && (
+              <LoadingButton
+                variant="contained"
+                size="small"
+                startIcon={<CachedRounded />}
+                loadingPosition="start"
+                loading={flushingCache}
+                disabled={restarting || changingCore !== null || upgrading}
+                sx={{ marginRight: "8px" }}
+                onClick={onFlushSmartCache}
+              >
+                {t("settings.modals.clashCore.actions.flushSmartCache")}
+              </LoadingButton>
             )}
             <LoadingButton
               variant="contained"
@@ -242,9 +200,8 @@ export function ClashCoreViewer({ ref }: { ref?: Ref<DialogRef> }) {
       }
       contentSx={{
         pb: 0,
-        width: isSmartCore ? 480 : 400,
-        height: isSmartCore ? "auto" : 230,
-        maxHeight: 500,
+        width: 400,
+        height: 230,
         overflowY: "auto",
         userSelect: "text",
         marginTop: "-8px",
@@ -271,74 +228,6 @@ export function ClashCoreViewer({ ref }: { ref?: Ref<DialogRef> }) {
           </ListItemButton>
         ))}
       </List>
-
-      {isSmartCore && (
-        <>
-          <Divider sx={{ mt: 1 }} />
-          <Box sx={{ px: 2, py: 1.5 }}>
-            <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
-              {t("settings.modals.clashCore.smartConfig.title")}
-            </Typography>
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 1.5,
-              }}
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <Typography variant="body2">
-                  {t("settings.modals.clashCore.smartConfig.lgbmAutoUpdate")}
-                </Typography>
-                <Switch
-                  size="small"
-                  checked={lgbm_auto_update ?? false}
-                  onChange={(_, c) => patchVerge({ lgbm_auto_update: c })}
-                />
-              </Box>
-              <TextField
-                label={t(
-                  "settings.modals.clashCore.smartConfig.lgbmUpdateInterval",
-                )}
-                type="number"
-                size="small"
-                fullWidth
-                defaultValue={lgbm_update_interval ?? 24}
-                onBlur={(e) => {
-                  const val = parseInt(e.target.value);
-                  if (val > 0) patchVerge({ lgbm_update_interval: val });
-                }}
-              />
-              <TextField
-                label={t("settings.modals.clashCore.smartConfig.lgbmUrl")}
-                size="small"
-                fullWidth
-                defaultValue={lgbm_url ?? ""}
-                onBlur={(e) => patchVerge({ lgbm_url: e.target.value })}
-              />
-              <TextField
-                label={t(
-                  "settings.modals.clashCore.smartConfig.smartCollectorSize",
-                )}
-                type="number"
-                size="small"
-                fullWidth
-                defaultValue={smart_collector_size ?? 50}
-                onBlur={(e) => {
-                  const val = parseInt(e.target.value);
-                  if (val > 0) patchVerge({ smart_collector_size: val });
-                }}
-              />
-            </Box>
-          </Box>
-        </>
-      )}
     </BaseDialog>
   );
 }

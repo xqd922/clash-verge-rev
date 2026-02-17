@@ -295,15 +295,7 @@
         "smart": "Versi Smart"
       },
       "actions": {
-        "flushSmartCache": "Flush Cache",
-        "upgradeLgbm": "Update Model"
-      },
-      "smartConfig": {
-        "title": "Smart Config",
-        "lgbmAutoUpdate": "LightGBM Auto Update",
-        "lgbmUpdateInterval": "Update Interval (hours)",
-        "lgbmUrl": "Model URL",
-        "smartCollectorSize": "Collector Size (MB)"
+        "flushSmartCache": "Flush Cache"
       }
     },
     "liteMode": {
@@ -641,8 +633,7 @@
         "changeSuccess": "Inti berhasil diubah",
         "changeFailed": "Gagal mengubah inti",
         "geoDataUpdated": "GeoData Diperbarui",
-        "smartCacheFlushed": "Smart Cache Flushed",
-        "lgbmModelUpdated": "LightGBM Model Updated"
+        "smartCacheFlushed": "Smart Cache Flushed"
       },
       "clashService": {
         "installSuccess": "Layanan Berhasil Diinstal",

@@ -295,15 +295,7 @@
         "smart": "스마트 버전"
       },
       "actions": {
-        "flushSmartCache": "Flush Cache",
-        "upgradeLgbm": "Update Model"
-      },
-      "smartConfig": {
-        "title": "Smart Config",
-        "lgbmAutoUpdate": "LightGBM Auto Update",
-        "lgbmUpdateInterval": "Update Interval (hours)",
-        "lgbmUrl": "Model URL",
-        "smartCollectorSize": "Collector Size (MB)"
+        "flushSmartCache": "Flush Cache"
       }
     },
     "liteMode": {
@@ -641,8 +633,7 @@
         "changeSuccess": "코어 변경 성공",
         "changeFailed": "코어 변경 실패",
         "geoDataUpdated": "GeoData가 업데이트되었습니다",
-        "smartCacheFlushed": "Smart Cache Flushed",
-        "lgbmModelUpdated": "LightGBM Model Updated"
+        "smartCacheFlushed": "Smart Cache Flushed"
       },
       "clashService": {
         "installSuccess": "서비스가 설치되었습니다",

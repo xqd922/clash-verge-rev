@@ -24,8 +24,7 @@
     "actions": {
       "active": "Active",
       "closed": "Closed",
-      "closeConnection": "Закрыть соединение",
-      "smartBlock": "Smart Block"
+      "closeConnection": "Закрыть соединение"
     },
     "columnManager": {
       "title": "Столбцы",

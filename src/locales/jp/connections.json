@@ -24,8 +24,7 @@
     "actions": {
       "active": "Active",
       "closed": "Closed",
-      "closeConnection": "接続を閉じる",
-      "smartBlock": "Smart Block"
+      "closeConnection": "接続を閉じる"
     },
     "columnManager": {
       "title": "列",

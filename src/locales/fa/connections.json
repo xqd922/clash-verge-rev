@@ -24,8 +24,7 @@
     "actions": {
       "active": "Active",
       "closed": "Closed",
-      "closeConnection": "بستن اتصال",
-      "smartBlock": "Smart Block"
+      "closeConnection": "بستن اتصال"
     },
     "columnManager": {
       "title": "ستون‌ها",

@@ -295,15 +295,7 @@
         "smart": "الإصدار الذكي"
       },
       "actions": {
-        "flushSmartCache": "Flush Cache",
-        "upgradeLgbm": "Update Model"
-      },
-      "smartConfig": {
-        "title": "Smart Config",
-        "lgbmAutoUpdate": "LightGBM Auto Update",
-        "lgbmUpdateInterval": "Update Interval (hours)",
-        "lgbmUrl": "Model URL",
-        "smartCollectorSize": "Collector Size (MB)"
+        "flushSmartCache": "Flush Cache"
       }
     },
     "liteMode": {
@@ -641,8 +633,7 @@
         "changeSuccess": "تم تغيير النواة بنجاح",
         "changeFailed": "فشل تغيير النواة",
         "geoDataUpdated": "تم تحديث البيانات الجغرافية",
-        "smartCacheFlushed": "Smart Cache Flushed",
-        "lgbmModelUpdated": "LightGBM Model Updated"
+        "smartCacheFlushed": "Smart Cache Flushed"
       },
       "clashService": {
         "installSuccess": "تم تثبيت الخدمة بنجاح",

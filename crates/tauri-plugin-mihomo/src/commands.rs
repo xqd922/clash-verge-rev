@@ -52,21 +52,6 @@ pub(crate) async fn flush_smart_cache(state: State<'_, RwLock<Mihomo>>) -> Resul
     state.read().await.flush_smart_cache().await
 }
 
-#[command]
-pub(crate) async fn flush_smart_cache_config(state: State<'_, RwLock<Mihomo>>, config_name: String) -> Result<()> {
-    state.read().await.flush_smart_cache_config(&config_name).await
-}
-
-#[command]
-pub(crate) async fn get_all_smart_weights(state: State<'_, RwLock<Mihomo>>) -> Result<serde_json::Value> {
-    state.read().await.get_all_smart_weights().await
-}
-
-#[command]
-pub(crate) async fn smart_block_connection(state: State<'_, RwLock<Mihomo>>, connection_id: String) -> Result<()> {
-    state.read().await.smart_block_connection(&connection_id).await
-}
-
 // connections
 #[command]
 pub(crate) async fn get_connections(state: State<'_, RwLock<Mihomo>>) -> Result<Connections> {
@@ -256,11 +241,6 @@ pub(crate) async fn upgrade_ui(state: State<'_, RwLock<Mihomo>>) -> Result<()> {
 #[command]
 pub(crate) async fn upgrade_geo(state: State<'_, RwLock<Mihomo>>) -> Result<()> {
     state.read().await.upgrade_geo().await
-}
-
-#[command]
-pub(crate) async fn upgrade_lgbm(state: State<'_, RwLock<Mihomo>>) -> Result<()> {
-    state.read().await.upgrade_lgbm().await
 }
 
 // mihomo websocket

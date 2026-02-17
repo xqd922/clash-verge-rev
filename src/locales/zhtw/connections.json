@@ -24,8 +24,7 @@
     "actions": {
       "active": "活躍",
       "closed": "已關閉",
-      "closeConnection": "關閉連線",
-      "smartBlock": "智慧阻斷"
+      "closeConnection": "關閉連線"
     },
     "columnManager": {
       "title": "欄位設定",

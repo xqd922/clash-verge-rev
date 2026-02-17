@@ -965,10 +965,6 @@ interface IVergeConfig {
   auto_delay_detection_interval_minutes?: number;
   enable_builtin_enhanced?: boolean;
   enable_smart_convert?: boolean;
-  lgbm_auto_update?: boolean;
-  lgbm_update_interval?: number;
-  lgbm_url?: string;
-  smart_collector_size?: number;
   auto_log_clean?: 0 | 1 | 2 | 3 | 4;
   enable_auto_backup_schedule?: boolean;
   auto_backup_interval_hours?: number;

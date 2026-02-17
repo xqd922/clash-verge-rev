@@ -52,22 +52,6 @@ async function getSmartWeights(groupName) {
 async function flushSmartCache() {
     await core.invoke("plugin:mihomo|flush_smart_cache");
 }
-/**
- * 清除指定配置的 Smart 缓存 (仅 Smart 核心)
- * @param configName 配置名称
- */
-async function flushSmartCacheConfig(configName) {
-    await core.invoke("plugin:mihomo|flush_smart_cache_config", {
-        configName,
-    });
-}
-/**
- * 获取全部 Smart 代理组权重 (仅 Smart 核心)
- * @returns 所有 Smart 组的权重数据
- */
-async function getAllSmartWeights() {
-    return await core.invoke("plugin:mihomo|get_all_smart_weights");
-}
 // connections
 /**
  * 获取所有连接信息
@@ -88,15 +72,6 @@ async function closeAllConnections() {
  */
 async function closeConnection(connectionId) {
     await core.invoke("plugin:mihomo|close_connection", { connectionId });
-}
-/**
- * Smart 阻断指定连接，降低节点权重 (仅 Smart 核心)
- * @param connectionId 连接 ID
- */
-async function smartBlockConnection(connectionId) {
-    await core.invoke("plugin:mihomo|smart_block_connection", {
-        connectionId,
-    });
 }
 // groups
 /**
@@ -333,12 +308,6 @@ async function upgradeGeo() {
     await core.invoke("plugin:mihomo|upgrade_geo");
 }
 /**
- * 升级 LightGBM 模型 (仅 Smart 核心)
- */
-async function upgradeLgbm() {
-    await core.invoke("plugin:mihomo|upgrade_lgbm");
-}
-/**
  * 清除 Rust 侧中所有的 WebSocket 连接
  */
 async function clearAllWsConnections() {
@@ -494,8 +463,6 @@ exports.delayProxyByName = delayProxyByName;
 exports.flushDNS = flushDNS;
 exports.flushFakeIp = flushFakeIp;
 exports.flushSmartCache = flushSmartCache;
-exports.flushSmartCacheConfig = flushSmartCacheConfig;
-exports.getAllSmartWeights = getAllSmartWeights;
 exports.getBaseConfig = getBaseConfig;
 exports.getConnections = getConnections;
 exports.getGroupByName = getGroupByName;
@@ -514,7 +481,6 @@ exports.patchBaseConfig = patchBaseConfig;
 exports.reloadConfig = reloadConfig;
 exports.restart = restart;
 exports.selectNodeForGroup = selectNodeForGroup;
-exports.smartBlockConnection = smartBlockConnection;
 exports.unfixedProxy = unfixedProxy;
 exports.updateController = updateController;
 exports.updateGeo = updateGeo;
@@ -523,5 +489,4 @@ exports.updateRuleProvider = updateRuleProvider;
 exports.updateSecret = updateSecret;
 exports.upgradeCore = upgradeCore;
 exports.upgradeGeo = upgradeGeo;
-exports.upgradeLgbm = upgradeLgbm;
 exports.upgradeUi = upgradeUi;

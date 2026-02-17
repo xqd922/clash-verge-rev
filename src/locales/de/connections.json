@@ -24,8 +24,7 @@
     "actions": {
       "active": "Active",
       "closed": "Closed",
-      "closeConnection": "Verbindung schließen",
-      "smartBlock": "Smart Block"
+      "closeConnection": "Verbindung schließen"
     },
     "columnManager": {
       "title": "Spalten",

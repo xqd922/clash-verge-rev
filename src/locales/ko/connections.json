@@ -24,8 +24,7 @@
     "actions": {
       "active": "Active",
       "closed": "Closed",
-      "closeConnection": "연결 닫기",
-      "smartBlock": "Smart Block"
+      "closeConnection": "연결 닫기"
     },
     "columnManager": {
       "title": "열",

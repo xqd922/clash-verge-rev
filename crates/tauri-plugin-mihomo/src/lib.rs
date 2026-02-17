@@ -105,9 +105,6 @@ impl Builder {
                 // smart
                 commands::get_smart_weights,
                 commands::flush_smart_cache,
-                commands::flush_smart_cache_config,
-                commands::get_all_smart_weights,
-                commands::smart_block_connection,
                 // connections
                 commands::get_connections,
                 commands::close_all_connections,
@@ -142,7 +139,6 @@ impl Builder {
                 commands::upgrade_core,
                 commands::upgrade_ui,
                 commands::upgrade_geo,
-                commands::upgrade_lgbm,
                 // ws
                 commands::ws_traffic,
                 commands::ws_memory,

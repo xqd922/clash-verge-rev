@@ -81,28 +81,6 @@ export async function flushSmartCache(): Promise<void> {
   await invoke<void>("plugin:mihomo|flush_smart_cache");
 }
 
-/**
- * 清除指定配置的 Smart 缓存 (仅 Smart 核心)
- * @param configName 配置名称
- */
-export async function flushSmartCacheConfig(
-  configName: string,
-): Promise<void> {
-  await invoke<void>("plugin:mihomo|flush_smart_cache_config", {
-    configName,
-  });
-}
-
-/**
- * 获取全部 Smart 代理组权重 (仅 Smart 核心)
- * @returns 所有 Smart 组的权重数据
- */
-export async function getAllSmartWeights(): Promise<Record<string, any>> {
-  return await invoke<Record<string, any>>(
-    "plugin:mihomo|get_all_smart_weights",
-  );
-}
-
 // connections
 /**
  * 获取所有连接信息
@@ -125,18 +103,6 @@ export async function closeAllConnections(): Promise<void> {
  */
 export async function closeConnection(connectionId: string): Promise<void> {
   await invoke<void>("plugin:mihomo|close_connection", { connectionId });
-}
-
-/**
- * Smart 阻断指定连接，降低节点权重 (仅 Smart 核心)
- * @param connectionId 连接 ID
- */
-export async function smartBlockConnection(
-  connectionId: string,
-): Promise<void> {
-  await invoke<void>("plugin:mihomo|smart_block_connection", {
-    connectionId,
-  });
 }
 
 // groups
@@ -430,13 +396,6 @@ export async function upgradeUi(): Promise<void> {
  */
 export async function upgradeGeo(): Promise<void> {
   await invoke<void>("plugin:mihomo|upgrade_geo");
-}
-
-/**
- * 升级 LightGBM 模型 (仅 Smart 核心)
- */
-export async function upgradeLgbm(): Promise<void> {
-  await invoke<void>("plugin:mihomo|upgrade_lgbm");
 }
 
 /**
