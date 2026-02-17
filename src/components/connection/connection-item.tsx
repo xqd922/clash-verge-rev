@@ -1,4 +1,4 @@
-import { CloseRounded } from "@mui/icons-material";
+import { BlockRounded, CloseRounded } from "@mui/icons-material";
 import {
   styled,
   ListItem,
@@ -10,8 +10,9 @@ import {
 import { useLockFn } from "ahooks";
 import dayjs from "dayjs";
 import { useTranslation } from "react-i18next";
-import { closeConnection } from "tauri-plugin-mihomo-api";
+import { closeConnection, smartBlockConnection } from "tauri-plugin-mihomo-api";
 
+import { useVerge } from "@/hooks/use-verge";
 import parseTraffic from "@/utils/parse-traffic";
 
 const Tag = styled("span")(({ theme }) => ({
@@ -37,7 +38,11 @@ export const ConnectionItem = (props: Props) => {
   const { id, metadata, chains, start, curUpload, curDownload } = value;
   const { t } = useTranslation();
 
+  const { verge } = useVerge();
+  const isSmartCore = verge?.clash_core === "verge-mihomo-smart";
+
   const onDelete = useLockFn(async () => closeConnection(id));
+  const onSmartBlock = useLockFn(async () => smartBlockConnection(id));
   const showTraffic = curUpload! >= 100 || curDownload! >= 100;
 
   return (
@@ -46,15 +51,27 @@ export const ConnectionItem = (props: Props) => {
       sx={{ borderBottom: "1px solid var(--divider-color)" }}
       secondaryAction={
         !closed && (
-          <IconButton
-            edge="end"
-            color="inherit"
-            onClick={onDelete}
-            title={t("connections.components.actions.closeConnection")}
-            aria-label={t("connections.components.actions.closeConnection")}
-          >
-            <CloseRounded />
-          </IconButton>
+          <Box sx={{ display: "flex" }}>
+            {isSmartCore && (
+              <IconButton
+                color="warning"
+                onClick={onSmartBlock}
+                title={t("connections.components.actions.smartBlock")}
+                aria-label={t("connections.components.actions.smartBlock")}
+              >
+                <BlockRounded />
+              </IconButton>
+            )}
+            <IconButton
+              edge="end"
+              color="inherit"
+              onClick={onDelete}
+              title={t("connections.components.actions.closeConnection")}
+              aria-label={t("connections.components.actions.closeConnection")}
+            >
+              <CloseRounded />
+            </IconButton>
+          </Box>
         )
       }
     >

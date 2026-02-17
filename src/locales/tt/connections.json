@@ -24,7 +24,8 @@
     "actions": {
       "active": "Active",
       "closed": "Closed",
-      "closeConnection": "Тоташуны ябу"
+      "closeConnection": "Тоташуны ябу",
+      "smartBlock": "Smart Block"
     },
     "columnManager": {
       "title": "Баганалар",

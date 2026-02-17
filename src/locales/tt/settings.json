@@ -295,7 +295,15 @@
         "smart": "Смарт-версия"
       },
       "actions": {
-        "flushSmartCache": "Flush Cache"
+        "flushSmartCache": "Flush Cache",
+        "upgradeLgbm": "Update Model"
+      },
+      "smartConfig": {
+        "title": "Smart Config",
+        "lgbmAutoUpdate": "LightGBM Auto Update",
+        "lgbmUpdateInterval": "Update Interval (hours)",
+        "lgbmUrl": "Model URL",
+        "smartCollectorSize": "Collector Size (MB)"
       }
     },
     "liteMode": {
@@ -633,7 +641,8 @@
         "changeSuccess": "Ядро уңышлы алыштырылды",
         "changeFailed": "Ядро алыштыру уңышсыз булды",
         "geoDataUpdated": "GeoData яңартылды",
-        "smartCacheFlushed": "Smart Cache Flushed"
+        "smartCacheFlushed": "Smart Cache Flushed",
+        "lgbmModelUpdated": "LightGBM Model Updated"
       },
       "clashService": {
         "installSuccess": "Сервис уңышлы урнаштырылды",

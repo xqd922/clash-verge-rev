@@ -295,7 +295,15 @@
         "smart": "Versión Smart"
       },
       "actions": {
-        "flushSmartCache": "Flush Cache"
+        "flushSmartCache": "Flush Cache",
+        "upgradeLgbm": "Update Model"
+      },
+      "smartConfig": {
+        "title": "Smart Config",
+        "lgbmAutoUpdate": "LightGBM Auto Update",
+        "lgbmUpdateInterval": "Update Interval (hours)",
+        "lgbmUrl": "Model URL",
+        "smartCollectorSize": "Collector Size (MB)"
       }
     },
     "liteMode": {
@@ -633,7 +641,8 @@
         "changeSuccess": "Núcleo cambiado con éxito",
         "changeFailed": "No se pudo cambiar el núcleo",
         "geoDataUpdated": "GeoData actualizado",
-        "smartCacheFlushed": "Smart Cache Flushed"
+        "smartCacheFlushed": "Smart Cache Flushed",
+        "lgbmModelUpdated": "LightGBM Model Updated"
       },
       "clashService": {
         "installSuccess": "Servicio instalado con éxito",

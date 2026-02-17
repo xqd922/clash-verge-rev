@@ -164,6 +164,18 @@ pub struct IVerge {
     /// 是否自动将 url-test/fallback/load-balance 组转为 smart 类型（仅 Smart 核心）
     pub enable_smart_convert: Option<bool>,
 
+    /// LightGBM 自动更新开关（仅 Smart 核心，全局配置）
+    pub lgbm_auto_update: Option<bool>,
+
+    /// LightGBM 模型更新间隔（小时，仅 Smart 核心，全局配置）
+    pub lgbm_update_interval: Option<u32>,
+
+    /// LightGBM 模型下载 URL（仅 Smart 核心，全局配置）
+    pub lgbm_url: Option<String>,
+
+    /// Smart 收集器大小限制（MB，仅 Smart 核心，对应 profile.smart-collector-size）
+    pub smart_collector_size: Option<u32>,
+
     /// proxy 页面布局 列数
     pub proxy_layout_column: Option<u8>,
 
@@ -534,6 +546,10 @@ impl IVerge {
         patch!(auto_delay_detection_interval_minutes);
         patch!(enable_builtin_enhanced);
         patch!(enable_smart_convert);
+        patch!(lgbm_auto_update);
+        patch!(lgbm_update_interval);
+        patch!(lgbm_url);
+        patch!(smart_collector_size);
         patch!(proxy_layout_column);
         patch!(test_list);
         patch!(auto_log_clean);

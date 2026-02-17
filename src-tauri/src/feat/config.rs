@@ -117,6 +117,10 @@ fn determine_update_flags(patch: &IVerge) -> UpdateFlags {
     let log_max_size = patch.app_log_max_size;
     let log_max_count = patch.app_log_max_count;
     let enable_builtin_enhanced = patch.enable_builtin_enhanced;
+    let lgbm_auto_update = patch.lgbm_auto_update;
+    let lgbm_update_interval = patch.lgbm_update_interval;
+    let lgbm_url = &patch.lgbm_url;
+    let smart_collector_size = patch.smart_collector_size;
 
     #[cfg(target_os = "windows")]
     let restart_core_needed = socks_enabled.is_some()
@@ -125,7 +129,11 @@ fn determine_update_flags(patch: &IVerge) -> UpdateFlags {
         || http_port.is_some()
         || mixed_port.is_some()
         || enable_external_controller.is_some()
-        || enable_builtin_enhanced.is_some();
+        || enable_builtin_enhanced.is_some()
+        || lgbm_auto_update.is_some()
+        || lgbm_update_interval.is_some()
+        || lgbm_url.is_some()
+        || smart_collector_size.is_some();
     #[cfg(not(target_os = "windows"))]
     let mut restart_core_needed = socks_enabled.is_some()
         || http_enabled.is_some()
@@ -133,7 +141,11 @@ fn determine_update_flags(patch: &IVerge) -> UpdateFlags {
         || http_port.is_some()
         || mixed_port.is_some()
         || enable_external_controller.is_some()
-        || enable_builtin_enhanced.is_some();
+        || enable_builtin_enhanced.is_some()
+        || lgbm_auto_update.is_some()
+        || lgbm_update_interval.is_some()
+        || lgbm_url.is_some()
+        || smart_collector_size.is_some();
     #[cfg(not(target_os = "windows"))]
     {
         restart_core_needed |= redir_enabled.is_some() || redir_port.is_some();

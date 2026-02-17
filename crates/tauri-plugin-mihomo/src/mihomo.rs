@@ -457,6 +457,35 @@ impl Mihomo {
         Ok(())
     }
 
+    /// 清除指定配置的 Smart 缓存 (仅 Smart 核心)
+    pub async fn flush_smart_cache_config(&self, config_name: &str) -> Result<()> {
+        let config_encode = urlencoding::encode(config_name);
+        let client = self.build_request(Method::POST, &format!("/cache/smart/flush/{config_encode}"))?;
+        let response = self.send_by_protocol(client).await?;
+        if !response.status().is_success() {
+            let err_msg = response.json::<ErrorResponse>().await.map_or_else(
+                |e| format!("flush smart cache for config[{}] failed, {}", config_name, e),
+                |err_res| err_res.message,
+            );
+            ret_failed_resp!("{}", err_msg);
+        }
+        Ok(())
+    }
+
+    /// 获取全部 Smart 代理组权重 (仅 Smart 核心)
+    pub async fn get_all_smart_weights(&self) -> Result<serde_json::Value> {
+        let client = self.build_request(Method::GET, "/group/weights")?;
+        let response = self.send_by_protocol(client).await?;
+        if !response.status().is_success() {
+            let err_msg = response.json::<ErrorResponse>().await.map_or_else(
+                |e| format!("get all smart weights failed, {}", e),
+                |err_res| err_res.message,
+            );
+            ret_failed_resp!("{}", err_msg);
+        }
+        Ok(response.json::<serde_json::Value>().await?)
+    }
+
     /// 获取全部连接信息
     pub async fn get_connections(&self) -> Result<Connections> {
         let client = self.build_request(Method::GET, "/connections")?;
@@ -494,6 +523,20 @@ impl Mihomo {
                 .json::<ErrorResponse>()
                 .await
                 .map_or_else(|e| format!("close connection failed, {}", e), |err_res| err_res.message);
+            ret_failed_resp!("{}", err_msg);
+        }
+        Ok(())
+    }
+
+    /// Smart 阻断指定连接，降低节点权重 (仅 Smart 核心)
+    pub async fn smart_block_connection(&self, connection_id: &str) -> Result<()> {
+        let client = self.build_request(Method::DELETE, &format!("/connections/smart/{connection_id}"))?;
+        let response = self.send_by_protocol(client).await?;
+        if !response.status().is_success() {
+            let err_msg = response.json::<ErrorResponse>().await.map_or_else(
+                |e| format!("smart block connection failed, {}", e),
+                |err_res| err_res.message,
+            );
             ret_failed_resp!("{}", err_msg);
         }
         Ok(())
@@ -909,6 +952,22 @@ impl Mihomo {
         if !response.status().is_success() {
             let err_msg = response.json::<ErrorResponse>().await.map_or_else(
                 |e| format!("upgrade geo database failed, {}", e),
+                |err_res| err_res.message,
+            );
+            ret_failed_resp!("{}", err_msg);
+        }
+        Ok(())
+    }
+
+    /// 升级 LightGBM 模型 (仅 Smart 核心)
+    pub async fn upgrade_lgbm(&self) -> Result<()> {
+        let client = self
+            .build_request(Method::POST, "/upgrade/lgbm")?
+            .timeout(Duration::from_secs(120));
+        let response = self.send_by_protocol(client).await?;
+        if !response.status().is_success() {
+            let err_msg = response.json::<ErrorResponse>().await.map_or_else(
+                |e| format!("upgrade lgbm model failed, {}", e),
                 |err_res| err_res.message,
             );
             ret_failed_resp!("{}", err_msg);

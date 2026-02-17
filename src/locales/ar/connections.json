@@ -24,7 +24,8 @@
     "actions": {
       "active": "Active",
       "closed": "Closed",
-      "closeConnection": "إغلاق الاتصال"
+      "closeConnection": "إغلاق الاتصال",
+      "smartBlock": "Smart Block"
     },
     "columnManager": {
       "title": "الأعمدة",

@@ -9,6 +9,7 @@ export interface TranslationResources {
           active: string;
           closeConnection: string;
           closed: string;
+          smartBlock: string;
         };
         columnManager: {
           dragHandle: string;
@@ -704,6 +705,7 @@ export interface TranslationResources {
             changeFailed: string;
             changeSuccess: string;
             geoDataUpdated: string;
+            lgbmModelUpdated: string;
             restartSuccess: string;
             smartCacheFlushed: string;
             versionUpdated: string;
@@ -801,6 +803,14 @@ export interface TranslationResources {
         clashCore: {
           actions: {
             flushSmartCache: string;
+            upgradeLgbm: string;
+          };
+          smartConfig: {
+            lgbmAutoUpdate: string;
+            lgbmUpdateInterval: string;
+            lgbmUrl: string;
+            smartCollectorSize: string;
+            title: string;
           };
           variants: {
             alpha: string;

@@ -295,7 +295,15 @@
         "smart": "智慧版"
       },
       "actions": {
-        "flushSmartCache": "Flush Cache"
+        "flushSmartCache": "Flush Cache",
+        "upgradeLgbm": "更新模型"
+      },
+      "smartConfig": {
+        "title": "Smart 配置",
+        "lgbmAutoUpdate": "LightGBM 自動更新",
+        "lgbmUpdateInterval": "更新間隔（小時）",
+        "lgbmUrl": "模型下載地址",
+        "smartCollectorSize": "收集器大小（MB）"
       }
     },
     "liteMode": {
@@ -633,7 +641,8 @@
         "changeSuccess": "內核切換成功",
         "changeFailed": "無法切換內核",
         "geoDataUpdated": "已更新 GeoData",
-        "smartCacheFlushed": "Smart Cache Flushed"
+        "smartCacheFlushed": "Smart Cache Flushed",
+        "lgbmModelUpdated": "LightGBM 模型已更新"
       },
       "clashService": {
         "installSuccess": "已成功安裝服務",
