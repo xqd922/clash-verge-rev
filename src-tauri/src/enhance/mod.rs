@@ -33,6 +33,10 @@ struct ConfigValues {
     socks_enabled: bool,
     http_enabled: bool,
     enable_dns_settings: bool,
+    lgbm_auto_update: Option<bool>,
+    lgbm_update_interval: Option<u32>,
+    lgbm_url: Option<String>,
+    smart_collector_size: Option<u32>,
     #[cfg(not(target_os = "windows"))]
     redir_enabled: bool,
     #[cfg(target_os = "linux")]
@@ -108,14 +112,7 @@ async fn get_config_values() -> ConfigValues {
         ..
     } = *verge_arc;
 
-    let (
-        clash_core,
-        enable_tun,
-        enable_builtin,
-        socks_enabled,
-        http_enabled,
-        enable_dns_settings,
-    ) = (
+    let (clash_core, enable_tun, enable_builtin, socks_enabled, http_enabled, enable_dns_settings) = (
         Some(verge_arc.get_valid_clash_core()),
         enable_tun_mode.unwrap_or(false),
         enable_builtin_enhanced.unwrap_or(true),
@@ -123,6 +120,11 @@ async fn get_config_values() -> ConfigValues {
         verge_http_enabled.unwrap_or(false),
         enable_dns_settings.unwrap_or(false),
     );
+
+    let lgbm_auto_update = verge_arc.lgbm_auto_update;
+    let lgbm_update_interval = verge_arc.lgbm_update_interval;
+    let lgbm_url = verge_arc.lgbm_url.clone();
+    let smart_collector_size = verge_arc.smart_collector_size;
 
     #[cfg(not(target_os = "windows"))]
     let redir_enabled = verge_arc.verge_redir_enabled.unwrap_or(false);
@@ -141,6 +143,10 @@ async fn get_config_values() -> ConfigValues {
         socks_enabled,
         http_enabled,
         enable_dns_settings,
+        lgbm_auto_update,
+        lgbm_update_interval,
+        lgbm_url,
+        smart_collector_size,
         #[cfg(not(target_os = "windows"))]
         redir_enabled,
         #[cfg(target_os = "linux")]
@@ -462,11 +468,7 @@ async fn merge_default_config(
     config
 }
 
-fn apply_builtin_scripts(
-    mut config: Mapping,
-    clash_core: Option<String>,
-    enable_builtin: bool,
-) -> Mapping {
+fn apply_builtin_scripts(mut config: Mapping, clash_core: Option<String>, enable_builtin: bool) -> Mapping {
     if enable_builtin {
         ChainItem::builtin()
             .into_iter()
@@ -507,10 +509,7 @@ fn revert_smart_groups(mut config: Mapping, clash_core: &Option<String>) -> Mapp
                     .is_some_and(|t| t == "smart");
 
                 if is_smart {
-                    group_map.insert(
-                        Value::String("type".into()),
-                        Value::String("url-test".into()),
-                    );
+                    group_map.insert(Value::String("type".into()), Value::String("url-test".into()));
                     // Remove Smart-specific fields
                     for key in &[
                         "uselightgbm",
@@ -655,6 +654,10 @@ pub async fn enhance() -> (Mapping, HashSet<String>, HashMap<String, ResultLog>)
         socks_enabled,
         http_enabled,
         enable_dns_settings,
+        lgbm_auto_update,
+        lgbm_update_interval,
+        lgbm_url,
+        smart_collector_size,
         #[cfg(not(target_os = "windows"))]
         redir_enabled,
         #[cfg(target_os = "linux")]
@@ -707,6 +710,29 @@ pub async fn enhance() -> (Mapping, HashSet<String>, HashMap<String, ResultLog>)
 
     // Revert smart groups to url-test when not using Smart core
     config = revert_smart_groups(config, &clash_core);
+
+    // Inject global Smart/LightGBM config when using Smart core
+    if matches!(clash_core.as_deref(), Some("verge-mihomo-smart")) {
+        if let Some(auto_update) = lgbm_auto_update {
+            config.insert("lgbm-auto-update".into(), auto_update.into());
+        }
+        if let Some(interval) = lgbm_update_interval {
+            config.insert("lgbm-update-interval".into(), (interval as u64).into());
+        }
+        if let Some(ref url) = lgbm_url
+            && !url.as_str().is_empty()
+        {
+            config.insert("lgbm-url".into(), url.as_str().into());
+        }
+        if let Some(size) = smart_collector_size {
+            let profile = config
+                .entry("profile".into())
+                .or_insert_with(|| Value::Mapping(Mapping::new()));
+            if let Some(profile_map) = profile.as_mapping_mut() {
+                profile_map.insert("smart-collector-size".into(), (size as u64).into());
+            }
+        }
+    }
 
     config = cleanup_proxy_groups(config);
 
