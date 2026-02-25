@@ -289,6 +289,7 @@ class DelayManager {
     group: string,
     timeout: number,
     concurrency = 36,
+    signal?: AbortSignal,
   ) {
     debugLog(
       `[DelayManager] 批量测试延迟开始，组: ${group}, 数量: ${nameList.length}, 并发数: ${concurrency}`,
@@ -302,6 +303,7 @@ class DelayManager {
     const listener = this.groupListenerMap.get(group);
 
     const help = async (): Promise<void> => {
+      if (signal?.aborted) return;
       const currName = names[index++];
       if (!currName) return;
 

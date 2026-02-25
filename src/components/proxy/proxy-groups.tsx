@@ -293,12 +293,17 @@ export const ProxyGroups = (props: Props) => {
     [handleProxyGroupChange, isChainMode, t],
   );
 
-  // 测全部延迟（带并发锁防止重复触发）
-  const checkAllLockRef = useRef(false);
+  // 测全部延迟（支持取消上一轮、立即重测）
+  const checkAllAbortRef = useRef<AbortController | null>(null);
   const handleCheckAll = useCallback(
     async (groupName: string) => {
-      if (checkAllLockRef.current) return;
-      checkAllLockRef.current = true;
+      // 取消上一轮测试
+      if (checkAllAbortRef.current) {
+        checkAllAbortRef.current.abort();
+      }
+      const abortController = new AbortController();
+      checkAllAbortRef.current = abortController;
+
       debugLog(`[ProxyGroups] 开始测试所有延迟，组: ${groupName}`);
 
       const proxies = renderList
@@ -331,8 +336,14 @@ export const ProxyGroups = (props: Props) => {
       debugLog(`[ProxyGroups] 测试URL: ${url}, 超时: ${timeout}ms`);
 
       try {
-        await Promise.race([
-          delayManager.checkListDelay(names, groupName, timeout),
+        await Promise.allSettled([
+          delayManager.checkListDelay(
+            names,
+            groupName,
+            timeout,
+            36,
+            abortController.signal,
+          ),
           delayGroup(groupName, url, timeout).then((result) => {
             debugLog(
               `[ProxyGroups] getGroupProxyDelays返回结果数量:`,
@@ -344,12 +355,17 @@ export const ProxyGroups = (props: Props) => {
       } catch (error) {
         console.error(`[ProxyGroups] 延迟测试出错，组: ${groupName}`, error);
       } finally {
-        const headState = getGroupHeadState(groupName);
-        if (headState?.sortType === 1) {
-          onHeadState(groupName, { sortType: headState.sortType });
+        // 只有当前轮未被取消时才做收尾工作
+        if (!abortController.signal.aborted) {
+          const headState = getGroupHeadState(groupName);
+          if (headState?.sortType === 1) {
+            onHeadState(groupName, { sortType: headState.sortType });
+          }
+          onProxies();
         }
-        onProxies();
-        checkAllLockRef.current = false;
+        if (checkAllAbortRef.current === abortController) {
+          checkAllAbortRef.current = null;
+        }
       }
     },
     [renderList, timeout, getGroupHeadState, onHeadState, onProxies],
