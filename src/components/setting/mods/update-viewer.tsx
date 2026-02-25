@@ -122,7 +122,7 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
               size="small"
               onClick={() => {
                 openUrl(
-                  `https://github.com/clash-verge-rev/clash-verge-rev/releases/tag/v${updateInfo?.version}`,
+                  `https://github.com/xqd922/clash-verge-rev/releases/tag/v${updateInfo?.version ?? ""}`,
                 );
               }}
             >
