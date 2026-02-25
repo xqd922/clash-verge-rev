@@ -70,10 +70,8 @@ jobs:
         id: changelog
         shell: bash
         run: |
-          # Extract content between first and second "## v(" markers
-          NOTES=$(sed -n '/^## v(/,/^---/{/^---/d;p}' Changelog.md | head -60)
-          # Write to file for multiline support
-          echo "$NOTES" > release_notes.md
+          # Extract content from first "## v(" to the next "## v(" (exclusive)
+          awk '/^## v\(/{if(found) exit; found=1} found{print}' Changelog.md > release_notes.md
           echo "Extracted release notes:"
           cat release_notes.md
 
