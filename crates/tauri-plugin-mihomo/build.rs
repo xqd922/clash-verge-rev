@@ -4,6 +4,8 @@ const COMMANDS: &[&str] = &[
     "get_version",
     "flush_fakeip",
     "flush_dns",
+    "get_smart_weights",
+    "flush_smart_cache",
     "get_connections",
     "close_all_connections",
     "close_connection",
