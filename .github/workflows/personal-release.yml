@@ -113,40 +113,15 @@ jobs:
 
           Write-Host "Created portable zip: $zipFile"
 
-      - name: Generate update.json
+      - name: Use tauri-generated latest.json as update.json
+        shell: bash
         run: |
-          $version = "${{ github.event.inputs.version }}"
-          $tag = "${{ github.event.inputs.tag }}"
-          $releaseUrl = "https://github.com/xqd922/clash-verge-rev/releases/download/$tag"
-
-          # Find the nsis installer and sig file
-          $artifactsDir = "target/${{ matrix.target }}/release/bundle/nsis"
-          $installer = Get-ChildItem -Path $artifactsDir -Filter "*.exe" | Where-Object { $_.Name -notmatch "portable" } | Select-Object -First 1
-          $sigFile = "$($installer.FullName).sig"
-
-          if (Test-Path $sigFile) {
-            $signature = Get-Content $sigFile -Raw
-            $signature = $signature.Trim()
-          } else {
-            Write-Error "Signature file not found: $sigFile"
-            exit 1
-          }
-
-          $updateJson = @{
-            version = $version
-            notes = "Personal $tag"
-            pub_date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-            platforms = @{
-              "windows-x86_64" = @{
-                signature = $signature
-                url = "$releaseUrl/$($installer.Name)"
-              }
-            }
-          } | ConvertTo-Json -Depth 4
-
-          $updateJson | Out-File -FilePath "update.json" -Encoding utf8
-          Write-Host "Generated update.json:"
-          Get-Content "update.json"
+          # Download the latest.json that tauri-action uploaded (has correct asset URLs)
+          gh release download "${{ github.event.inputs.tag }}" --pattern "latest.json" --output "update.json" --clobber
+          echo "Using tauri-generated update manifest:"
+          cat update.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload portable and update release notes
         uses: softprops/action-gh-release@v2
