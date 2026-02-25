@@ -66,6 +66,17 @@ jobs:
         run: |
           pnpm run release-version v${{ github.event.inputs.version }}
 
+      - name: Extract release notes from Changelog
+        id: changelog
+        shell: bash
+        run: |
+          # Extract content between first and second "## v(" markers
+          NOTES=$(sed -n '/^## v(/,/^---/{/^---/d;p}' Changelog.md | head -60)
+          # Write to file for multiline support
+          echo "$NOTES" > release_notes.md
+          echo "Extracted release notes:"
+          cat release_notes.md
+
       - name: Tauri build
         uses: tauri-apps/tauri-action@v0.5
         env:
@@ -76,14 +87,7 @@ jobs:
         with:
           tagName: ${{ github.event.inputs.tag }}
           releaseName: "Personal ${{ github.event.inputs.tag }}"
-          releaseBody: |
-            个人精简版
-
-            - 移除首页
-            - 移除全局扩展脚本 (Merge/Script)
-            - 默认进入代理页面
-
-            基于 Clash Verge Rev
+          releaseBody: ""
           releaseDraft: false
           prerelease: false
           tauriScript: pnpm
@@ -146,10 +150,11 @@ jobs:
           Write-Host "Generated update.json:"
           Get-Content "update.json"
 
-      - name: Upload portable and update.json
+      - name: Upload portable and update release notes
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag }}
+          body_path: release_notes.md
           files: |
             Clash.Verge_${{ github.event.inputs.version }}_x64_portable.zip
           token: ${{ secrets.GITHUB_TOKEN }}
