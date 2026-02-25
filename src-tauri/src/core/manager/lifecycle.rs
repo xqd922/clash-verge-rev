@@ -71,6 +71,15 @@ impl CoreManager {
     }
 
     async fn prepare_startup(&self) -> Result<()> {
+        // Portable mode must always use sidecar to avoid conflicts with
+        // a service installed by a non-portable installation (the service
+        // would start mihomo with the non-portable home directory).
+        if *dirs::PORTABLE_FLAG.get().unwrap_or(&false) {
+            logging!(info, Type::Core, "Portable mode: using sidecar");
+            self.set_running_mode(RunningMode::Sidecar);
+            return Ok(());
+        }
+
         #[cfg(target_os = "windows")]
         self.wait_for_service_if_needed().await;
 
@@ -109,10 +118,9 @@ impl CoreManager {
 
         loop {
             let p = path_str.clone();
-            let connected =
-                tokio::task::spawn_blocking(move || std::fs::File::open(p).is_ok())
-                    .await
-                    .unwrap_or(false);
+            let connected = tokio::task::spawn_blocking(move || std::fs::File::open(p).is_ok())
+                .await
+                .unwrap_or(false);
 
             if connected {
                 logging!(
