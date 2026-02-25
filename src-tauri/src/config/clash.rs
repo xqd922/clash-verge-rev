@@ -105,7 +105,7 @@ impl IClashTemp {
         );
         map.insert("secret".into(), "set-your-secret".into());
         map.insert("external-controller-cors".into(), cors_map.into());
-        map.insert("unified-delay".into(), true.into());
+        map.insert("unified-delay".into(), false.into());
         Self(map)
     }
 
