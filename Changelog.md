@@ -26,7 +26,7 @@
 
 ### 🚀 改进
 
-- 连通性测试默认 URL 替换为更快的 http://1.0.0.1
+- 连通性测试默认 URL 保持 http://www.gstatic.com/generate_204
 - 优化 IP 信息卡性能与离线状态处理
 - winapi 迁移至 windows crate
 - 简化托盘事件处理

@@ -70,7 +70,8 @@ export const ProxyHead = ({
 
   const { verge } = useVerge();
   const defaultLatencyUrl =
-    verge?.default_latency_test?.trim() || "http://1.0.0.1";
+    verge?.default_latency_test?.trim() ||
+    "http://www.gstatic.com/generate_204";
   const isSmartCore = verge?.clash_core === "verge-mihomo-smart";
   const isSmartGroup = groupType === "Smart";
   const [weightsOpen, setWeightsOpen] = useState(false);
