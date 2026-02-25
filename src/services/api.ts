@@ -1,9 +1,20 @@
+import { getName, getVersion } from "@tauri-apps/api/app";
 import { fetch } from "@tauri-apps/plugin-http";
 import { asyncRetry } from "foxts/async-retry";
 import { extractErrorMessage } from "foxts/extract-error-message";
+import { once } from "foxts/once";
 
 import { debugLog } from "@/utils/debug";
 
+const getUserAgentPromise = once(async () => {
+  try {
+    const [name, version] = await Promise.all([getName(), getVersion()]);
+    return `${name}/${version}`;
+  } catch (error) {
+    console.debug("Failed to build User-Agent, fallback to default", error);
+    return "clash-verge-rev";
+  }
+});
 // Get current IP and geolocation information （refactored IP detection with service-specific mappings）
 interface IpInfo {
   ip: string;
@@ -126,74 +137,20 @@ const IP_CHECK_SERVICES: ServiceConfig[] = [
   },
 ];
 
-// 随机性服务列表洗牌函数
-function shuffleServices() {
-  // 过滤无效服务并确保每个元素符合ServiceConfig接口
-  const validServices = IP_CHECK_SERVICES.filter(
-    (service): service is ServiceConfig =>
-      service !== null &&
-      service !== undefined &&
-      typeof service.url === "string" &&
-      typeof service.mapping === "function", // 添加对mapping属性的检查
-  );
-
-  if (validServices.length === 0) {
-    console.error("No valid services found in IP_CHECK_SERVICES");
-    return [];
-  }
-
-  // 使用单一Fisher-Yates洗牌算法，增强随机性
-  const shuffled = [...validServices];
-  const length = shuffled.length;
-
-  // 使用多个种子进行多次洗牌
-  const seeds = [Math.random(), Date.now() / 1000, performance.now() / 1000];
-
-  for (const seed of seeds) {
-    const prng = createPrng(seed);
-
-    // Fisher-Yates洗牌算法
-    for (let i = length - 1; i > 0; i--) {
-      const j = Math.floor(prng() * (i + 1));
-
-      // 使用临时变量进行交换，避免解构赋值可能的问题
-      const temp = shuffled[i];
-      shuffled[i] = shuffled[j];
-      shuffled[j] = temp;
-    }
-  }
-
-  return shuffled;
-}
-
-// 创建一个简单的随机数生成器
-function createPrng(seed: number): () => number {
-  // 使用xorshift32算法
-  let state = seed >>> 0;
-
-  // 如果种子为0，设置一个默认值
-  if (state === 0) state = 123456789;
-
-  return function () {
-    state ^= state << 13;
-    state ^= state >>> 17;
-    state ^= state << 5;
-    return (state >>> 0) / 4294967296;
-  };
-}
-
 // 获取当前IP和地理位置信息
 export const getIpInfo = async (): Promise<
   IpInfo & { lastFetchTs: number }
 > => {
-  const lastFetchTs = Date.now();
-
   // 配置参数
-  const maxRetries = 3;
+  const maxRetries = 2;
   const serviceTimeout = 5000;
 
-  const shuffledServices = shuffleServices();
+  const shuffledServices = IP_CHECK_SERVICES.toSorted(
+    () => Math.random() - 0.5,
+  );
   let lastError: unknown | null = null;
+  const userAgent = await getUserAgentPromise();
+  console.debug("User-Agent for IP detection:", userAgent);
 
   for (const service of shuffledServices) {
     debugLog(`尝试IP检测服务: ${service.url}`);
@@ -206,12 +163,15 @@ export const getIpInfo = async (): Promise<
     try {
       return await asyncRetry(
         async (bail) => {
-          console.debug("Fetching IP information...");
+          console.debug("Fetching IP information:", service.url);
 
           const response = await fetch(service.url, {
             method: "GET",
             signal: timeoutController.signal, // AbortSignal.timeout(service.timeout || serviceTimeout),
             connectTimeout: service.timeout || serviceTimeout,
+            headers: {
+              "User-Agent": userAgent,
+            },
           });
 
           if (!response.ok) {
@@ -222,19 +182,27 @@ export const getIpInfo = async (): Promise<
             );
           }
 
-          const data = await response.json();
+          let data: any;
+          try {
+            data = await response.json();
+          } catch {
+            return bail(new Error(`无法解析 JSON 响应 from ${service.url}`));
+          }
 
           if (data && data.ip) {
             debugLog(`IP检测成功，使用服务: ${service.url}`);
-            return Object.assign(service.mapping(data), { lastFetchTs });
+            return Object.assign(service.mapping(data), {
+              // use last fetch success timestamp
+              lastFetchTs: Date.now(),
+            });
           } else {
-            throw new Error(`无效的响应格式 from ${service.url}`);
+            return bail(new Error(`无效的响应格式 from ${service.url}`));
           }
         },
         {
           retries: maxRetries,
-          minTimeout: 500,
-          maxTimeout: 2000,
+          minTimeout: 1000,
+          maxTimeout: 4000,
           randomize: true,
         },
       );

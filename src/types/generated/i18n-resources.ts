@@ -439,6 +439,8 @@ export interface TranslationResources {
           disconnectFailed: string;
           duplicateNode: string;
           empty: string;
+          entryNode: string;
+          exitNode: string;
           header: string;
           instruction: string;
           minimumNodes: string;
@@ -1340,6 +1342,7 @@ export interface TranslationResources {
         usedTotal: string;
       };
       placeholders: {
+        resetInput: string;
         filter: string;
         matchCase: string;
         matchWholeWord: string;
