@@ -284,6 +284,28 @@ class DelayManager {
     }
   }
 
+  // 从 delayGroup API 的返回结果批量更新延迟缓存
+  // delayGroup 返回的结果中不包含超时的节点，需要传入完整列表来标记超时
+  batchSetDelay(
+    result: Record<string, number>,
+    allNames: string[],
+    group: string,
+  ) {
+    for (const name of allNames) {
+      const delay = result[name];
+      if (delay !== undefined && delay > 0) {
+        this.setDelay(name, group, delay);
+      } else {
+        // 不在结果中的节点 = 超时（mihomo delay_group 不返回超时节点）
+        this.setDelay(name, group, 0);
+      }
+    }
+    this.queueGroupNotification(group);
+    debugLog(
+      `[DelayManager] 批量设置延迟完成，组: ${group}, 成功: ${Object.keys(result).length}, 总数: ${allNames.length}`,
+    );
+  }
+
   async checkListDelay(
     nameList: string[],
     group: string,
@@ -327,8 +349,7 @@ class DelayManager {
       return help();
     };
 
-    // 限制并发数，避免发送太多请求
-    const actualConcurrency = Math.min(concurrency, names.length, 10);
+    const actualConcurrency = Math.min(concurrency, names.length);
     debugLog(`[DelayManager] 实际并发数: ${actualConcurrency}`);
 
     const promiseList: Promise<void>[] = [];

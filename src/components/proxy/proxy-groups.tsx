@@ -335,25 +335,33 @@ export const ProxyGroups = (props: Props) => {
       const url = delayManager.getUrl(groupName);
       debugLog(`[ProxyGroups] 测试URL: ${url}, 超时: ${timeout}ms`);
 
+      // 先将所有节点标记为测试中
+      names.forEach((name) => delayManager.setDelay(name, groupName, -2));
+
       try {
-        await Promise.allSettled([
-          delayManager.checkListDelay(
+        // 使用 delayGroup 一次性测试所有节点（mihomo 内核并发），避免重复测试
+        const result = await delayGroup(groupName, url, timeout);
+        debugLog(
+          `[ProxyGroups] delayGroup返回结果数量: ${Object.keys(result || {}).length}`,
+        );
+
+        if (!abortController.signal.aborted) {
+          // 用返回结果批量更新延迟缓存
+          delayManager.batchSetDelay(result || {}, names, groupName);
+        }
+        debugLog(`[ProxyGroups] 延迟测试完成，组: ${groupName}`);
+      } catch (error) {
+        console.error(`[ProxyGroups] 延迟测试出错，组: ${groupName}`, error);
+        // delayGroup 失败时回退到逐个测试
+        if (!abortController.signal.aborted) {
+          await delayManager.checkListDelay(
             names,
             groupName,
             timeout,
             36,
             abortController.signal,
-          ),
-          delayGroup(groupName, url, timeout).then((result) => {
-            debugLog(
-              `[ProxyGroups] getGroupProxyDelays返回结果数量:`,
-              Object.keys(result || {}).length,
-            );
-          }), // 查询group delays 将清除fixed(不关注调用结果)
-        ]);
-        debugLog(`[ProxyGroups] 延迟测试完成，组: ${groupName}`);
-      } catch (error) {
-        console.error(`[ProxyGroups] 延迟测试出错，组: ${groupName}`, error);
+          );
+        }
       } finally {
         // 只有当前轮未被取消时才做收尾工作
         if (!abortController.signal.aborted) {
