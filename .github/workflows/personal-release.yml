@@ -124,7 +124,14 @@ jobs:
         run: |
           # Download the latest.json that tauri-action uploaded (has correct asset URLs)
           gh release download "${{ github.event.inputs.tag }}" --pattern "latest.json" --output "update.json" --clobber
-          echo "Using tauri-generated update manifest:"
+          # Inject release notes into update.json (tauri build generates empty notes)
+          node -e "
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('update.json', 'utf8'));
+            data.notes = fs.readFileSync('release_notes.md', 'utf8');
+            fs.writeFileSync('update.json', JSON.stringify(data, null, 2));
+          "
+          echo "Final update.json:"
           cat update.json
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
