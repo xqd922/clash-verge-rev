@@ -74,6 +74,12 @@ jobs:
           awk '/^## v\(/{if(found) exit; found=1} found{print}' Changelog.md > release_notes.md
           echo "Extracted release notes:"
           cat release_notes.md
+          # Store as output for tauri-action (multiline)
+          {
+            echo "notes<<EOF"
+            cat release_notes.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Tauri build
         uses: tauri-apps/tauri-action@v0.5
@@ -85,7 +91,7 @@ jobs:
         with:
           tagName: ${{ github.event.inputs.tag }}
           releaseName: "Personal ${{ github.event.inputs.tag }}"
-          releaseBody: ""
+          releaseBody: ${{ steps.changelog.outputs.notes }}
           releaseDraft: false
           prerelease: false
           tauriScript: pnpm
@@ -123,11 +129,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload portable and update release notes
+      - name: Upload portable to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag }}
-          body_path: release_notes.md
           files: |
             Clash.Verge_${{ github.event.inputs.version }}_x64_portable.zip
           token: ${{ secrets.GITHUB_TOKEN }}

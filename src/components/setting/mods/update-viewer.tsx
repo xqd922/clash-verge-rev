@@ -54,11 +54,11 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
   }, [updateInfo]);
 
   const onUpdate = useLockFn(async () => {
+    if (!updateInfo) return;
     if (portableFlag) {
       showNotice.error("settings.modals.update.messages.portableError");
       return;
     }
-    if (!updateInfo?.body) return;
     if (breakChangeFlag) {
       showNotice.error("settings.modals.update.messages.breakChangeError");
       return;
@@ -134,8 +134,8 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
       contentSx={{ minWidth: 360, maxWidth: 400, height: "50vh" }}
       okBtn={t("settings.modals.update.actions.update")}
       cancelBtn={t("shared.actions.cancel")}
-      onClose={() => setOpen(false)}
-      onCancel={() => setOpen(false)}
+      onClose={() => !updateState && setOpen(false)}
+      onCancel={() => !updateState && setOpen(false)}
       onOk={onUpdate}
     >
       <Box sx={{ height: "calc(100% - 10px)", overflow: "auto" }}>
