@@ -49,7 +49,6 @@ import {
   createProfile,
   deleteProfile,
   enhanceProfiles,
-  getProfiles,
   //restartCore,
   getRuntimeLogs,
   importProfile,
@@ -276,16 +275,11 @@ const ProfilePage = () => {
     }
     setLoading(true);
 
-    const handleImportSuccess = async (noticeKey: string) => {
-      showNotice.success(noticeKey);
-      setUrl("");
-      await performRobustRefresh();
-    };
-
     try {
       // 尝试正常导入
       await importProfile(url);
-      await handleImportSuccess("shared.feedback.notifications.importSuccess");
+      showNotice.success("shared.feedback.notifications.importSuccess");
+      setUrl("");
     } catch (initialErr) {
       console.warn("[订阅导入] 首次导入失败:", initialErr);
 
@@ -296,9 +290,10 @@ const ProfilePage = () => {
           with_proxy: false,
           self_proxy: true,
         });
-        await handleImportSuccess(
+        showNotice.success(
           "shared.feedback.notifications.importWithClashProxy",
         );
+        setUrl("");
       } catch (retryErr) {
         // 回退导入也失败
         showNotice.error(
@@ -309,57 +304,6 @@ const ProfilePage = () => {
     } finally {
       setDisabled(false);
       setLoading(false);
-    }
-  };
-
-  // 强化的刷新策略
-  const performRobustRefresh = async () => {
-    let retryCount = 0;
-    const maxRetries = 5;
-    const baseDelay = 200;
-
-    while (retryCount < maxRetries) {
-      try {
-        debugLog(`[导入刷新] 第${retryCount + 1}次尝试刷新配置数据`);
-
-        // 强制刷新，绕过所有缓存
-        await mutateProfiles(undefined, {
-          revalidate: true,
-          rollbackOnError: false,
-        });
-
-        // 等待状态稳定
-        await new Promise((resolve) =>
-          setTimeout(resolve, baseDelay * (retryCount + 1)),
-        );
-
-        await onEnhance(false);
-        return;
-      } catch (error) {
-        console.error(`[导入刷新] 第${retryCount + 1}次刷新失败:`, error);
-        retryCount++;
-        await new Promise((resolve) =>
-          setTimeout(resolve, baseDelay * retryCount),
-        );
-      }
-    }
-
-    // 所有重试失败后的最后尝试
-    console.warn(`[导入刷新] 常规刷新失败，尝试清除缓存重新获取`);
-    try {
-      // 清除SWR缓存并重新获取
-      await mutate("getProfiles", getProfiles(), { revalidate: true });
-      await onEnhance(false);
-      showNotice.error(
-        "profiles.page.feedback.notifications.importNeedsRefresh",
-        3000,
-      );
-    } catch (finalError) {
-      console.error(`[导入刷新] 最终刷新尝试失败:`, finalError);
-      showNotice.error(
-        "profiles.page.feedback.notifications.importNeedsRefresh",
-        5000,
-      );
     }
   };
 

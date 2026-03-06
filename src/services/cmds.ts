@@ -530,7 +530,7 @@ export const isServiceAvailable = async () => {
   try {
     return await invoke<boolean>("is_service_available");
   } catch (error) {
-    console.error("Service check failed:", error);
+    console.warn("Service check failed:", error);
     return false;
   }
 };
