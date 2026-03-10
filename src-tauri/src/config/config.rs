@@ -73,16 +73,14 @@ impl Config {
         let is_admin = is_current_app_handle_admin(handle);
         let is_service_available = service::is_service_available().await.is_ok();
         if !is_admin && !is_service_available {
+            // 仅在内存中临时关闭 TUN，不写入配置文件
+            // 这样下次管理员启动时 TUN 仍然是开启状态
             let verge = Self::verge().await;
             verge.edit_draft(|d| {
                 d.enable_tun_mode = Some(false);
             });
             verge.apply();
             let _ = tray::Tray::global().update_menu().await;
-
-            // 分离数据获取和异步调用避免Send问题
-            let verge_data = Self::verge().await.latest_arc();
-            logging_error!(Type::Core, verge_data.save_file().await);
         }
 
         let validation_result = Self::generate_and_validate().await?;
