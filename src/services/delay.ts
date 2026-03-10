@@ -1,4 +1,4 @@
-import { delayProxyByName, ProxyDelay } from "tauri-plugin-mihomo-api";
+import { delayProxyByName } from "tauri-plugin-mihomo-api";
 
 import { debugLog } from "@/utils/debug";
 
@@ -259,16 +259,8 @@ class DelayManager {
       const url = this.getUrl(group);
       debugLog(`[DelayManager] 调用API测试延迟，代理: ${name}, URL: ${url}`);
 
-      // 设置超时处理, delay = 0 为超时
-      const timeoutPromise = new Promise<ProxyDelay>((resolve) => {
-        setTimeout(() => resolve({ delay: 0 }), timeout);
-      });
-
-      // 使用Promise.race来实现超时控制
-      const result = await Promise.race([
-        delayProxyByName(name, url, timeout),
-        timeoutPromise,
-      ]);
+      // 直接调用 mihomo API，超时由 mihomo 内核控制（timeout + 5s）
+      const result = await delayProxyByName(name, url, timeout);
 
       const delay = result.delay;
       const elapsed = Date.now() - startTime;
