@@ -160,7 +160,8 @@
         "preferAsn": "优先 ASN",
         "lgbmAutoUpdate": "自动更新模型",
         "lgbmUpdateInterval": "更新间隔（小时）",
-        "lgbmModelUrl": "模型地址"
+        "lgbmModelUrl": "模型地址",
+        "strategy": "策略"
       },
       "toggles": {
         "lazy": "懒惰状态",

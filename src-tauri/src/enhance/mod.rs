@@ -516,6 +516,11 @@ fn revert_smart_groups(mut config: Mapping, clash_core: &Option<String>) -> Mapp
         }
     }
 
+    // Remove Smart-specific profile-level fields
+    if let Some(Value::Mapping(profile)) = config.get_mut("profile") {
+        profile.remove("smart-collector-size");
+    }
+
     config
 }
 

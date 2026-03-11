@@ -363,6 +363,7 @@ interface IProxyGroupConfig {
   "lgbm-auto-update"?: boolean;
   "lgbm-update-interval"?: number;
   "lgbm-model-url"?: string;
+  strategy?: string;
 }
 
 interface WsOptions {

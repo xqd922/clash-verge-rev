@@ -175,6 +175,7 @@ export const GroupsEditorViewer = (props: Props) => {
       "lgbm-auto-update": false,
       "lgbm-update-interval": 72,
       "lgbm-model-url": "",
+      strategy: "sticky-sessions",
     },
   });
   const currentType = watch("type");
@@ -1108,6 +1109,31 @@ export const GroupsEditorViewer = (props: Props) => {
                             sx={{ width: 250 }}
                             placeholder="https://..."
                             {...field}
+                          />
+                        </Item>
+                      )}
+                    />
+                    <Controller
+                      name="strategy"
+                      control={control}
+                      render={({ field }) => (
+                        <Item>
+                          <ListItemText
+                            primary={t(
+                              "profiles.modals.groupsEditor.fields.strategy",
+                            )}
+                          />
+                          <Autocomplete
+                            size="small"
+                            sx={{ width: 200 }}
+                            options={[
+                              "sticky-sessions",
+                              "round-robin",
+                              "least-ping",
+                            ]}
+                            value={field.value || "sticky-sessions"}
+                            onChange={(_, v) => field.onChange(v)}
+                            renderInput={(params) => <TextField {...params} />}
                           />
                         </Item>
                       )}

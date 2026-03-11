@@ -126,10 +126,17 @@ export const useProxySelection = (options: ProxySelectionOptions = {}) => {
       groupName: string,
       previousProxy?: string,
       skipConfigSave: boolean = false,
+      groupType?: string,
     ) =>
       (event: { target: { value: string } }) => {
         const newProxy = event.target.value;
-        changeProxy(groupName, newProxy, previousProxy, skipConfigSave);
+        changeProxy(
+          groupName,
+          newProxy,
+          previousProxy,
+          skipConfigSave,
+          groupType,
+        );
       },
     [changeProxy],
   );

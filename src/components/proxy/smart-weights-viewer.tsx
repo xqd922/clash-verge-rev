@@ -15,8 +15,9 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import useSWR from "swr";
 import { getSmartWeights } from "tauri-plugin-mihomo-api";
 
 interface Props {
@@ -68,55 +69,34 @@ const barColor = (rank: string) => {
   }
 };
 
+const parseWeights = (data: any): WeightEntry[] => {
+  const entries: WeightEntry[] = [];
+  if (data && typeof data === "object") {
+    const list = Array.isArray(data.weights) ? data.weights : [];
+    for (const item of list) {
+      if (item && typeof item === "object" && item.Name) {
+        entries.push({
+          name: item.Name,
+          weight: Number(item.Weight ?? 0),
+          rank: String(item.Rank ?? ""),
+        });
+      }
+    }
+  }
+  entries.sort((a, b) => b.weight - a.weight);
+  return entries;
+};
+
 export const SmartWeightsViewer = ({ groupName, open, onClose }: Props) => {
   const { t } = useTranslation();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [weights, setWeights] = useState<WeightEntry[]>([]);
 
-  useEffect(() => {
-    if (!open || !groupName) return;
+  const { data, error, isLoading } = useSWR(
+    open && groupName ? `smartWeights:${groupName}` : null,
+    () => getSmartWeights(groupName),
+    { refreshInterval: 5000 },
+  );
 
-    let cancelled = false;
-    const fetchWeights = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await getSmartWeights(groupName);
-        if (cancelled) return;
-
-        // API returns { weights: [{ Name, Weight, Rank }, ...] }
-        const entries: WeightEntry[] = [];
-        if (data && typeof data === "object") {
-          const list = Array.isArray(data.weights) ? data.weights : [];
-          for (const item of list) {
-            if (item && typeof item === "object" && item.Name) {
-              entries.push({
-                name: item.Name,
-                weight: Number(item.Weight ?? 0),
-                rank: String(item.Rank ?? ""),
-              });
-            }
-          }
-        }
-        entries.sort((a, b) => b.weight - a.weight);
-        setWeights(entries);
-      } catch (err: any) {
-        if (!cancelled) {
-          setError(String(err));
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchWeights();
-    return () => {
-      cancelled = true;
-    };
-  }, [open, groupName]);
+  const weights = useMemo(() => parseWeights(data), [data]);
 
   const maxWeight =
     weights.length > 0 ? Math.max(...weights.map((w) => w.weight), 1) : 1;
@@ -138,17 +118,17 @@ export const SmartWeightsViewer = ({ groupName, open, onClose }: Props) => {
         </IconButton>
       </DialogTitle>
       <DialogContent>
-        {loading && (
+        {isLoading && (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
             <CircularProgress />
           </Box>
         )}
         {error && (
           <Typography color="error" sx={{ py: 2 }}>
-            {error}
+            {String(error)}
           </Typography>
         )}
-        {!loading && !error && weights.length === 0 && (
+        {!isLoading && !error && weights.length === 0 && (
           <Typography
             color="text.secondary"
             sx={{ py: 2, textAlign: "center" }}
@@ -156,7 +136,7 @@ export const SmartWeightsViewer = ({ groupName, open, onClose }: Props) => {
             {t("proxies.page.smart.noData")}
           </Typography>
         )}
-        {!loading && !error && weights.length > 0 && (
+        {!isLoading && !error && weights.length > 0 && (
           <TableContainer sx={{ maxHeight: 400 }}>
             <Table size="small" stickyHeader>
               <TableHead>
