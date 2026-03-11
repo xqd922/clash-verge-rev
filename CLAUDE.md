@@ -199,3 +199,42 @@ Enhancement types: Merge (YAML overlay), Script (JS via Boa engine), Rules/Proxi
 ### Package Manager
 
 - pnpm 10.28.0 (enforced via corepack)
+
+## Personal Branch Release
+
+The `personal` branch has its own release workflow separate from the main `release.yml`.
+
+### Workflow: `.github/workflows/personal-release.yml`
+
+- **Trigger**: `workflow_dispatch` (manual only, via GitHub UI or `gh workflow run`)
+- **Branch**: Always checks out `personal`
+- **Platforms**: Windows x86_64 only
+- **Outputs**: NSIS installer, portable zip, update.json (uploaded to `updater` tag)
+
+### How to Release from Personal Branch
+
+```bash
+# 1. Ensure all changes are committed and pushed to personal branch
+git push origin personal
+
+# 2. Trigger the workflow manually (do NOT push tags — release.yml will pick them up and fail)
+gh workflow run personal-release.yml \
+  -f version="7.0.9" \
+  -f tag="v7.0.9"
+
+# 3. Monitor the build
+gh run list --workflow=personal-release.yml --limit 3
+gh run watch  # watch the latest run
+```
+
+### Important: Do NOT Push Tags
+
+The main `release.yml` triggers on `v*.*.*` tags and requires tags to be on `main` branch. Pushing a tag from `personal` will trigger `release.yml` which will fail. Always use `workflow_dispatch` for personal releases.
+
+If a tag was accidentally pushed:
+```bash
+# Delete remote tag
+git push origin --delete v7.0.9
+# Delete local tag
+git tag -d v7.0.9
+```

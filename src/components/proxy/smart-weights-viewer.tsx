@@ -1,5 +1,6 @@
 import { CloseRounded } from "@mui/icons-material";
 import {
+  alpha,
   Box,
   Chip,
   CircularProgress,
@@ -7,12 +8,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
+  LinearProgress,
   Typography,
 } from "@mui/material";
 import { useMemo } from "react";
@@ -32,16 +28,14 @@ interface WeightEntry {
   rank: string;
 }
 
-const rankColor = (rank: string) => {
+const rankConfig = (rank: string) => {
   switch (rank) {
     case "MostUsed":
-      return "success";
+      return { color: "success" as const, bgKey: "success.main" };
     case "OccasionalUsed":
-      return "warning";
-    case "RarelyUsed":
-      return "default";
+      return { color: "warning" as const, bgKey: "warning.main" };
     default:
-      return "default";
+      return { color: "default" as const, bgKey: "text.disabled" };
   }
 };
 
@@ -55,17 +49,6 @@ const rankLabel = (rank: string, t: (key: string) => string) => {
       return t("proxies.page.smart.rankRarely");
     default:
       return rank;
-  }
-};
-
-const barColor = (rank: string) => {
-  switch (rank) {
-    case "MostUsed":
-      return "success.main";
-    case "OccasionalUsed":
-      return "warning.main";
-    default:
-      return "text.disabled";
   }
 };
 
@@ -98,8 +81,24 @@ export const SmartWeightsViewer = ({ groupName, open, onClose }: Props) => {
 
   const weights = useMemo(() => parseWeights(data), [data]);
 
-  const maxWeight =
-    weights.length > 0 ? Math.max(...weights.map((w) => w.weight), 1) : 1;
+  const totalWeight = useMemo(
+    () => weights.reduce((sum, w) => sum + w.weight, 0) || 1,
+    [weights],
+  );
+
+  const maxWeight = useMemo(
+    () =>
+      weights.length > 0 ? Math.max(...weights.map((w) => w.weight), 1) : 1,
+    [weights],
+  );
+
+  const rankStats = useMemo(() => {
+    const stats = { MostUsed: 0, OccasionalUsed: 0, RarelyUsed: 0 };
+    for (const w of weights) {
+      if (w.rank in stats) stats[w.rank as keyof typeof stats]++;
+    }
+    return stats;
+  }, [weights]);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -108,16 +107,17 @@ export const SmartWeightsViewer = ({ groupName, open, onClose }: Props) => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          pb: 1,
         }}
       >
-        <Typography variant="h6">
+        <Typography variant="h6" fontSize={16}>
           {t("proxies.page.smart.weightsTitle")} - {groupName}
         </Typography>
         <IconButton size="small" onClick={onClose}>
           <CloseRounded />
         </IconButton>
       </DialogTitle>
-      <DialogContent>
+      <DialogContent sx={{ px: 2, pb: 2 }}>
         {isLoading && (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
             <CircularProgress />
@@ -137,86 +137,149 @@ export const SmartWeightsViewer = ({ groupName, open, onClose }: Props) => {
           </Typography>
         )}
         {!isLoading && !error && weights.length > 0 && (
-          <TableContainer sx={{ maxHeight: 400 }}>
-            <Table size="small" stickyHeader>
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ width: 30 }}>#</TableCell>
-                  <TableCell>{t("proxies.page.smart.nodeName")}</TableCell>
-                  <TableCell align="center">
-                    {t("proxies.page.smart.rank")}
-                  </TableCell>
-                  <TableCell align="right" sx={{ width: 60 }}>
-                    {t("proxies.page.smart.weight")}
-                  </TableCell>
-                  <TableCell sx={{ width: "30%" }}></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {weights.map((entry, index) => (
-                  <TableRow
+          <>
+            {/* Summary chips */}
+            <Box sx={{ display: "flex", gap: 1, mb: 1.5, flexWrap: "wrap" }}>
+              <Chip
+                label={`${rankStats.MostUsed} ${t("proxies.page.smart.rankMostUsed")}`}
+                color="success"
+                size="small"
+                variant="outlined"
+              />
+              <Chip
+                label={`${rankStats.OccasionalUsed} ${t("proxies.page.smart.rankOccasional")}`}
+                color="warning"
+                size="small"
+                variant="outlined"
+              />
+              <Chip
+                label={`${rankStats.RarelyUsed} ${t("proxies.page.smart.rankRarely")}`}
+                size="small"
+                variant="outlined"
+              />
+            </Box>
+
+            {/* Node cards */}
+            <Box
+              sx={{
+                maxHeight: 380,
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: 0.75,
+              }}
+            >
+              {weights.map((entry, index) => {
+                const config = rankConfig(entry.rank);
+                const percent = Math.round((entry.weight / totalWeight) * 100);
+                const isTop = index === 0;
+
+                return (
+                  <Box
                     key={entry.name}
-                    sx={
-                      index === 0
-                        ? {
-                            bgcolor: "action.selected",
-                          }
-                        : undefined
-                    }
+                    sx={[
+                      {
+                        px: 1.5,
+                        py: 1,
+                        borderRadius: 1.5,
+                        border: "1px solid",
+                        borderColor: "divider",
+                        transition: "all 0.2s",
+                      },
+                      isTop && {
+                        borderColor: config.bgKey,
+                        bgcolor: (theme) =>
+                          alpha(
+                            theme.palette.success.main,
+                            theme.palette.mode === "light" ? 0.06 : 0.12,
+                          ),
+                      },
+                    ]}
                   >
-                    <TableCell>
+                    {/* Top row: rank + name + percent */}
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 0.5,
+                      }}
+                    >
                       <Typography
                         variant="body2"
-                        fontWeight={index === 0 ? "bold" : "normal"}
-                        color={index === 0 ? "primary" : "text.secondary"}
+                        sx={{
+                          width: 20,
+                          textAlign: "center",
+                          fontWeight: isTop ? "bold" : "normal",
+                          color: isTop ? "primary.main" : "text.secondary",
+                          fontSize: 12,
+                        }}
                       >
                         {index + 1}
                       </Typography>
-                    </TableCell>
-                    <TableCell>
                       <Typography
                         variant="body2"
-                        fontWeight={index === 0 ? "bold" : "normal"}
+                        sx={{
+                          flex: 1,
+                          fontWeight: isTop ? 600 : 400,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          fontSize: 13,
+                        }}
                       >
                         {entry.name}
                       </Typography>
-                    </TableCell>
-                    <TableCell align="center">
-                      {entry.rank && (
-                        <Chip
-                          label={rankLabel(entry.rank, t)}
-                          color={rankColor(entry.rank) as any}
-                          size="small"
-                          variant="outlined"
-                          sx={{ fontSize: "0.7rem", height: 20 }}
-                        />
-                      )}
-                    </TableCell>
-                    <TableCell align="right">
+                      <Chip
+                        label={rankLabel(entry.rank, t)}
+                        color={config.color}
+                        size="small"
+                        variant="outlined"
+                        sx={{ fontSize: "0.65rem", height: 18 }}
+                      />
                       <Typography
                         variant="body2"
-                        fontWeight={index === 0 ? "bold" : "normal"}
-                      >
-                        {entry.weight}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box
                         sx={{
-                          height: 8,
-                          borderRadius: 4,
-                          bgcolor: barColor(entry.rank),
-                          width: `${(entry.weight / maxWeight) * 100}%`,
-                          minWidth: 4,
-                          opacity: 0.8,
+                          minWidth: 36,
+                          textAlign: "right",
+                          fontWeight: isTop ? 600 : 400,
+                          color: isTop ? "primary.main" : "text.secondary",
+                          fontSize: 12,
+                        }}
+                      >
+                        {percent}%
+                      </Typography>
+                    </Box>
+                    {/* Progress bar */}
+                    <Box sx={{ pl: 3.5, pr: 0.5 }}>
+                      <LinearProgress
+                        variant="determinate"
+                        value={(entry.weight / maxWeight) * 100}
+                        color={
+                          config.color === "default" ? "inherit" : config.color
+                        }
+                        sx={{
+                          height: 4,
+                          borderRadius: 2,
+                          bgcolor: (theme) =>
+                            alpha(
+                              theme.palette.text.disabled,
+                              theme.palette.mode === "light" ? 0.08 : 0.15,
+                            ),
+                          "& .MuiLinearProgress-bar": {
+                            borderRadius: 2,
+                            ...(config.color === "default" && {
+                              bgcolor: "text.disabled",
+                            }),
+                          },
                         }}
                       />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
+          </>
         )}
       </DialogContent>
     </Dialog>
