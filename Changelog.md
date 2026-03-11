@@ -1,3 +1,22 @@
+## v(7.0.9)
+
+### ✨ 新功能
+
+- Smart 代理组编辑器新增策略（Strategy）选择器，支持 sticky-sessions / round-robin / least-ping
+- Smart 自动转换默认启用 prefer-asn（ASN 偏好）和 sample-rate（采样率）
+- Smart 自动转换新增 smart-collector-size（数据收集上限）和 sticky-sessions 默认策略
+
+### 🐞 修复
+
+- 修复通过下拉框切换 Smart 组节点后未自动 unfix 的问题（handleSelectChange 缺少 groupType 参数）
+- 修复 Smart 权重查看器 API 返回数据解析异常的问题
+- 修复更新版本号为空时回退下载 URL 失败的问题
+
+### ⚡ 优化
+
+- Smart 权重查看器改用 SWR 数据获取，支持每 5 秒自动刷新
+- 切换回标准核心时清理 profile 级 smart-collector-size 残留配置
+
 ## v(7.0.8)
 
 ### 🐞 修复
