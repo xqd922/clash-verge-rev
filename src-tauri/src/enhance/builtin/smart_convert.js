@@ -23,6 +23,14 @@ function main(config, _name) {
         if (config["proxy-groups"][i]["lgbm-auto-update"] === undefined) {
           config["proxy-groups"][i]["lgbm-auto-update"] = true;
         }
+        // Enable ASN affinity (if not explicitly set)
+        if (config["proxy-groups"][i]["prefer-asn"] === undefined) {
+          config["proxy-groups"][i]["prefer-asn"] = true;
+        }
+        // Set full data sampling rate (if not explicitly set)
+        if (config["proxy-groups"][i]["sample-rate"] === undefined) {
+          config["proxy-groups"][i]["sample-rate"] = 1;
+        }
       }
     });
   }
