@@ -73,12 +73,14 @@ export const useProfiles = () => {
   };
 
   // 根据selected的节点选择
-  const activateSelected = async (profileOverride?: IProfilesConfig) => {
+  const activateSelected = async () => {
     try {
       debugLog("[ActivateSelected] 开始处理代理选择");
 
-      const proxiesData = await calcuProxies();
-      const profileData = profileOverride ?? profiles;
+      const [proxiesData, profileData] = await Promise.all([
+        calcuProxies(),
+        getProfiles(), // 始终从后端获取最新数据，避免 SWR 缓存过时
+      ]);
 
       if (!profileData || !proxiesData || !profileData.items) {
         debugLog("[ActivateSelected] 代理或配置数据不可用，跳过处理");

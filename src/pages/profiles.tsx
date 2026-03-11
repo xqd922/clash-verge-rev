@@ -331,7 +331,7 @@ const ProfilePage = () => {
           sequence === requestSequenceRef.current &&
           !abortController.signal.aborted
         ) {
-          await activateSelected(profiles);
+          await activateSelected();
           debugLog(`[Profile] 后台处理完成，序列号: ${sequence}`);
         } else {
           debugProfileSwitch(
@@ -344,7 +344,7 @@ const ProfilePage = () => {
         console.warn("Failed to activate selected proxies:", err);
       }
     },
-    [activateSelected, profiles],
+    [activateSelected],
   );
 
   const activateProfile = useCallback(

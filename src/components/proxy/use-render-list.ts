@@ -51,6 +51,7 @@ type ProxyGroup = {
   icon?: string;
   testUrl?: string;
   provider?: string;
+  fixed?: string;
 };
 
 export interface IRenderItem {

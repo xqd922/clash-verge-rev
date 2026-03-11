@@ -12,7 +12,10 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
-import { healthcheckProxyProvider } from "tauri-plugin-mihomo-api";
+import {
+  healthcheckProxyProvider,
+  unfixedProxy,
+} from "tauri-plugin-mihomo-api";
 
 import { BaseEmpty } from "@/components/base";
 import { useProxySelection } from "@/hooks/use-proxy-selection";
@@ -330,7 +333,23 @@ export const ProxyGroups = (props: Props) => {
       }
 
       const names = proxies.filter((p) => !p!.provider).map((p) => p!.name);
+
+      // 将当前选中的节点排到最前面，优先测速
+      const group = renderList.find(
+        (e) => e.type === 0 && e.group?.name === groupName,
+      )?.group;
+      if (group?.now) {
+        const idx = names.indexOf(group.now);
+        if (idx > 0) {
+          names.unshift(names.splice(idx, 1)[0]);
+        }
+      }
       debugLog(`[ProxyGroups] 过滤后需要测试的代理数量: ${names.length}`);
+
+      // 批量测速时清除固定状态（与旧 delayGroup API 行为一致）
+      if (group?.fixed) {
+        await unfixedProxy(groupName).catch(() => {});
+      }
 
       debugLog(
         `[ProxyGroups] 测试URL: ${delayManager.getUrl(groupName)}, 超时: ${timeout}ms`,
