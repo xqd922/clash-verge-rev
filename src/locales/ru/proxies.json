@@ -46,7 +46,11 @@
       "weightsTitle": "Smart Group Weights",
       "noData": "No weight data available",
       "nodeName": "Node",
-      "weight": "Weight"
+      "weight": "Weight",
+      "rank": "Rank",
+      "rankMostUsed": "Most Used",
+      "rankOccasional": "Occasional",
+      "rankRarely": "Rarely"
     },
     "chain": {
       "header": "Конфигурация цепочки прокси",

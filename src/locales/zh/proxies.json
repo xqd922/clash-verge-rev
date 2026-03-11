@@ -46,7 +46,11 @@
       "weightsTitle": "Smart 组权重",
       "noData": "暂无权重数据",
       "nodeName": "节点",
-      "weight": "权重"
+      "weight": "权重",
+      "rank": "评级",
+      "rankMostUsed": "常用",
+      "rankOccasional": "偶尔",
+      "rankRarely": "少用"
     },
     "chain": {
       "header": "代理链配置",

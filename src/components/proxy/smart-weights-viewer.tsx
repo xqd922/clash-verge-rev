@@ -1,6 +1,7 @@
 import { CloseRounded } from "@mui/icons-material";
 import {
   Box,
+  Chip,
   CircularProgress,
   Dialog,
   DialogContent,
@@ -27,7 +28,45 @@ interface Props {
 interface WeightEntry {
   name: string;
   weight: number;
+  rank: string;
 }
+
+const rankColor = (rank: string) => {
+  switch (rank) {
+    case "MostUsed":
+      return "success";
+    case "OccasionalUsed":
+      return "warning";
+    case "RarelyUsed":
+      return "default";
+    default:
+      return "default";
+  }
+};
+
+const rankLabel = (rank: string, t: (key: string) => string) => {
+  switch (rank) {
+    case "MostUsed":
+      return t("proxies.page.smart.rankMostUsed");
+    case "OccasionalUsed":
+      return t("proxies.page.smart.rankOccasional");
+    case "RarelyUsed":
+      return t("proxies.page.smart.rankRarely");
+    default:
+      return rank;
+  }
+};
+
+const barColor = (rank: string) => {
+  switch (rank) {
+    case "MostUsed":
+      return "success.main";
+    case "OccasionalUsed":
+      return "warning.main";
+    default:
+      return "text.disabled";
+  }
+};
 
 export const SmartWeightsViewer = ({ groupName, open, onClose }: Props) => {
   const { t } = useTranslation();
@@ -46,16 +85,17 @@ export const SmartWeightsViewer = ({ groupName, open, onClose }: Props) => {
         const data = await getSmartWeights(groupName);
         if (cancelled) return;
 
-        // Parse the response - expected format varies, handle common cases
+        // API returns { weights: [{ Name, Weight, Rank }, ...] }
         const entries: WeightEntry[] = [];
         if (data && typeof data === "object") {
-          for (const [key, value] of Object.entries(data)) {
-            if (typeof value === "number") {
-              entries.push({ name: key, weight: value });
-            } else if (typeof value === "object" && value !== null) {
-              // Nested weight object (e.g., { weight: number, ... })
-              const w = (value as any).weight ?? (value as any).score ?? 0;
-              entries.push({ name: key, weight: Number(w) });
+          const list = Array.isArray(data.weights) ? data.weights : [];
+          for (const item of list) {
+            if (item && typeof item === "object" && item.Name) {
+              entries.push({
+                name: item.Name,
+                weight: Number(item.Weight ?? 0),
+                rank: String(item.Rank ?? ""),
+              });
             }
           }
         }
@@ -121,29 +161,74 @@ export const SmartWeightsViewer = ({ groupName, open, onClose }: Props) => {
             <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
+                  <TableCell sx={{ width: 30 }}>#</TableCell>
                   <TableCell>{t("proxies.page.smart.nodeName")}</TableCell>
-                  <TableCell align="right">
+                  <TableCell align="center">
+                    {t("proxies.page.smart.rank")}
+                  </TableCell>
+                  <TableCell align="right" sx={{ width: 60 }}>
                     {t("proxies.page.smart.weight")}
                   </TableCell>
-                  <TableCell sx={{ width: "40%" }}></TableCell>
+                  <TableCell sx={{ width: "30%" }}></TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {weights.map((entry) => (
-                  <TableRow key={entry.name}>
-                    <TableCell>{entry.name}</TableCell>
+                {weights.map((entry, index) => (
+                  <TableRow
+                    key={entry.name}
+                    sx={
+                      index === 0
+                        ? {
+                            bgcolor: "action.selected",
+                          }
+                        : undefined
+                    }
+                  >
+                    <TableCell>
+                      <Typography
+                        variant="body2"
+                        fontWeight={index === 0 ? "bold" : "normal"}
+                        color={index === 0 ? "primary" : "text.secondary"}
+                      >
+                        {index + 1}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography
+                        variant="body2"
+                        fontWeight={index === 0 ? "bold" : "normal"}
+                      >
+                        {entry.name}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      {entry.rank && (
+                        <Chip
+                          label={rankLabel(entry.rank, t)}
+                          color={rankColor(entry.rank) as any}
+                          size="small"
+                          variant="outlined"
+                          sx={{ fontSize: "0.7rem", height: 20 }}
+                        />
+                      )}
+                    </TableCell>
                     <TableCell align="right">
-                      {entry.weight.toFixed(2)}
+                      <Typography
+                        variant="body2"
+                        fontWeight={index === 0 ? "bold" : "normal"}
+                      >
+                        {entry.weight}
+                      </Typography>
                     </TableCell>
                     <TableCell>
                       <Box
                         sx={{
                           height: 8,
                           borderRadius: 4,
-                          bgcolor: "primary.main",
+                          bgcolor: barColor(entry.rank),
                           width: `${(entry.weight / maxWeight) * 100}%`,
                           minWidth: 4,
-                          opacity: 0.7,
+                          opacity: 0.8,
                         }}
                       />
                     </TableCell>

@@ -475,6 +475,10 @@ export interface TranslationResources {
         smart: {
           noData: string;
           nodeName: string;
+          rank: string;
+          rankMostUsed: string;
+          rankOccasional: string;
+          rankRarely: string;
           weight: string;
           weightsTitle: string;
         };
@@ -1342,10 +1346,10 @@ export interface TranslationResources {
         usedTotal: string;
       };
       placeholders: {
-        resetInput: string;
         filter: string;
         matchCase: string;
         matchWholeWord: string;
+        resetInput: string;
         useRegex: string;
       };
       statuses: {

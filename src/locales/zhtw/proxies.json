@@ -46,7 +46,11 @@
       "weightsTitle": "Smart Group Weights",
       "noData": "No weight data available",
       "nodeName": "Node",
-      "weight": "Weight"
+      "weight": "Weight",
+      "rank": "Rank",
+      "rankMostUsed": "Most Used",
+      "rankOccasional": "Occasional",
+      "rankRarely": "Rarely"
     },
     "chain": {
       "header": "鏈式代理設定",
