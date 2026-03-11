@@ -300,6 +300,7 @@ export interface TranslationResources {
             proxies: string;
             routingMark: string;
             sampleRate: string;
+            strategy: string;
             type: string;
             useLightGBM: string;
           };

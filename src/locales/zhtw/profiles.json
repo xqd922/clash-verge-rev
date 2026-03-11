@@ -160,7 +160,8 @@
         "preferAsn": "Prefer ASN",
         "lgbmAutoUpdate": "Auto-Update Model",
         "lgbmUpdateInterval": "Update Interval (hours)",
-        "lgbmModelUrl": "Model URL"
+        "lgbmModelUrl": "Model URL",
+        "strategy": "策略"
       },
       "toggles": {
         "lazy": "延遲載入",

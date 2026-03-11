@@ -209,6 +209,7 @@ export const translationKeys = [
   "profiles.modals.groupsEditor.fields.lgbmAutoUpdate",
   "profiles.modals.groupsEditor.fields.lgbmUpdateInterval",
   "profiles.modals.groupsEditor.fields.lgbmModelUrl",
+  "profiles.modals.groupsEditor.fields.strategy",
   "profiles.modals.groupsEditor.toggles.lazy",
   "profiles.modals.groupsEditor.toggles.disableUdp",
   "profiles.modals.groupsEditor.toggles.hidden",
