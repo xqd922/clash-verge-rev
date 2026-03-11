@@ -504,6 +504,7 @@ fn revert_smart_groups(mut config: Mapping, clash_core: &Option<String>) -> Mapp
                         "sample-rate",
                         "policy-priority",
                         "prefer-asn",
+                        "strategy",
                         "lgbm-auto-update",
                         "lgbm-update-interval",
                         "lgbm-model-url",

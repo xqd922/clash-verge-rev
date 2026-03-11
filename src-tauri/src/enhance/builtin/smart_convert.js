@@ -2,6 +2,14 @@
 // Only runs when Smart core is active and user has enabled the feature
 // eslint-disable-next-line unused-imports/no-unused-vars
 function main(config, _name) {
+  // Set Smart data collector size limit (MB)
+  if (!config.profile) {
+    config.profile = {};
+  }
+  if (config.profile["smart-collector-size"] === undefined) {
+    config.profile["smart-collector-size"] = 100;
+  }
+
   if (Array.isArray(config["proxy-groups"])) {
     config["proxy-groups"].forEach(function (group, i) {
       var type = (group.type || "").toLowerCase();
@@ -30,6 +38,10 @@ function main(config, _name) {
         // Set full data sampling rate (if not explicitly set)
         if (config["proxy-groups"][i]["sample-rate"] === undefined) {
           config["proxy-groups"][i]["sample-rate"] = 1;
+        }
+        // Use sticky-sessions strategy (if not explicitly set)
+        if (config["proxy-groups"][i].strategy === undefined) {
+          config["proxy-groups"][i].strategy = "sticky-sessions";
         }
       }
     });
