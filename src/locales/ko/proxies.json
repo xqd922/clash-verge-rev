@@ -36,21 +36,10 @@
       "delayCheckUrl": "지연 확인 URL",
       "showBasic": "프록시 기본",
       "showDetail": "프록시 상세",
-      "filter": "필터",
-      "viewWeights": "View Smart Weights"
+      "filter": "필터"
     },
     "placeholders": {
       "delayCheckUrl": "지연 확인 URL"
-    },
-    "smart": {
-      "weightsTitle": "Smart Group Weights",
-      "noData": "No weight data available",
-      "nodeName": "Node",
-      "weight": "Weight",
-      "rank": "Rank",
-      "rankMostUsed": "Most Used",
-      "rankOccasional": "Occasional",
-      "rankRarely": "Rarely"
     },
     "chain": {
       "header": "체인 프록시 구성",

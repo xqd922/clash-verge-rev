@@ -36,21 +36,10 @@
       "delayCheckUrl": "URL de prueba de latencia",
       "showBasic": "Ocultar detalles del nodo",
       "showDetail": "Mostrar detalles del nodo",
-      "filter": "Filtrar nodos",
-      "viewWeights": "View Smart Weights"
+      "filter": "Filtrar nodos"
     },
     "placeholders": {
       "delayCheckUrl": "URL de prueba de latencia"
-    },
-    "smart": {
-      "weightsTitle": "Smart Group Weights",
-      "noData": "No weight data available",
-      "nodeName": "Node",
-      "weight": "Weight",
-      "rank": "Rank",
-      "rankMostUsed": "Most Used",
-      "rankOccasional": "Occasional",
-      "rankRarely": "Rarely"
     },
     "chain": {
       "header": "Chain Proxy Config",

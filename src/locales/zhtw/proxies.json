@@ -36,21 +36,10 @@
       "delayCheckUrl": "延遲測試網址",
       "showBasic": "隱藏節點細節",
       "showDetail": "展示節點細節",
-      "filter": "篩選節點",
-      "viewWeights": "View Smart Weights"
+      "filter": "篩選節點"
     },
     "placeholders": {
       "delayCheckUrl": "延遲測試網址"
-    },
-    "smart": {
-      "weightsTitle": "Smart Group Weights",
-      "noData": "No weight data available",
-      "nodeName": "Node",
-      "weight": "Weight",
-      "rank": "Rank",
-      "rankMostUsed": "Most Used",
-      "rankOccasional": "Occasional",
-      "rankRarely": "Rarely"
     },
     "chain": {
       "header": "鏈式代理設定",

@@ -36,21 +36,10 @@
       "delayCheckUrl": "رابط فحص التأخير",
       "showBasic": "إعدادات الوكيل الأساسية",
       "showDetail": "تفاصيل الوكيل",
-      "filter": "تصفية",
-      "viewWeights": "View Smart Weights"
+      "filter": "تصفية"
     },
     "placeholders": {
       "delayCheckUrl": "رابط فحص التأخير"
-    },
-    "smart": {
-      "weightsTitle": "Smart Group Weights",
-      "noData": "No weight data available",
-      "nodeName": "Node",
-      "weight": "Weight",
-      "rank": "Rank",
-      "rankMostUsed": "Most Used",
-      "rankOccasional": "Occasional",
-      "rankRarely": "Rarely"
     },
     "chain": {
       "header": "Chain Proxy Config",

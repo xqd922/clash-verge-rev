@@ -36,21 +36,10 @@
       "delayCheckUrl": "URL Periksa Keterlambatan",
       "showBasic": "Dasar Proksi",
       "showDetail": "Detail Proksi",
-      "filter": "Filter",
-      "viewWeights": "View Smart Weights"
+      "filter": "Filter"
     },
     "placeholders": {
       "delayCheckUrl": "URL Periksa Keterlambatan"
-    },
-    "smart": {
-      "weightsTitle": "Smart Group Weights",
-      "noData": "No weight data available",
-      "nodeName": "Node",
-      "weight": "Weight",
-      "rank": "Rank",
-      "rankMostUsed": "Most Used",
-      "rankOccasional": "Occasional",
-      "rankRarely": "Rarely"
     },
     "chain": {
       "header": "Chain Proxy Config",

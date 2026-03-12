@@ -36,21 +36,10 @@
       "delayCheckUrl": "Gecikme kontrol URL'si",
       "showBasic": "Temel Vekil",
       "showDetail": "Vekil detayı",
-      "filter": "Filtre",
-      "viewWeights": "View Smart Weights"
+      "filter": "Filtre"
     },
     "placeholders": {
       "delayCheckUrl": "Gecikme kontrol URL'si"
-    },
-    "smart": {
-      "weightsTitle": "Smart Group Weights",
-      "noData": "No weight data available",
-      "nodeName": "Node",
-      "weight": "Weight",
-      "rank": "Rank",
-      "rankMostUsed": "Most Used",
-      "rankOccasional": "Occasional",
-      "rankRarely": "Rarely"
     },
     "chain": {
       "header": "Chain Proxy Config",

@@ -36,21 +36,10 @@
       "delayCheckUrl": "آدرس بررسی تأخیر",
       "showBasic": "پراکسی پایه",
       "showDetail": "جزئیات پراکسی",
-      "filter": "فیلتر",
-      "viewWeights": "View Smart Weights"
+      "filter": "فیلتر"
     },
     "placeholders": {
       "delayCheckUrl": "آدرس بررسی تأخیر"
-    },
-    "smart": {
-      "weightsTitle": "Smart Group Weights",
-      "noData": "No weight data available",
-      "nodeName": "Node",
-      "weight": "Weight",
-      "rank": "Rank",
-      "rankMostUsed": "Most Used",
-      "rankOccasional": "Occasional",
-      "rankRarely": "Rarely"
     },
     "chain": {
       "header": "Chain Proxy Config",

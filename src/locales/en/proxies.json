@@ -36,21 +36,10 @@
       "delayCheckUrl": "Delay check URL",
       "showBasic": "Proxy basic",
       "showDetail": "Proxy detail",
-      "filter": "Filter",
-      "viewWeights": "View Smart Weights"
+      "filter": "Filter"
     },
     "placeholders": {
       "delayCheckUrl": "Delay check URL"
-    },
-    "smart": {
-      "weightsTitle": "Smart Group Weights",
-      "noData": "No weight data available",
-      "nodeName": "Node",
-      "weight": "Weight",
-      "rank": "Rank",
-      "rankMostUsed": "Most Used",
-      "rankOccasional": "Occasional",
-      "rankRarely": "Rarely"
     },
     "chain": {
       "header": "Chain Proxy Config",

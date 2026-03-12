@@ -36,21 +36,10 @@
       "delayCheckUrl": "Задержканы тикшерү URL-ы",
       "showBasic": "Прокси турында кыскача мәгълүмат",
       "showDetail": "Прокси турында тулы мәгълүмат",
-      "filter": "Фильтр",
-      "viewWeights": "View Smart Weights"
+      "filter": "Фильтр"
     },
     "placeholders": {
       "delayCheckUrl": "Задержканы тикшерү URL-ы"
-    },
-    "smart": {
-      "weightsTitle": "Smart Group Weights",
-      "noData": "No weight data available",
-      "nodeName": "Node",
-      "weight": "Weight",
-      "rank": "Rank",
-      "rankMostUsed": "Most Used",
-      "rankOccasional": "Occasional",
-      "rankRarely": "Rarely"
     },
     "chain": {
       "header": "Chain Proxy Config",

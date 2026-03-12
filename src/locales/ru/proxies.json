@@ -36,21 +36,10 @@
       "delayCheckUrl": "URL проверки задержки",
       "showBasic": "Отображать меньше сведений о прокси",
       "showDetail": "Отображать больше сведений о прокси",
-      "filter": "Фильтр",
-      "viewWeights": "View Smart Weights"
+      "filter": "Фильтр"
     },
     "placeholders": {
       "delayCheckUrl": "URL проверки задержки"
-    },
-    "smart": {
-      "weightsTitle": "Smart Group Weights",
-      "noData": "No weight data available",
-      "nodeName": "Node",
-      "weight": "Weight",
-      "rank": "Rank",
-      "rankMostUsed": "Most Used",
-      "rankOccasional": "Occasional",
-      "rankRarely": "Rarely"
     },
     "chain": {
       "header": "Конфигурация цепочки прокси",

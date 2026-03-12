@@ -473,16 +473,6 @@ export interface TranslationResources {
           select: string;
           title: string;
         };
-        smart: {
-          noData: string;
-          nodeName: string;
-          rank: string;
-          rankMostUsed: string;
-          rankOccasional: string;
-          rankRarely: string;
-          weight: string;
-          weightsTitle: string;
-        };
         title: {
           chainMode: string;
           default: string;
@@ -497,7 +487,6 @@ export interface TranslationResources {
           sortDefault: string;
           sortDelay: string;
           sortName: string;
-          viewWeights: string;
         };
       };
     };
