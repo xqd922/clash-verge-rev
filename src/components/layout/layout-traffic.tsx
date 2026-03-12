@@ -27,22 +27,28 @@ export const LayoutTraffic = () => {
   const trafficRef = useRef<TrafficRef>(null);
   const pageVisible = useVisibility();
 
+  // WS 回调直接喂图表，绕过 SWR 渲染周期，实现即时更新
+  const onTrafficDataRef = useRef<
+    ((data: { up: number; down: number }) => void) | null
+  >(null);
+  useEffect(() => {
+    onTrafficDataRef.current = (data) => {
+      trafficRef.current?.appendData(data);
+    };
+    return () => {
+      onTrafficDataRef.current = null;
+    };
+  }, []);
+
   const {
     response: { data: traffic },
-  } = useTrafficData({ enabled: trafficGraph && pageVisible });
+  } = useTrafficData({
+    enabled: trafficGraph && pageVisible,
+    onDataRef: onTrafficDataRef,
+  });
   const {
     response: { data: memory },
   } = useMemoryData();
-
-  // 监听数据变化，为图表添加数据点
-  useEffect(() => {
-    if (trafficRef.current) {
-      trafficRef.current.appendData({
-        up: traffic?.up || 0,
-        down: traffic?.down || 0,
-      });
-    }
-  }, [traffic]);
 
   // 显示内存使用情况的设置
   const displayMemory = verge?.enable_memory_usage ?? true;

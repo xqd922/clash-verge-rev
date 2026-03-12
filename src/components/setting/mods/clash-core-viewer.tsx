@@ -200,7 +200,7 @@ export function ClashCoreViewer({ ref }: { ref?: Ref<DialogRef> }) {
       }
       contentSx={{
         pb: 0,
-        width: 400,
+        width: 420,
         height: 230,
         overflowY: "auto",
         userSelect: "text",

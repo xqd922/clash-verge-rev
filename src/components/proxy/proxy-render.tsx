@@ -15,8 +15,6 @@ import {
 } from "@mui/material";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import useSWR from "swr";
-import { getSmartWeights } from "tauri-plugin-mihomo-api";
 
 import { useIconCache } from "@/hooks/use-icon-cache";
 import { useVerge } from "@/hooks/use-verge";
@@ -134,9 +132,7 @@ export const ProxyRender = (props: RenderProps) => {
             >
               <Box component="span" sx={{ marginTop: "2px" }}>
                 <StyledTypeBox>{group.type}</StyledTypeBox>
-                {group.type === "Smart" ? (
-                  <SmartSubtitle groupName={group.name} />
-                ) : (
+                {group.type !== "Smart" && (
                   <StyledSubtitle sx={{ color: "text.secondary" }}>
                     {group.now}
                   </StyledSubtitle>
@@ -264,33 +260,3 @@ const StyledTypeBox = styled(Box)(({ theme }) => ({
   lineHeight: 1.5,
   marginRight: "8px",
 }));
-
-const SmartSubtitle = ({ groupName }: { groupName: string }) => {
-  const { data } = useSWR(
-    `smartWeights:${groupName}`,
-    () => getSmartWeights(groupName),
-    { refreshInterval: 10000 },
-  );
-
-  const summary = useMemo(() => {
-    if (!data || typeof data !== "object") return "";
-    const list = Array.isArray(data.weights) ? data.weights : [];
-    const entries: { name: string; weight: number }[] = [];
-    for (const item of list) {
-      if (item?.Name) {
-        entries.push({ name: item.Name, weight: Number(item.Weight ?? 0) });
-      }
-    }
-    if (entries.length === 0) return "";
-    entries.sort((a, b) => b.weight - a.weight);
-    const total = entries.reduce((s, e) => s + e.weight, 0) || 1;
-    return entries
-      .slice(0, 1)
-      .map((e) => `${e.name} ${Math.round((e.weight / total) * 100)}%`)
-      .join(" · ");
-  }, [data]);
-
-  return (
-    <StyledSubtitle sx={{ color: "text.secondary" }}>{summary}</StyledSubtitle>
-  );
-};

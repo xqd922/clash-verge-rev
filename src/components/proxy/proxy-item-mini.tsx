@@ -166,7 +166,7 @@ export const ProxyItemMini = (props: Props) => {
               marginTop: "4px",
             }}
           >
-            {proxy.now && (
+            {proxy.now && proxy.type !== "Smart" && (
               <Typography
                 variant="body2"
                 component="div"
