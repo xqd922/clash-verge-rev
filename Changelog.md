@@ -1,3 +1,11 @@
+## v(7.0.10)
+
+### ⚡ 优化
+
+- Smart 组标题栏内联显示权重最高节点及占比，替代原有弹窗（Surge 风格）
+- 移除 Smart 权重查看弹窗，Smart 组透明化运行
+- 修复 Smart 组标题重复显示 "Smart - Select" 的问题
+
 ## v(7.0.9)
 
 ### ✨ 新功能
@@ -5,16 +13,18 @@
 - Smart 代理组编辑器新增策略（Strategy）选择器，支持 sticky-sessions / round-robin / least-ping
 - Smart 自动转换默认启用 prefer-asn（ASN 偏好）和 sample-rate（采样率）
 - Smart 自动转换新增 smart-collector-size（数据收集上限）和 sticky-sessions 默认策略
+- Smart 组标题栏内联显示权重 Top 1 节点及占比，替代原有弹窗
 
 ### 🐞 修复
 
 - 修复通过下拉框切换 Smart 组节点后未自动 unfix 的问题（handleSelectChange 缺少 groupType 参数）
 - 修复 Smart 权重查看器 API 返回数据解析异常的问题
 - 修复更新版本号为空时回退下载 URL 失败的问题
+- 修复 Smart 组标题显示重复 "Smart - Select" 的问题
 
 ### ⚡ 优化
 
-- Smart 权重查看器改用 SWR 数据获取，支持每 5 秒自动刷新
+- 移除 Smart 权重弹窗，改为 Surge 风格的透明化设计，权重信息内联展示
 - 切换回标准核心时清理 profile 级 smart-collector-size 残留配置
 
 ## v(7.0.8)
