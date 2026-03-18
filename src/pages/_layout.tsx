@@ -26,7 +26,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Outlet, useNavigate } from "react-router";
+import { Outlet, useLocation, useNavigate } from "react-router";
 import { SWRConfig } from "swr";
 
 import iconDark from "@/assets/image/icon_dark.svg?react";
@@ -41,6 +41,7 @@ import { WindowControls } from "@/components/layout/window-controller";
 import { useI18n } from "@/hooks/use-i18n";
 import { useVerge } from "@/hooks/use-verge";
 import { useWindowDecorations } from "@/hooks/use-window";
+import ProxiesPage from "@/pages/proxies";
 import { useThemeMode } from "@/services/states";
 import getSystem from "@/utils/get-system";
 
@@ -120,6 +121,8 @@ const Layout = () => {
   const navCollapsed = verge?.collapse_navbar ?? false;
   const { switchLanguage } = useI18n();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isProxyPage = location.pathname === "/";
   const themeReady = useMemo(() => Boolean(theme), [theme]);
 
   const [menuUnlocked, setMenuUnlocked] = useState(false);
@@ -478,9 +481,17 @@ const Layout = () => {
             <div className="layout-content__right">
               <div className="the-bar"></div>
               <div className="the-content">
-                <BaseErrorBoundary>
-                  <Outlet />
-                </BaseErrorBoundary>
+                {/* 代理页保持挂载，切换时用 CSS 隐藏，避免重新渲染导致的闪烁 */}
+                <div style={{ display: isProxyPage ? "contents" : "none" }}>
+                  <BaseErrorBoundary>
+                    <ProxiesPage />
+                  </BaseErrorBoundary>
+                </div>
+                {!isProxyPage && (
+                  <BaseErrorBoundary>
+                    <Outlet />
+                  </BaseErrorBoundary>
+                )}
               </div>
             </div>
           </div>

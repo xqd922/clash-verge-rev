@@ -502,12 +502,16 @@ export const ProxyGroups = (props: Props) => {
               style={{
                 height:
                   mode === "rule" && proxyGroups.length > 0
-                    ? "calc(100% - 80px)" // 只有标题的高度
+                    ? "calc(100% - 80px)"
                     : "calc(100% - 14px)",
               }}
               totalCount={renderList.length}
-              increaseViewportBy={{ top: 200, bottom: 200 }}
-              overscan={150}
+              initialItemCount={
+                virtuosoStateStore[mode]
+                  ? undefined
+                  : Math.min(renderList.length, 30)
+              }
+              increaseViewportBy={256}
               defaultItemHeight={56}
               scrollerRef={(ref) => {
                 scrollerRef.current = ref as Element;
@@ -627,12 +631,12 @@ export const ProxyGroups = (props: Props) => {
 
       <Virtuoso
         ref={virtuosoRef}
-        style={{
-          height: "calc(100% - 14px)",
-        }}
+        style={{ height: "calc(100% - 14px)" }}
         totalCount={renderList.length}
-        increaseViewportBy={{ top: 200, bottom: 200 }}
-        overscan={150}
+        initialItemCount={
+          virtuosoStateStore[mode] ? undefined : Math.min(renderList.length, 30)
+        }
+        increaseViewportBy={256}
         defaultItemHeight={56}
         scrollerRef={(ref) => {
           scrollerRef.current = ref as Element;
