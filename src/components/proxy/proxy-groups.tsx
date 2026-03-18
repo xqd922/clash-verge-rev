@@ -11,7 +11,11 @@ import {
 } from "@mui/material";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
+import {
+  Virtuoso,
+  type StateSnapshot,
+  type VirtuosoHandle,
+} from "react-virtuoso";
 import {
   healthcheckProxyProvider,
   unfixedProxy,
@@ -34,6 +38,10 @@ import {
 } from "./proxy-group-navigator";
 import { ProxyRender } from "./proxy-render";
 import { useRenderList } from "./use-render-list";
+
+// 模块级存储：保存 Virtuoso 滚动状态快照（包含已测量的项高度和滚动位置）
+// 在页面切换时组件卸载前保存，重新挂载时恢复，避免抖动
+const virtuosoStateStore: Record<string, StateSnapshot> = {};
 
 interface Props {
   mode: string;
@@ -136,50 +144,34 @@ export const ProxyGroups = (props: Props) => {
   const timeout = verge?.default_latency_timeout || 10000;
 
   const virtuosoRef = useRef<VirtuosoHandle>(null);
-  const scrollPositionRef = useRef<Record<string, number>>(
-    (() => {
-      try {
-        const saved = localStorage.getItem("proxy-scroll-positions");
-        return saved ? JSON.parse(saved) : {};
-      } catch {
-        return {};
-      }
-    })(),
-  );
   const [showScrollTop, setShowScrollTop] = useState(false);
   const scrollerRef = useRef<Element | null>(null);
 
-  // 仅在 mode 切换时恢复滚动位置（首次挂载由 initialScrollTop 处理）
+  // 组件卸载时保存 Virtuoso 状态快照
+  useEffect(() => {
+    const ref = virtuosoRef.current;
+    return () => {
+      ref?.getState((state) => {
+        virtuosoStateStore[mode] = state;
+      });
+    };
+  }, [mode]);
+
+  // mode 切换时恢复滚动位置
   const prevModeRef = useRef(mode);
   useEffect(() => {
     if (prevModeRef.current === mode) return;
     prevModeRef.current = mode;
     if (renderList.length === 0) return;
 
-    const savedPosition = scrollPositionRef.current[mode];
-    if (savedPosition !== undefined) {
+    const snapshot = virtuosoStateStore[mode];
+    if (snapshot?.scrollTop) {
       virtuosoRef.current?.scrollTo({
-        top: savedPosition,
+        top: snapshot.scrollTop,
         behavior: "auto",
       });
     }
   }, [mode, renderList.length]);
-
-  // 改为使用节流函数保存滚动位置
-  const saveScrollPosition = useCallback(
-    (scrollTop: number) => {
-      try {
-        scrollPositionRef.current[mode] = scrollTop;
-        localStorage.setItem(
-          "proxy-scroll-positions",
-          JSON.stringify(scrollPositionRef.current),
-        );
-      } catch (e) {
-        console.error("Error saving scroll position:", e);
-      }
-    },
-    [mode],
-  );
 
   // 使用改进的滚动处理
   const handleScroll = useMemo(
@@ -188,10 +180,8 @@ export const ProxyGroups = (props: Props) => {
         const target = event.target as HTMLElement | null;
         const scrollTop = target?.scrollTop ?? 0;
         setShowScrollTop(scrollTop > 100);
-        // 使用稳定的节流来保存位置，而不是setTimeout
-        saveScrollPosition(scrollTop);
-      }, 500), // 增加到500ms以确保平滑滚动
-    [saveScrollPosition],
+      }, 500),
+    [],
   );
 
   // 添加和清理滚动事件监听器
@@ -216,8 +206,7 @@ export const ProxyGroups = (props: Props) => {
       top: 0,
       behavior: "smooth",
     });
-    saveScrollPosition(0);
-  }, [saveScrollPosition]);
+  }, []);
 
   // 关闭重复节点警告
   const handleCloseDuplicateWarning = useCallback(() => {
@@ -526,7 +515,7 @@ export const ProxyGroups = (props: Props) => {
               components={{
                 Footer: VirtuosoFooter,
               }}
-              initialScrollTop={scrollPositionRef.current[mode]}
+              restoreStateFrom={virtuosoStateStore[mode]}
               computeItemKey={(index) => renderList[index].key}
               itemContent={(index) => (
                 <ProxyRender
@@ -638,7 +627,9 @@ export const ProxyGroups = (props: Props) => {
 
       <Virtuoso
         ref={virtuosoRef}
-        style={{ height: "calc(100% - 14px)" }}
+        style={{
+          height: "calc(100% - 14px)",
+        }}
         totalCount={renderList.length}
         increaseViewportBy={{ top: 200, bottom: 200 }}
         overscan={150}
@@ -649,8 +640,7 @@ export const ProxyGroups = (props: Props) => {
         components={{
           Footer: VirtuosoFooter,
         }}
-        // 添加平滑滚动设置
-        initialScrollTop={scrollPositionRef.current[mode]}
+        restoreStateFrom={virtuosoStateStore[mode]}
         computeItemKey={(index) => renderList[index].key}
         itemContent={(index) => (
           <ProxyRender
