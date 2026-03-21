@@ -46,6 +46,7 @@ import { ConfigViewer } from "@/components/setting/mods/config-viewer";
 import { useListen } from "@/hooks/use-listen";
 import { useProfiles } from "@/hooks/use-profiles";
 import {
+  calcuProxies,
   createProfile,
   deleteProfile,
   enhanceProfiles,
@@ -172,6 +173,7 @@ const ProfilePage = () => {
     profiles = {},
     activateSelected,
     patchProfiles,
+    patchCurrent,
     mutateProfiles,
     error,
     isStale,
@@ -394,6 +396,23 @@ const ProfilePage = () => {
           return;
         }
 
+        // 切换前保存当前 profile 的代理选择状态
+        if (profiles.current) {
+          try {
+            const proxiesData = await calcuProxies();
+            const { global, groups } = proxiesData;
+            const allGroups = [global, ...groups].filter(Boolean);
+            const selected = allGroups
+              .filter((g) => g.now)
+              .map((g) => ({ name: g.name, now: g.now! }));
+            if (selected.length > 0) {
+              await patchCurrent({ selected });
+            }
+          } catch (e) {
+            console.warn("[Profile] 保存代理选择失败:", e);
+          }
+        }
+
         // 执行切换请求
         const requestPromise = patchProfiles(
           { current: profile },
@@ -475,6 +494,7 @@ const ProfilePage = () => {
     [
       profiles,
       patchProfiles,
+      patchCurrent,
       mutateLogs,
       executeBackgroundTasks,
       handleProfileInterrupt,
