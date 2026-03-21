@@ -48,7 +48,10 @@ export const useMihomoWsSubscription = <T>(
   const wsRef = useRef<MihomoWebSocket | null>(null);
   const wsFirstConnectionRef = useRef<boolean>(true);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevCacheKeyRef = useRef<string | null>(null);
+  const prevKeysRef = useRef<{ raw: string | null; cache: string | null }>({
+    raw: null,
+    cache: null,
+  });
 
   const response = useSWRSubscription<T, any, string | null>(
     subscriptKey,
@@ -145,13 +148,16 @@ export const useMihomoWsSubscription = <T>(
 
   // Clean up stale SWR cache entries when the subscription key changes
   useEffect(() => {
-    const prev = prevCacheKeyRef.current;
-    if (prev && prev !== subscriptionCacheKey) {
-      // Clear the old cache entry to prevent memory leak
-      mutate(prev, undefined, { revalidate: false });
+    const prev = prevKeysRef.current;
+    if (prev.cache && prev.cache !== subscriptionCacheKey) {
+      // Clear both the subscription state ($sub$ key) and data cache entry
+      mutate(prev.cache, undefined, { revalidate: false });
     }
-    prevCacheKeyRef.current = subscriptionCacheKey;
-  }, [subscriptionCacheKey]);
+    if (prev.raw && prev.raw !== subscriptKey) {
+      mutate(prev.raw, undefined, { revalidate: false });
+    }
+    prevKeysRef.current = { raw: subscriptKey, cache: subscriptionCacheKey };
+  }, [subscriptKey, subscriptionCacheKey]);
 
   useEffect(() => {
     if (subscriptionCacheKey) {
