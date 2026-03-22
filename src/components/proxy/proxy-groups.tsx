@@ -1,4 +1,4 @@
-import { ExpandMoreRounded } from "@mui/icons-material";
+import { ExpandMoreRounded } from '@mui/icons-material'
 import {
   Alert,
   Box,
@@ -8,241 +8,236 @@ import {
   MenuItem,
   Snackbar,
   Typography,
-} from "@mui/material";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
+} from '@mui/material'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Virtuoso,
   type StateSnapshot,
   type VirtuosoHandle,
-} from "react-virtuoso";
-import {
-  healthcheckProxyProvider,
-  unfixedProxy,
-} from "tauri-plugin-mihomo-api";
+} from 'react-virtuoso'
+import { healthcheckProxyProvider, unfixedProxy } from 'tauri-plugin-mihomo-api'
 
-import { BaseEmpty } from "@/components/base";
-import { useProxySelection } from "@/hooks/use-proxy-selection";
-import { useVerge } from "@/hooks/use-verge";
-import { useAppData } from "@/providers/app-data-context";
-import { updateProxyChainConfigInRuntime } from "@/services/cmds";
-import delayManager from "@/services/delay";
-import { debugLog } from "@/utils/debug";
+import { BaseEmpty } from '@/components/base'
+import { useProxySelection } from '@/hooks/use-proxy-selection'
+import { useVerge } from '@/hooks/use-verge'
+import { useAppData } from '@/providers/app-data-context'
+import { updateProxyChainConfigInRuntime } from '@/services/cmds'
+import delayManager from '@/services/delay'
+import { debugLog } from '@/utils/debug'
 
-import { ScrollTopButton } from "../layout/scroll-top-button";
+import { ScrollTopButton } from '../layout/scroll-top-button'
 
-import { ProxyChain } from "./proxy-chain";
+import { ProxyChain } from './proxy-chain'
 import {
   DEFAULT_HOVER_DELAY,
   ProxyGroupNavigator,
-} from "./proxy-group-navigator";
-import { ProxyRender } from "./proxy-render";
-import { useRenderList } from "./use-render-list";
+} from './proxy-group-navigator'
+import { ProxyRender } from './proxy-render'
+import { useRenderList } from './use-render-list'
 
 // 模块级存储：保存 Virtuoso 滚动状态快照（包含已测量的项高度和滚动位置）
 // 在页面切换时组件卸载前保存，重新挂载时恢复，避免抖动
-const virtuosoStateStore: Record<string, StateSnapshot> = {};
+const virtuosoStateStore: Record<string, StateSnapshot> = {}
 
 interface Props {
-  mode: string;
-  isChainMode?: boolean;
-  chainConfigData?: string | null;
+  mode: string
+  isChainMode?: boolean
+  chainConfigData?: string | null
 }
 
 interface ProxyChainItem {
-  id: string;
-  name: string;
-  type?: string;
-  delay?: number;
+  id: string
+  name: string
+  type?: string
+  delay?: number
 }
 
-const VirtuosoFooter = () => <div style={{ height: "8px" }} />;
+const VirtuosoFooter = () => <div style={{ height: '8px' }} />
 
 export const ProxyGroups = (props: Props) => {
-  const { t } = useTranslation();
-  const { mode, isChainMode = false, chainConfigData } = props;
+  const { t } = useTranslation()
+  const { mode, isChainMode = false, chainConfigData } = props
   const [proxyChain, setProxyChain] = useState<ProxyChainItem[]>(() => {
     try {
-      const saved = localStorage.getItem("proxy-chain-items");
+      const saved = localStorage.getItem('proxy-chain-items')
       if (saved) {
-        return JSON.parse(saved);
+        return JSON.parse(saved)
       }
     } catch {
       // ignore
     }
-    return [];
-  });
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+    return []
+  })
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null)
 
   useEffect(() => {
     if (proxyChain.length > 0) {
-      localStorage.setItem("proxy-chain-items", JSON.stringify(proxyChain));
+      localStorage.setItem('proxy-chain-items', JSON.stringify(proxyChain))
     } else {
-      localStorage.removeItem("proxy-chain-items");
+      localStorage.removeItem('proxy-chain-items')
     }
-  }, [proxyChain]);
-  const [ruleMenuAnchor, setRuleMenuAnchor] = useState<null | HTMLElement>(
-    null,
-  );
+  }, [proxyChain])
+  const [ruleMenuAnchor, setRuleMenuAnchor] = useState<null | HTMLElement>(null)
   const [duplicateWarning, setDuplicateWarning] = useState<{
-    open: boolean;
-    message: string;
-  }>({ open: false, message: "" });
+    open: boolean
+    message: string
+  }>({ open: false, message: '' })
 
-  const { verge } = useVerge();
-  const { proxies: proxiesData } = useAppData();
-  const groups = proxiesData?.groups;
+  const { verge } = useVerge()
+  const { proxies: proxiesData } = useAppData()
+  const groups = proxiesData?.groups
   const availableGroups = useMemo(() => {
-    if (!groups) return [];
+    if (!groups) return []
     // 在链式代理模式下，仅显示支持选择节点的 Selector 代理组
     return isChainMode
       ? groups.filter(
-          (g: IProxyGroupItem) => g.type === "Selector" || g.type === "Smart",
+          (g: IProxyGroupItem) => g.type === 'Selector' || g.type === 'Smart',
         )
-      : groups;
-  }, [groups, isChainMode]);
+      : groups
+  }, [groups, isChainMode])
 
   const defaultRuleGroup = useMemo(() => {
-    if (isChainMode && mode === "rule" && availableGroups.length > 0) {
-      return availableGroups[0].name;
+    if (isChainMode && mode === 'rule' && availableGroups.length > 0) {
+      return availableGroups[0].name
     }
-    return null;
-  }, [availableGroups, isChainMode, mode]);
+    return null
+  }, [availableGroups, isChainMode, mode])
 
   const activeSelectedGroup = useMemo(
     () => selectedGroup ?? defaultRuleGroup,
     [selectedGroup, defaultRuleGroup],
-  );
+  )
 
   const { renderList, onProxies, onHeadState } = useRenderList(
     mode,
     isChainMode,
     activeSelectedGroup,
-  );
+  )
 
   const getGroupHeadState = useCallback(
     (groupName: string) => {
       const headItem = renderList.find(
         (item) => item.type === 1 && item.group?.name === groupName,
-      );
-      return headItem?.headState;
+      )
+      return headItem?.headState
     },
     [renderList],
-  );
+  )
 
   // 统代理选择
   const { handleProxyGroupChange } = useProxySelection({
     onSuccess: () => {
-      onProxies();
+      onProxies()
     },
     onError: (error) => {
-      console.error("代理切换失败", error);
-      onProxies();
+      console.error('代理切换失败', error)
+      onProxies()
     },
-  });
+  })
 
-  const timeout = verge?.default_latency_timeout || 10000;
+  const timeout = verge?.default_latency_timeout || 10000
 
-  const virtuosoRef = useRef<VirtuosoHandle>(null);
-  const [showScrollTop, setShowScrollTop] = useState(false);
-  const scrollerRef = useRef<Element | null>(null);
+  const virtuosoRef = useRef<VirtuosoHandle>(null)
+  const [showScrollTop, setShowScrollTop] = useState(false)
+  const scrollerRef = useRef<Element | null>(null)
 
   // 组件卸载时保存 Virtuoso 状态快照
   useEffect(() => {
-    const ref = virtuosoRef.current;
+    const ref = virtuosoRef.current
     return () => {
       ref?.getState((state) => {
-        virtuosoStateStore[mode] = state;
-      });
-    };
-  }, [mode]);
+        virtuosoStateStore[mode] = state
+      })
+    }
+  }, [mode])
 
   // mode 切换时恢复滚动位置
-  const prevModeRef = useRef(mode);
+  const prevModeRef = useRef(mode)
   useEffect(() => {
-    if (prevModeRef.current === mode) return;
-    prevModeRef.current = mode;
-    if (renderList.length === 0) return;
+    if (prevModeRef.current === mode) return
+    prevModeRef.current = mode
+    if (renderList.length === 0) return
 
-    const snapshot = virtuosoStateStore[mode];
+    const snapshot = virtuosoStateStore[mode]
     if (snapshot?.scrollTop) {
       virtuosoRef.current?.scrollTo({
         top: snapshot.scrollTop,
-        behavior: "auto",
-      });
+        behavior: 'auto',
+      })
     }
-  }, [mode, renderList.length]);
+  }, [mode, renderList.length])
 
   // 使用改进的滚动处理
   const handleScroll = useMemo(
     () =>
       throttle((event: Event) => {
-        const target = event.target as HTMLElement | null;
-        const scrollTop = target?.scrollTop ?? 0;
-        setShowScrollTop(scrollTop > 100);
+        const target = event.target as HTMLElement | null
+        const scrollTop = target?.scrollTop ?? 0
+        setShowScrollTop(scrollTop > 100)
       }, 500),
     [],
-  );
+  )
 
   // 添加和清理滚动事件监听器
   useEffect(() => {
-    const node = scrollerRef.current;
-    if (!node) return;
+    const node = scrollerRef.current
+    if (!node) return
 
-    const listener = handleScroll as EventListener;
-    const options: AddEventListenerOptions = { passive: true };
+    const listener = handleScroll as EventListener
+    const options: AddEventListenerOptions = { passive: true }
 
-    node.addEventListener("scroll", listener, options);
+    node.addEventListener('scroll', listener, options)
 
     return () => {
-      node.removeEventListener("scroll", listener, options);
-      handleScroll.cancel();
-    };
-  }, [handleScroll]);
+      node.removeEventListener('scroll', listener, options)
+      handleScroll.cancel()
+    }
+  }, [handleScroll])
 
   // 滚动到顶部
   const scrollToTop = useCallback(() => {
     virtuosoRef.current?.scrollTo?.({
       top: 0,
-      behavior: "smooth",
-    });
-  }, []);
+      behavior: 'smooth',
+    })
+  }, [])
 
   // 关闭重复节点警告
   const handleCloseDuplicateWarning = useCallback(() => {
-    setDuplicateWarning({ open: false, message: "" });
-  }, []);
+    setDuplicateWarning({ open: false, message: '' })
+  }, [])
 
   const currentGroup = useMemo(() => {
-    if (!activeSelectedGroup) return null;
+    if (!activeSelectedGroup) return null
     return (
       availableGroups.find(
         (group: IProxyGroupItem) => group.name === activeSelectedGroup,
       ) ?? null
-    );
-  }, [activeSelectedGroup, availableGroups]);
+    )
+  }, [activeSelectedGroup, availableGroups])
 
   // 处理代理组选择菜单
   const handleGroupMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setRuleMenuAnchor(event.currentTarget);
-  };
+    setRuleMenuAnchor(event.currentTarget)
+  }
 
   const handleGroupMenuClose = () => {
-    setRuleMenuAnchor(null);
-  };
+    setRuleMenuAnchor(null)
+  }
 
   const handleGroupSelect = (groupName: string) => {
-    setSelectedGroup(groupName);
-    handleGroupMenuClose();
+    setSelectedGroup(groupName)
+    handleGroupMenuClose()
 
-    if (isChainMode && mode === "rule") {
-      updateProxyChainConfigInRuntime(null);
-      localStorage.removeItem("proxy-chain-group");
-      localStorage.removeItem("proxy-chain-exit-node");
-      localStorage.removeItem("proxy-chain-items");
-      setProxyChain([]);
+    if (isChainMode && mode === 'rule') {
+      updateProxyChainConfigInRuntime(null)
+      localStorage.removeItem('proxy-chain-group')
+      localStorage.removeItem('proxy-chain-exit-node')
+      localStorage.removeItem('proxy-chain-items')
+      setProxyChain([])
     }
-  };
+  }
 
   const handleChangeProxy = useCallback(
     (group: IProxyGroupItem, proxy: IProxyItem) => {
@@ -251,98 +246,98 @@ export const ProxyGroups = (props: Props) => {
         setProxyChain((prev) => {
           // 检查是否已经存在相同名称的代理，防止重复添加
           if (prev.some((item) => item.name === proxy.name)) {
-            const warningMessage = t("proxies.page.chain.duplicateNode");
+            const warningMessage = t('proxies.page.chain.duplicateNode')
             setDuplicateWarning({
               open: true,
               message: warningMessage,
-            });
-            return prev; // 返回原来的状态，不做任何更改
+            })
+            return prev // 返回原来的状态，不做任何更改
           }
 
           // 安全获取延迟数据，如果没有延迟数据则设为 undefined
           const delay =
             proxy.history && proxy.history.length > 0
               ? proxy.history[proxy.history.length - 1].delay
-              : undefined;
+              : undefined
 
           const chainItem: ProxyChainItem = {
             id: `${proxy.name}_${Date.now()}`,
             name: proxy.name,
             type: proxy.type,
             delay: delay,
-          };
+          }
 
-          return [...prev, chainItem];
-        });
-        return;
+          return [...prev, chainItem]
+        })
+        return
       }
 
-      if (!["Selector", "URLTest", "Fallback", "Smart"].includes(group.type))
-        return;
+      if (!['Selector', 'URLTest', 'Fallback', 'Smart'].includes(group.type))
+        return
 
-      handleProxyGroupChange(group, proxy);
+      handleProxyGroupChange(group, proxy)
     },
     [handleProxyGroupChange, isChainMode, t],
-  );
+  )
 
   // 测全部延迟（支持取消上一轮、立即重测）
-  const checkAllAbortRef = useRef<AbortController | null>(null);
+  const checkAllAbortRef = useRef<AbortController | null>(null)
   const handleCheckAll = useCallback(
     async (groupName: string) => {
       // 取消上一轮测试
       if (checkAllAbortRef.current) {
-        checkAllAbortRef.current.abort();
+        checkAllAbortRef.current.abort()
       }
-      const abortController = new AbortController();
-      checkAllAbortRef.current = abortController;
+      const abortController = new AbortController()
+      checkAllAbortRef.current = abortController
 
-      debugLog(`[ProxyGroups] 开始测试所有延迟，组: ${groupName}`);
+      debugLog(`[ProxyGroups] 开始测试所有延迟，组: ${groupName}`)
 
       const proxies = renderList
         .filter(
           (e) => e.group?.name === groupName && (e.type === 2 || e.type === 4),
         )
         .flatMap((e) => e.proxyCol || e.proxy!)
-        .filter(Boolean);
+        .filter(Boolean)
 
-      debugLog(`[ProxyGroups] 找到代理数量: ${proxies.length}`);
+      debugLog(`[ProxyGroups] 找到代理数量: ${proxies.length}`)
 
       const providers = new Set(
         proxies.map((p) => p!.provider!).filter(Boolean),
-      );
+      )
 
       if (providers.size) {
-        debugLog(`[ProxyGroups] 发现提供者，数量: ${providers.size}`);
+        debugLog(`[ProxyGroups] 发现提供者，数量: ${providers.size}`)
         Promise.allSettled(
           [...providers].map((p) => healthcheckProxyProvider(p)),
         ).then(() => {
-          debugLog(`[ProxyGroups] 提供者健康检查完成`);
-          onProxies();
-        });
+          debugLog(`[ProxyGroups] 提供者健康检查完成`)
+          onProxies()
+        })
       }
 
-      const names = proxies.filter((p) => !p!.provider).map((p) => p!.name);
+      const names = proxies.filter((p) => !p!.provider).map((p) => p!.name)
 
       // 将当前选中的节点排到最前面，优先测速
       const group = renderList.find(
         (e) => e.type === 0 && e.group?.name === groupName,
-      )?.group;
+      )?.group
       if (group?.now) {
-        const idx = names.indexOf(group.now);
+        const idx = names.indexOf(group.now)
         if (idx > 0) {
-          names.unshift(names.splice(idx, 1)[0]);
+          names.unshift(names.splice(idx, 1)[0])
         }
       }
-      debugLog(`[ProxyGroups] 过滤后需要测试的代理数量: ${names.length}`);
+      debugLog(`[ProxyGroups] 过滤后需要测试的代理数量: ${names.length}`)
 
       // 批量测速时清除固定状态（与旧 delayGroup API 行为一致）
       if (group?.fixed) {
-        await unfixedProxy(groupName).catch(() => {});
+        await unfixedProxy(groupName).catch(() => {})
       }
 
       debugLog(
         `[ProxyGroups] 测试URL: ${delayManager.getUrl(groupName)}, 超时: ${timeout}ms`,
-      );
+      )
 
       try {
         // 逐个测试，每测完一个立即更新显示，结果更准确
@@ -352,120 +347,120 @@ export const ProxyGroups = (props: Props) => {
           timeout,
           36,
           abortController.signal,
-        );
-        debugLog(`[ProxyGroups] 延迟测试完成，组: ${groupName}`);
+        )
+        debugLog(`[ProxyGroups] 延迟测试完成，组: ${groupName}`)
       } finally {
         // 只有当前轮未被取消时才做收尾工作
         if (!abortController.signal.aborted) {
-          const headState = getGroupHeadState(groupName);
+          const headState = getGroupHeadState(groupName)
           if (headState?.sortType === 1) {
-            onHeadState(groupName, { sortType: headState.sortType });
+            onHeadState(groupName, { sortType: headState.sortType })
           }
-          onProxies();
+          onProxies()
         }
         if (checkAllAbortRef.current === abortController) {
-          checkAllAbortRef.current = null;
+          checkAllAbortRef.current = null
         }
       }
     },
     [renderList, timeout, getGroupHeadState, onHeadState, onProxies],
-  );
+  )
 
   // 滚到对应的节点
   const handleLocation = (group: IProxyGroupItem) => {
-    if (!group) return;
-    const { name, now } = group;
+    if (!group) return
+    const { name, now } = group
 
     const index = renderList.findIndex(
       (e) =>
         e.group?.name === name &&
         ((e.type === 2 && e.proxy?.name === now) ||
           (e.type === 4 && e.proxyCol?.some((p) => p.name === now))),
-    );
+    )
 
     if (index >= 0) {
       virtuosoRef.current?.scrollToIndex?.({
         index,
-        align: "center",
-        behavior: "smooth",
-      });
+        align: 'center',
+        behavior: 'smooth',
+      })
     }
-  };
+  }
 
   // 定位到指定的代理组
   const handleGroupLocationByName = useCallback(
     (groupName: string) => {
       const index = renderList.findIndex(
         (item) => item.type === 0 && item.group?.name === groupName,
-      );
+      )
 
       if (index >= 0) {
         virtuosoRef.current?.scrollToIndex?.({
           index,
-          align: "start",
-          behavior: "smooth",
-        });
+          align: 'start',
+          behavior: 'smooth',
+        })
       }
     },
     [renderList],
-  );
+  )
 
   const proxyGroupNames = useMemo(() => {
     const names = renderList
       .filter((item) => item.type === 0 && item.group?.name)
-      .map((item) => item.group!.name);
-    return Array.from(new Set(names));
-  }, [renderList]);
+      .map((item) => item.group!.name)
+    return Array.from(new Set(names))
+  }, [renderList])
 
-  if (mode === "direct") {
-    return <BaseEmpty textKey="proxies.page.messages.directMode" />;
+  if (mode === 'direct') {
+    return <BaseEmpty textKey="proxies.page.messages.directMode" />
   }
 
   if (isChainMode) {
     // 获取所有代理组
-    const proxyGroups = proxiesData?.groups || [];
+    const proxyGroups = proxiesData?.groups || []
 
     return (
       <>
-        <Box sx={{ display: "flex", height: "100%", gap: 2 }}>
-          <Box sx={{ flex: 1, position: "relative" }}>
+        <Box sx={{ display: 'flex', height: '100%', gap: 2 }}>
+          <Box sx={{ flex: 1, position: 'relative' }}>
             {/* 代理规则标题和代理组按钮栏 */}
-            {mode === "rule" && proxyGroups.length > 0 && (
-              <Box sx={{ borderBottom: "1px solid", borderColor: "divider" }}>
+            {mode === 'rule' && proxyGroups.length > 0 && (
+              <Box sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
                 {/* 代理规则标题 */}
                 <Box
                   sx={{
                     px: 2,
                     py: 1.5,
-                    borderBottom: "1px solid",
-                    borderColor: "divider",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                   }}
                 >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Typography
                       variant="h6"
-                      sx={{ fontWeight: 600, fontSize: "16px" }}
+                      sx={{ fontWeight: 600, fontSize: '16px' }}
                     >
-                      {t("proxies.page.rules.title")}
+                      {t('proxies.page.rules.title')}
                     </Typography>
                     {currentGroup && (
                       <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
                       >
                         <Chip
                           size="small"
                           label={`${currentGroup.name} (${currentGroup.type})`}
                           variant="outlined"
                           sx={{
-                            fontSize: "12px",
-                            maxWidth: "200px",
-                            "& .MuiChip-label": {
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
+                            fontSize: '12px',
+                            maxWidth: '200px',
+                            '& .MuiChip-label': {
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
                             },
                           }}
                         />
@@ -478,17 +473,17 @@ export const ProxyGroups = (props: Props) => {
                       size="small"
                       onClick={handleGroupMenuOpen}
                       sx={{
-                        border: "1px solid",
-                        borderColor: "divider",
-                        borderRadius: "4px",
-                        padding: "4px 8px",
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: '4px',
+                        padding: '4px 8px',
                       }}
                     >
                       <Typography
                         variant="body2"
-                        sx={{ mr: 0.5, fontSize: "12px" }}
+                        sx={{ mr: 0.5, fontSize: '12px' }}
                       >
-                        {t("proxies.page.rules.select")}
+                        {t('proxies.page.rules.select')}
                       </Typography>
                       <ExpandMoreRounded fontSize="small" />
                     </IconButton>
@@ -501,9 +496,9 @@ export const ProxyGroups = (props: Props) => {
               ref={virtuosoRef}
               style={{
                 height:
-                  mode === "rule" && proxyGroups.length > 0
-                    ? "calc(100% - 80px)"
-                    : "calc(100% - 14px)",
+                  mode === 'rule' && proxyGroups.length > 0
+                    ? 'calc(100% - 80px)'
+                    : 'calc(100% - 14px)',
               }}
               totalCount={renderList.length}
               initialItemCount={
@@ -514,7 +509,7 @@ export const ProxyGroups = (props: Props) => {
               increaseViewportBy={256}
               defaultItemHeight={56}
               scrollerRef={(ref) => {
-                scrollerRef.current = ref as Element;
+                scrollerRef.current = ref as Element
               }}
               components={{
                 Footer: VirtuosoFooter,
@@ -525,7 +520,7 @@ export const ProxyGroups = (props: Props) => {
                 <ProxyRender
                   key={renderList[index].key}
                   item={renderList[index]}
-                  indent={mode === "rule" || mode === "script"}
+                  indent={mode === 'rule' || mode === 'script'}
                   onLocation={handleLocation}
                   onCheckAll={handleCheckAll}
                   onHeadState={onHeadState}
@@ -537,7 +532,7 @@ export const ProxyGroups = (props: Props) => {
             <ScrollTopButton show={showScrollTop} onClick={scrollToTop} />
           </Box>
 
-          <Box sx={{ width: "400px", minWidth: "300px" }}>
+          <Box sx={{ width: '400px', minWidth: '300px' }}>
             <ProxyChain
               proxyChain={proxyChain}
               onUpdateChain={setProxyChain}
@@ -552,7 +547,7 @@ export const ProxyGroups = (props: Props) => {
           open={duplicateWarning.open}
           autoHideDuration={3000}
           onClose={handleCloseDuplicateWarning}
-          anchorOrigin={{ vertical: "top", horizontal: "center" }}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         >
           <Alert
             onClose={handleCloseDuplicateWarning}
@@ -583,15 +578,15 @@ export const ProxyGroups = (props: Props) => {
               onClick={() => handleGroupSelect(group.name)}
               selected={activeSelectedGroup === group.name}
               sx={{
-                fontSize: "14px",
+                fontSize: '14px',
                 py: 1,
               }}
             >
               <Box
                 sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "flex-start",
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
                 }}
               >
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -612,15 +607,15 @@ export const ProxyGroups = (props: Props) => {
           )}
         </Menu>
       </>
-    );
+    )
   }
 
   return (
     <div
-      style={{ position: "relative", height: "100%", willChange: "transform" }}
+      style={{ position: 'relative', height: '100%', willChange: 'transform' }}
     >
       {/* 代理组导航栏 */}
-      {mode === "rule" && (
+      {mode === 'rule' && (
         <ProxyGroupNavigator
           proxyGroupNames={proxyGroupNames}
           onGroupLocation={handleGroupLocationByName}
@@ -631,7 +626,7 @@ export const ProxyGroups = (props: Props) => {
 
       <Virtuoso
         ref={virtuosoRef}
-        style={{ height: "calc(100% - 14px)" }}
+        style={{ height: 'calc(100% - 14px)' }}
         totalCount={renderList.length}
         initialItemCount={
           virtuosoStateStore[mode] ? undefined : Math.min(renderList.length, 30)
@@ -639,7 +634,7 @@ export const ProxyGroups = (props: Props) => {
         increaseViewportBy={256}
         defaultItemHeight={56}
         scrollerRef={(ref) => {
-          scrollerRef.current = ref as Element;
+          scrollerRef.current = ref as Element
         }}
         components={{
           Footer: VirtuosoFooter,
@@ -650,7 +645,7 @@ export const ProxyGroups = (props: Props) => {
           <ProxyRender
             key={renderList[index].key}
             item={renderList[index]}
-            indent={mode === "rule" || mode === "script"}
+            indent={mode === 'rule' || mode === 'script'}
             onLocation={handleLocation}
             onCheckAll={handleCheckAll}
             onHeadState={onHeadState}
@@ -660,46 +655,46 @@ export const ProxyGroups = (props: Props) => {
       />
       <ScrollTopButton show={showScrollTop} onClick={scrollToTop} />
     </div>
-  );
-};
+  )
+}
 
 type ThrottledFn<T extends (...args: any[]) => any> = ((
   ...args: Parameters<T>
-) => void) & { cancel: () => void };
+) => void) & { cancel: () => void }
 
 function throttle<T extends (...args: any[]) => any>(
   func: T,
   wait: number,
 ): ThrottledFn<T> {
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  let previous = 0;
+  let timer: ReturnType<typeof setTimeout> | null = null
+  let previous = 0
 
   const throttled = function (...args: Parameters<T>) {
-    const now = Date.now();
-    const remaining = wait - (now - previous);
+    const now = Date.now()
+    const remaining = wait - (now - previous)
 
     if (remaining <= 0 || remaining > wait) {
       if (timer) {
-        clearTimeout(timer);
-        timer = null;
+        clearTimeout(timer)
+        timer = null
       }
-      previous = now;
-      func(...args);
+      previous = now
+      func(...args)
     } else if (!timer) {
       timer = setTimeout(() => {
-        previous = Date.now();
-        timer = null;
-        func(...args);
-      }, remaining);
+        previous = Date.now()
+        timer = null
+        func(...args)
+      }, remaining)
     }
-  } as ThrottledFn<T>;
+  } as ThrottledFn<T>
 
   throttled.cancel = () => {
     if (timer) {
-      clearTimeout(timer);
-      timer = null;
+      clearTimeout(timer)
+      timer = null
     }
-  };
+  }
 
-  return throttled;
+  return throttled
 }
