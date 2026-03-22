@@ -309,8 +309,6 @@ class DelayManager {
       `[DelayManager] 批量测试延迟开始，组: ${group}, 数量: ${nameList.length}, 并发数: ${concurrency}`,
     )
     const names = nameList.filter(Boolean)
-    // 设置正在延迟测试中
-    names.forEach((name) => this.setDelay(name, group, -2))
 
     let index = 0
     const startTime = Date.now()
@@ -322,9 +320,6 @@ class DelayManager {
       if (!currName) return
 
       try {
-        // 确保API调用前状态为测试中
-        this.setDelay(currName, group, -2)
-
         await this.checkDelay(currName, group, timeout)
         if (listener) {
           this.queueGroupNotification(group)

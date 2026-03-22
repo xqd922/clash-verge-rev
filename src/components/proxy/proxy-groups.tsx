@@ -16,7 +16,7 @@ import {
   type StateSnapshot,
   type VirtuosoHandle,
 } from 'react-virtuoso'
-import { healthcheckProxyProvider, unfixedProxy } from 'tauri-plugin-mihomo-api'
+import { delayGroup, healthcheckProxyProvider } from 'tauri-plugin-mihomo-api'
 
 import { BaseEmpty } from '@/components/base'
 import { useProxySelection } from '@/hooks/use-proxy-selection'
@@ -280,7 +280,7 @@ export const ProxyGroups = (props: Props) => {
     [handleProxyGroupChange, isChainMode, t],
   )
 
-  // 测全部延迟（支持取消上一轮、立即重测）
+  // 测全部延迟（Promise.race: 逐个测试渐进显示 + delayGroup 并行加速）
   const checkAllAbortRef = useRef<AbortController | null>(null)
   const handleCheckAll = useCallback(
     async (groupName: string) => {
@@ -330,24 +330,25 @@ export const ProxyGroups = (props: Props) => {
       }
       debugLog(`[ProxyGroups] 过滤后需要测试的代理数量: ${names.length}`)
 
-      // 批量测速时清除固定状态（与旧 delayGroup API 行为一致）
-      if (group?.fixed) {
-        await unfixedProxy(groupName).catch(() => {})
-      }
-
-      debugLog(
-        `[ProxyGroups] 测试URL: ${delayManager.getUrl(groupName)}, 超时: ${timeout}ms`,
-      )
+      const testUrl = delayManager.getUrl(groupName)
+      debugLog(`[ProxyGroups] 测试URL: ${testUrl}, 超时: ${timeout}ms`)
 
       try {
-        // 逐个测试，每测完一个立即更新显示，结果更准确
-        await delayManager.checkListDelay(
-          names,
-          groupName,
-          timeout,
-          36,
-          abortController.signal,
-        )
+        // v1.7.7 策略：两路并行，谁先完成算谁
+        // - checkListDelay: 逐个 IPC 调用，快节点秒出结果（渐进更新 UI）
+        // - delayGroup: mihomo 内部并发测试，同时清除 fixed 状态
+        await Promise.race([
+          delayManager.checkListDelay(
+            names,
+            groupName,
+            timeout,
+            36,
+            abortController.signal,
+          ),
+          delayGroup(groupName, testUrl, timeout, !!group?.fixed).catch(
+            () => {},
+          ),
+        ])
         debugLog(`[ProxyGroups] 延迟测试完成，组: ${groupName}`)
       } finally {
         // 只有当前轮未被取消时才做收尾工作
