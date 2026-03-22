@@ -1,5 +1,6 @@
 use super::CmdResult;
 use super::StringifyErr as _;
+use crate::module::auto_backup::{AutoBackupManager, AutoBackupTrigger};
 use crate::utils::window_manager::WindowManager;
 use crate::{
     config::{
