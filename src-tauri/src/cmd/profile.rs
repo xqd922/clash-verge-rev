@@ -1,6 +1,5 @@
 use super::CmdResult;
 use super::StringifyErr as _;
-use crate::module::auto_backup::{AutoBackupManager, AutoBackupTrigger};
 use crate::utils::window_manager::WindowManager;
 use crate::{
     config::{
@@ -100,7 +99,6 @@ pub async fn import_profile(url: std::string::String, option: Option<PrfOption>)
     }
 
     logging!(info, Type::Cmd, "[导入订阅] 导入完成: {}", help::mask_url(&url));
-    AutoBackupManager::trigger_backup(AutoBackupTrigger::ProfileChange);
     Ok(())
 }
 
