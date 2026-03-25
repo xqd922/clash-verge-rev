@@ -1,6 +1,6 @@
 import { useLocalStorage } from "foxact/use-local-storage";
 import { useCallback, useEffect, useRef } from "react";
-import { mutate, type MutatorCallback } from "swr";
+import { type MutatorCallback, useSWRConfig } from "swr";
 import useSWRSubscription from "swr/subscription";
 import { type Message, type MihomoWebSocket } from "tauri-plugin-mihomo-api";
 
@@ -41,6 +41,7 @@ export const useMihomoWsSubscription = <T>(
     setupHandlers,
   } = options;
 
+  const { cache, mutate } = useSWRConfig();
   const [date, setDate] = useLocalStorage(storageKey, Date.now());
   const subscriptKey = buildSubscriptKey(date);
   const subscriptionCacheKey = subscriptKey ? `$sub$${subscriptKey}` : null;
@@ -149,21 +150,21 @@ export const useMihomoWsSubscription = <T>(
   // Clean up stale SWR cache entries when the subscription key changes
   useEffect(() => {
     const prev = prevKeysRef.current;
+    // Delete old entries from cache entirely (not just set to undefined)
     if (prev.cache && prev.cache !== subscriptionCacheKey) {
-      // Clear both the subscription state ($sub$ key) and data cache entry
-      mutate(prev.cache, undefined, { revalidate: false });
+      cache.delete(prev.cache);
     }
     if (prev.raw && prev.raw !== subscriptKey) {
-      mutate(prev.raw, undefined, { revalidate: false });
+      cache.delete(prev.raw);
     }
     prevKeysRef.current = { raw: subscriptKey, cache: subscriptionCacheKey };
-  }, [subscriptKey, subscriptionCacheKey]);
+  }, [cache, subscriptKey, subscriptionCacheKey]);
 
   useEffect(() => {
     if (subscriptionCacheKey) {
       mutate(subscriptionCacheKey);
     }
-  }, [subscriptionCacheKey]);
+  }, [mutate, subscriptionCacheKey]);
 
   const refresh = useCallback(() => {
     setDate(Date.now());

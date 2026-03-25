@@ -191,6 +191,10 @@ impl Config {
         sanitize_tunnels_proxy(&mut config);
 
         Self::runtime().await.edit_draft(|d| {
+            d.clean_all();
+        });
+
+        Self::runtime().await.edit_draft(|d| {
             *d = IRuntime {
                 config: Some(config),
                 exists_keys,
