@@ -187,7 +187,7 @@ pub async fn delete_profile(index: String) -> CmdResult {
     Ok(())
 }
 
-/// 验证新配置文件的语法
+/// 验证新配置文件的语法（轻量级检查：文件存在且可读）
 async fn validate_new_profile(new_profile: &String) -> Result<(), ()> {
     logging!(info, Type::Cmd, "正在切换到新配置: {}", new_profile);
 
@@ -211,7 +211,7 @@ async fn validate_new_profile(new_profile: &String) -> Result<(), ()> {
         }
     };
 
-    // 如果获取到文件路径，检查YAML语法
+    // 仅检查文件是否存在且可读，YAML 语法在后续 enhance 管道中验证
     if let Some(file_path) = config_file_result {
         if !file_path.exists() {
             logging!(error, Type::Cmd, "目标配置文件不存在: {}", file_path.display());
@@ -219,45 +219,21 @@ async fn validate_new_profile(new_profile: &String) -> Result<(), ()> {
             return Err(());
         }
 
-        // 超时保护
-        let file_read_result =
-            tokio::time::timeout(Duration::from_secs(5), tokio::fs::read_to_string(&file_path)).await;
-
-        match file_read_result {
-            Ok(Ok(content)) => {
-                let yaml_parse_result =
-                    AsyncHandler::spawn_blocking(move || serde_yaml_ng::from_str::<serde_yaml_ng::Value>(&content))
-                        .await;
-
-                match yaml_parse_result {
-                    Ok(Ok(_)) => {
-                        logging!(info, Type::Cmd, "目标配置文件语法正确");
-                        Ok(())
-                    }
-                    Ok(Err(err)) => {
-                        let error_msg = format!(" {err}");
-                        logging!(error, Type::Cmd, "目标配置文件存在YAML语法错误:{}", error_msg);
-                        handle::Handle::notice_message("config_validate::yaml_syntax_error", error_msg);
-                        Err(())
-                    }
-                    Err(join_err) => {
-                        let error_msg = format!("YAML解析任务失败: {join_err}");
-                        logging!(error, Type::Cmd, "{}", error_msg);
-                        handle::Handle::notice_message("config_validate::yaml_parse_error", error_msg);
-                        Err(())
-                    }
+        // 检查文件可读且非空
+        match tokio::fs::metadata(&file_path).await {
+            Ok(meta) => {
+                if meta.len() == 0 {
+                    logging!(error, Type::Cmd, "目标配置文件为空: {}", file_path.display());
+                    handle::Handle::notice_message("config_validate::file_read_error", "配置文件为空");
+                    return Err(());
                 }
+                logging!(info, Type::Cmd, "目标配置文件检查通过");
+                Ok(())
             }
-            Ok(Err(err)) => {
+            Err(err) => {
                 let error_msg = format!("无法读取目标配置文件: {err}");
                 logging!(error, Type::Cmd, "{}", error_msg);
                 handle::Handle::notice_message("config_validate::file_read_error", error_msg);
-                Err(())
-            }
-            Err(_) => {
-                let error_msg = "读取配置文件超时(5秒)".to_string();
-                logging!(error, Type::Cmd, "{}", error_msg);
-                handle::Handle::notice_message("config_validate::file_read_timeout", error_msg);
                 Err(())
             }
         }
@@ -290,24 +266,31 @@ async fn handle_success(current_value: Option<&String>) -> CmdResult<bool> {
     Config::profiles().await.apply();
     handle::Handle::refresh_clash();
 
-    if let Err(e) = Tray::global().update_tooltip().await {
-        logging!(warn, Type::Cmd, "Warning: 异步更新托盘提示失败: {e}");
-    }
-
-    if let Err(e) = Tray::global().update_menu().await {
-        logging!(warn, Type::Cmd, "Warning: 异步更新托盘菜单失败: {e}");
-    }
-
-    if let Err(e) = profiles_save_file_safe().await {
-        logging!(warn, Type::Cmd, "Warning: 异步保存配置文件失败: {e}");
-    }
-
+    // 先通知前端配置变更（优先级最高）
     if let Some(current) = current_value
         && WindowManager::get_main_window().is_some()
     {
         logging!(info, Type::Cmd, "向前端发送配置变更事件: {}", current);
         handle::Handle::notify_profile_changed(current.to_owned());
     }
+
+    // 托盘更新和文件保存异步执行，不阻塞返回
+    AsyncHandler::spawn(|| async {
+        let (tooltip_result, menu_result, save_result) = tokio::join!(
+            Tray::global().update_tooltip(),
+            Tray::global().update_menu(),
+            profiles_save_file_safe(),
+        );
+        if let Err(e) = tooltip_result {
+            logging!(warn, Type::Cmd, "Warning: 异步更新托盘提示失败: {e}");
+        }
+        if let Err(e) = menu_result {
+            logging!(warn, Type::Cmd, "Warning: 异步更新托盘菜单失败: {e}");
+        }
+        if let Err(e) = save_result {
+            logging!(warn, Type::Cmd, "Warning: 异步保存配置文件失败: {e}");
+        }
+    });
 
     Ok(true)
 }

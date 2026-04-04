@@ -320,31 +320,34 @@ const ProfilePage = () => {
   };
 
   const executeBackgroundTasks = useCallback(
-    async (
+    (
       profile: string,
       sequence: number,
       abortController: AbortController,
     ) => {
-      try {
-        // Note: switchingProfileRef.current is already null here because
-        // cleanupSwitchState in the finally block runs before this setTimeout callback.
-        // Only check sequence and abort status.
-        if (
-          sequence === requestSequenceRef.current &&
-          !abortController.signal.aborted
-        ) {
-          await activateSelected();
-          debugLog(`[Profile] 后台处理完成，序列号: ${sequence}`);
-        } else {
-          debugProfileSwitch(
-            "BACKGROUND_TASK_SKIPPED",
-            profile,
-            `序列号过期或被中断: ${sequence} vs ${requestSequenceRef.current}`,
-          );
-        }
-      } catch (err: any) {
-        console.warn("Failed to activate selected proxies:", err);
+      // Note: switchingProfileRef.current is already null here because
+      // cleanupSwitchState in the finally block runs before this callback.
+      // Only check sequence and abort status.
+      if (
+        sequence !== requestSequenceRef.current ||
+        abortController.signal.aborted
+      ) {
+        debugProfileSwitch(
+          "BACKGROUND_TASK_SKIPPED",
+          profile,
+          `序列号过期或被中断: ${sequence} vs ${requestSequenceRef.current}`,
+        );
+        return;
       }
+
+      // 异步执行，不等待结果
+      activateSelected()
+        .then(() => {
+          debugLog(`[Profile] 后台处理完成，序列号: ${sequence}`);
+        })
+        .catch((err: any) => {
+          console.warn("Failed to activate selected proxies:", err);
+        });
     },
     [activateSelected],
   );
@@ -396,21 +399,26 @@ const ProfilePage = () => {
           return;
         }
 
-        // 切换前保存当前 profile 的代理选择状态
+        // 异步保存当前 profile 的代理选择状态（不阻塞切换）
         if (profiles.current) {
-          try {
-            const proxiesData = await calcuProxies();
-            const { global, groups } = proxiesData;
-            const allGroups = [global, ...groups].filter(Boolean);
-            const selected = allGroups
-              .filter((g) => g.now)
-              .map((g) => ({ name: g.name, now: g.now! }));
-            if (selected.length > 0) {
-              await patchCurrent({ selected });
-            }
-          } catch (e) {
-            console.warn("[Profile] 保存代理选择失败:", e);
-          }
+          const currentProfile = profiles.current;
+          calcuProxies()
+            .then((proxiesData) => {
+              const { global, groups } = proxiesData;
+              const allGroups = [global, ...groups].filter(Boolean);
+              const selected = allGroups
+                .filter((g) => g.now)
+                .map((g) => ({ name: g.name, now: g.now! }));
+              if (selected.length > 0) {
+                return patchCurrent({ selected });
+              }
+            })
+            .catch((e) => {
+              console.warn(
+                `[Profile] 保存代理选择失败(${currentProfile}):`,
+                e,
+              );
+            });
         }
 
         // 执行切换请求
@@ -435,8 +443,8 @@ const ProfilePage = () => {
           return;
         }
 
-        // 完成切换
-        await mutateLogs();
+        // 完成切换（异步不阻塞）
+        mutateLogs();
         closeAllConnections();
 
         if (notifySuccess && success) {
@@ -450,15 +458,11 @@ const ProfilePage = () => {
           `[Profile] 切换到 ${profile} 完成，序列号: ${currentSequence}，开始后台处理`,
         );
 
-        // 延迟执行后台任务
-        setTimeout(
-          () =>
-            executeBackgroundTasks(
-              profile,
-              currentSequence,
-              currentAbortController,
-            ),
-          50,
+        // 直接执行后台任务，不再延迟
+        executeBackgroundTasks(
+          profile,
+          currentSequence,
+          currentAbortController,
         );
       } catch (err: any) {
         if (pendingRequestRef.current) {
