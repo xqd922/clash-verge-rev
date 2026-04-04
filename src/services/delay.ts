@@ -1,7 +1,5 @@
 import { delayProxyByName } from "tauri-plugin-mihomo-api";
 
-import { debugLog } from "@/utils/debug";
-
 // 使用节点名作为缓存键，统一延迟显示（符合 mihomo 内核设计）
 const hashKey = (name: string) => name;
 
@@ -184,9 +182,6 @@ class DelayManager {
     meta?: { elapsed?: number },
   ): DelayUpdate {
     const key = hashKey(name);
-    debugLog(
-      `[DelayManager] 设置延迟，代理: ${name}, 组: ${group}, 延迟: ${delay}`,
-    );
     const update: DelayUpdate = {
       delay,
       elapsed: meta?.elapsed,
@@ -246,10 +241,6 @@ class DelayManager {
     group: string,
     timeout: number,
   ): Promise<DelayUpdate> {
-    debugLog(
-      `[DelayManager] 开始测试延迟，代理: ${name}, 组: ${group}, 超时: ${timeout}ms`,
-    );
-
     // 先将状态设置为测试中
     this.setDelay(name, group, -2);
 
@@ -257,14 +248,12 @@ class DelayManager {
 
     try {
       const url = this.getUrl(group);
-      debugLog(`[DelayManager] 调用API测试延迟，代理: ${name}, URL: ${url}`);
 
       // 直接调用 mihomo API，超时由 mihomo 内核控制（timeout + 5s）
       const result = await delayProxyByName(name, url, timeout);
 
       const delay = result.delay;
       const elapsed = Date.now() - startTime;
-      debugLog(`[DelayManager] 延迟测试完成，代理: ${name}, 结果: ${delay}ms`);
 
       return this.setDelay(name, group, delay, { elapsed });
     } catch (error) {
@@ -293,9 +282,6 @@ class DelayManager {
       }
     }
     this.queueGroupNotification(group);
-    debugLog(
-      `[DelayManager] 批量设置延迟完成，组: ${group}, 成功: ${Object.keys(result).length}, 总数: ${allNames.length}`,
-    );
   }
 
   async checkListDelay(
@@ -305,16 +291,19 @@ class DelayManager {
     concurrency = 36,
     signal?: AbortSignal,
   ) {
-    debugLog(
-      `[DelayManager] 批量测试延迟开始，组: ${group}, 数量: ${nameList.length}, 并发数: ${concurrency}`,
-    );
     const names = nameList.filter(Boolean);
-    // 设置正在延迟测试中
-    names.forEach((name) => this.setDelay(name, group, -2));
+    // 批量设置正在延迟测试中
+    for (const name of names) {
+      this.setDelay(name, group, -2);
+    }
 
     let index = 0;
-    const startTime = Date.now();
+    let completedCount = 0;
+    const total = names.length;
     const listener = this.groupListenerMap.get(group);
+    // 按完成百分比通知组刷新，减少通知频率
+    const notifyInterval = Math.max(1, Math.floor(total / 10));
+    let lastNotifyCount = 0;
 
     const help = async (): Promise<void> => {
       if (signal?.aborted) return;
@@ -322,27 +311,27 @@ class DelayManager {
       if (!currName) return;
 
       try {
-        // 确保API调用前状态为测试中
-        this.setDelay(currName, group, -2);
-
         await this.checkDelay(currName, group, timeout);
-        if (listener) {
-          this.queueGroupNotification(group);
-        }
       } catch (error) {
-        console.error(
-          `[DelayManager] 批量测试单个代理出错，代理: ${currName}`,
-          error,
-        );
         // 设置为错误状态
         this.setDelay(currName, group, 1e6);
+      }
+
+      completedCount++;
+      // 每完成约 10% 通知一次组刷新，或者最后一个节点完成时
+      if (
+        listener &&
+        (completedCount - lastNotifyCount >= notifyInterval ||
+          completedCount === total)
+      ) {
+        lastNotifyCount = completedCount;
+        this.queueGroupNotification(group);
       }
 
       return help();
     };
 
     const actualConcurrency = Math.min(concurrency, names.length);
-    debugLog(`[DelayManager] 实际并发数: ${actualConcurrency}`);
 
     const promiseList: Promise<void>[] = [];
     for (let i = 0; i < actualConcurrency; i++) {
@@ -350,10 +339,6 @@ class DelayManager {
     }
 
     await Promise.all(promiseList);
-    const totalTime = Date.now() - startTime;
-    debugLog(
-      `[DelayManager] 批量测试延迟完成，组: ${group}, 总耗时: ${totalTime}ms`,
-    );
   }
 
   formatDelay(delay: number, timeout = 10000) {

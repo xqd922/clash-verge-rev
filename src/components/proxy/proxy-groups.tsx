@@ -27,7 +27,6 @@ import { useVerge } from "@/hooks/use-verge";
 import { useAppData } from "@/providers/app-data-context";
 import { updateProxyChainConfigInRuntime } from "@/services/cmds";
 import delayManager from "@/services/delay";
-import { debugLog } from "@/utils/debug";
 
 import { ScrollTopButton } from "../layout/scroll-top-button";
 
@@ -296,8 +295,6 @@ export const ProxyGroups = (props: Props) => {
       const abortController = new AbortController();
       checkAllAbortRef.current = abortController;
 
-      debugLog(`[ProxyGroups] 开始测试所有延迟，组: ${groupName}`);
-
       const proxies = renderList
         .filter(
           (e) => e.group?.name === groupName && (e.type === 2 || e.type === 4),
@@ -305,18 +302,14 @@ export const ProxyGroups = (props: Props) => {
         .flatMap((e) => e.proxyCol || e.proxy!)
         .filter(Boolean);
 
-      debugLog(`[ProxyGroups] 找到代理数量: ${proxies.length}`);
-
       const providers = new Set(
         proxies.map((p) => p!.provider!).filter(Boolean),
       );
 
       if (providers.size) {
-        debugLog(`[ProxyGroups] 发现提供者，数量: ${providers.size}`);
         Promise.allSettled(
           [...providers].map((p) => healthcheckProxyProvider(p)),
         ).then(() => {
-          debugLog(`[ProxyGroups] 提供者健康检查完成`);
           onProxies();
         });
       }
@@ -333,16 +326,11 @@ export const ProxyGroups = (props: Props) => {
           names.unshift(names.splice(idx, 1)[0]);
         }
       }
-      debugLog(`[ProxyGroups] 过滤后需要测试的代理数量: ${names.length}`);
 
       // 批量测速时清除固定状态（与旧 delayGroup API 行为一致）
       if (group?.fixed) {
         await unfixedProxy(groupName).catch(() => {});
       }
-
-      debugLog(
-        `[ProxyGroups] 测试URL: ${delayManager.getUrl(groupName)}, 超时: ${timeout}ms`,
-      );
 
       try {
         // 逐个测试，每测完一个立即更新显示，结果更准确
@@ -353,7 +341,6 @@ export const ProxyGroups = (props: Props) => {
           36,
           abortController.signal,
         );
-        debugLog(`[ProxyGroups] 延迟测试完成，组: ${groupName}`);
       } finally {
         // 只有当前轮未被取消时才做收尾工作
         if (!abortController.signal.aborted) {
