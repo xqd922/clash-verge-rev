@@ -22,6 +22,8 @@ jobs:
   check_tag_version:
     name: Check Release Tag and package.json Version Consistency
     runs-on: ubuntu-latest
+    outputs:
+      release_allowed: ${{ steps.check_branch.outputs.release_allowed }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -29,22 +31,27 @@ jobs:
           fetch-depth: 0
 
       - name: Check if tag is from main branch
+        id: check_branch
         run: |
-          TAG_REF="${GITHUB_REF##*/}"
+          TAG_REF="${GITHUB_REF_NAME:-${GITHUB_REF##*/}}"
           echo "Checking if tag $TAG_REF is from main branch..."
 
-          TAG_COMMIT=$(git rev-list -n 1 $TAG_REF)
+          TAG_COMMIT=$(git rev-list -n 1 "$TAG_REF")
+          git fetch origin main --depth=1
           MAIN_COMMITS=$(git rev-list origin/main)
 
           if echo "$MAIN_COMMITS" | grep -q "$TAG_COMMIT"; then
+            echo "release_allowed=true" >> "$GITHUB_OUTPUT"
             echo "✅ Tag $TAG_REF is from main branch"
           else
             echo "❌ Tag $TAG_REF is not from main branch"
             echo "This release workflow only accepts tags from main branch."
-            exit 1
+            echo "release_allowed=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
       - name: Check tag and package.json version
+        if: steps.check_branch.outputs.release_allowed == 'true'
         run: |
           TAG_REF="${GITHUB_REF_NAME:-${GITHUB_REF##*/}}"
           echo "Current tag: $TAG_REF"
@@ -67,6 +74,7 @@ jobs:
     name: Update tag
     runs-on: ubuntu-latest
     needs: [release, release-for-linux-arm, release-for-fixed-webview2]
+    if: needs.check_tag_version.outputs.release_allowed == 'true'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -139,6 +147,7 @@ jobs:
   release:
     name: Release Build
     needs: [check_tag_version]
+    if: needs.check_tag_version.outputs.release_allowed == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -243,6 +252,7 @@ jobs:
   release-for-linux-arm:
     name: Release Build for Linux ARM
     needs: [check_tag_version]
+    if: needs.check_tag_version.outputs.release_allowed == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -382,6 +392,7 @@ jobs:
   release-for-fixed-webview2:
     name: Release Build for Fixed WebView2
     needs: [check_tag_version]
+    if: needs.check_tag_version.outputs.release_allowed == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -494,7 +505,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   release-update:
-    if: ${{ !contains(github.ref_name, '-rc') }}
+    if: ${{ needs.check_tag_version.outputs.release_allowed == 'true' && !contains(github.ref_name, '-rc') }}
     name: Release Update
     runs-on: ubuntu-latest
     needs: [update_tag]
@@ -521,7 +532,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   release-update-for-fixed-webview2:
-    if: ${{ !contains(github.ref_name, '-rc') }}
+    if: ${{ needs.check_tag_version.outputs.release_allowed == 'true' && !contains(github.ref_name, '-rc') }}
     runs-on: ubuntu-latest
     needs: [update_tag]
     steps:
@@ -547,7 +558,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   submit-to-winget:
-    if: ${{ !contains(github.ref_name, '-rc') }}
+    if: ${{ needs.check_tag_version.outputs.release_allowed == 'true' && !contains(github.ref_name, '-rc') }}
     name: Submit to Winget
     runs-on: ubuntu-latest
     needs: [update_tag, release-update]
@@ -571,7 +582,7 @@ jobs:
           token: ${{ secrets.WINGET_TOKEN  }}
 
   notify-telegram:
-    if: ${{ !contains(github.ref_name, '-rc') }}
+    if: ${{ needs.check_tag_version.outputs.release_allowed == 'true' && !contains(github.ref_name, '-rc') }}
     name: Notify Telegram
     runs-on: ubuntu-latest
     needs:

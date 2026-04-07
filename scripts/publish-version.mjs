@@ -1,10 +1,16 @@
 // scripts/publish-version.mjs
-import { spawn } from "child_process";
-import { existsSync } from "fs";
+import { execFileSync, spawn } from "child_process";
+import { existsSync, readFileSync } from "fs";
 import path from "path";
 
 const rootDir = process.cwd();
 const scriptPath = path.join(rootDir, "scripts", "release-version.mjs");
+const releaseFiles = [
+  "Changelog.md",
+  "package.json",
+  "src-tauri/Cargo.toml",
+  "src-tauri/tauri.conf.json",
+];
 
 if (!existsSync(scriptPath)) {
   console.error("release-version.mjs not found!");
@@ -17,7 +23,6 @@ if (!versionArg) {
   process.exit(1);
 }
 
-// 1. 调用 release-version.mjs
 const runRelease = () =>
   new Promise((resolve, reject) => {
     const child = spawn("node", [scriptPath, versionArg], { stdio: "inherit" });
@@ -27,39 +32,82 @@ const runRelease = () =>
     });
   });
 
-// 2. 判断是否需要打 tag
 function isSemver(version) {
   return /^v?\d+\.\d+\.\d+(-[0-9A-Za-z-.]+)?$/.test(version);
+}
+
+function runGit(args, { captureOutput = false } = {}) {
+  return execFileSync("git", args, {
+    cwd: rootDir,
+    encoding: "utf8",
+    stdio: captureOutput ? "pipe" : "inherit",
+  });
+}
+
+function readPackageVersion() {
+  const packageJsonPath = path.join(rootDir, "package.json");
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+  return packageJson.version;
+}
+
+function getCurrentBranch() {
+  return runGit(["rev-parse", "--abbrev-ref", "HEAD"], {
+    captureOutput: true,
+  }).trim();
+}
+
+function getChangedReleaseFiles() {
+  const output = runGit(["diff", "--name-only", "HEAD", "--", ...releaseFiles], {
+    captureOutput: true,
+  }).trim();
+
+  if (!output) {
+    return [];
+  }
+
+  return output
+    .split(/\r?\n/)
+    .map((file) => file.trim())
+    .filter(Boolean);
 }
 
 async function run() {
   await runRelease();
 
+  const packageVersion = readPackageVersion();
   let tag = null;
-  if (versionArg === "alpha") {
-    // 读取 package.json 里的主版本
-    const pkg = await import(path.join(rootDir, "package.json"), {
-      assert: { type: "json" },
-    });
-    tag = `v${pkg.default.version}-alpha`;
+
+  if (["alpha", "beta", "rc"].includes(versionArg)) {
+    tag = `v${packageVersion}`;
   } else if (isSemver(versionArg)) {
-    // 1.2.3 或 v1.2.3
     tag = versionArg.startsWith("v") ? versionArg : `v${versionArg}`;
   }
 
-  if (tag) {
-    // 打 tag 并推送
-    const { execSync } = await import("child_process");
-    try {
-      execSync(`git tag ${tag}`, { stdio: "inherit" });
-      execSync(`git push origin ${tag}`, { stdio: "inherit" });
-      console.log(`[INFO]: Git tag ${tag} created and pushed.`);
-    } catch {
-      console.error(`[ERROR]: Failed to create or push git tag: ${tag}`);
-      process.exit(1);
-    }
-  } else {
+  if (!tag) {
     console.log("[INFO]: No git tag created for this version.");
+    return;
+  }
+
+  try {
+    const changedReleaseFiles = getChangedReleaseFiles();
+
+    if (changedReleaseFiles.length > 0) {
+      runGit(["add", "--", ...changedReleaseFiles]);
+      runGit(["commit", "-m", `release: ${tag}`, "--", ...changedReleaseFiles]);
+      console.log(
+        `[INFO]: Created release commit with ${changedReleaseFiles.join(", ")}.`,
+      );
+    } else {
+      console.log("[INFO]: No tracked release file changes detected, tagging HEAD.");
+    }
+
+    const branch = getCurrentBranch();
+    runGit(["tag", tag]);
+    runGit(["push", "origin", branch, tag]);
+    console.log(`[INFO]: Pushed ${branch} and ${tag}.`);
+  } catch {
+    console.error(`[ERROR]: Failed to publish release tag: ${tag}`);
+    process.exit(1);
   }
 }
 

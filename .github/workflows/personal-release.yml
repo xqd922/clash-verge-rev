@@ -1,16 +1,9 @@
-name: Personal Release (个人版)
+name: Personal Release (personal)
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "App version written into package/Cargo/Tauri config (e.g., 1.0.1)"
-        required: true
-        default: "1.0.1"
-      tag:
-        description: "Release tag (e.g., v1.0.1)"
-        required: true
-        default: "v1.0.1"
+  push:
+    tags:
+      - "v*.*.*"
 
 permissions: write-all
 
@@ -20,8 +13,62 @@ env:
   HUSKY: 0
 
 jobs:
+  check_personal_tag:
+    name: Check Personal Tag and Version Consistency
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.validate.outputs.tag_name }}
+      version: ${{ steps.validate.outputs.version }}
+      is_prerelease: ${{ steps.validate.outputs.is_prerelease }}
+    steps:
+      - name: Checkout tagged commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Validate personal branch tag
+        id: validate
+        shell: bash
+        run: |
+          TAG_REF="${GITHUB_REF_NAME:-${GITHUB_REF##*/}}"
+          TAG_COMMIT=$(git rev-list -n 1 "$TAG_REF")
+
+          git fetch origin personal --depth=1
+          PERSONAL_HEAD=$(git rev-parse origin/personal)
+
+          echo "Current tag: $TAG_REF"
+          echo "Tag commit: $TAG_COMMIT"
+          echo "origin/personal: $PERSONAL_HEAD"
+
+          if [[ "$TAG_COMMIT" != "$PERSONAL_HEAD" ]]; then
+            echo "Tag $TAG_REF must point to the latest commit on origin/personal."
+            exit 1
+          fi
+
+          PKG_VERSION=$(jq -r .version package.json)
+          EXPECTED_TAG="v$PKG_VERSION"
+
+          if [[ "$TAG_REF" != "$EXPECTED_TAG" ]]; then
+            echo "Version mismatch:"
+            echo "  tag         : $TAG_REF"
+            echo "  package.json: $EXPECTED_TAG"
+            exit 1
+          fi
+
+          {
+            echo "tag_name=$TAG_REF"
+            echo "version=$PKG_VERSION"
+            if [[ "$PKG_VERSION" == *-* ]]; then
+              echo "is_prerelease=true"
+            else
+              echo "is_prerelease=false"
+            fi
+          } >> "$GITHUB_OUTPUT"
+
   release:
     name: Build and Release
+    needs: [check_personal_tag]
     strategy:
       fail-fast: false
       matrix:
@@ -31,10 +78,11 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - name: Checkout tagged commit
+        uses: actions/checkout@v6
         with:
-          ref: personal
+          ref: ${{ github.ref }}
+          fetch-depth: 0
 
       - name: Install Rust Stable
         uses: dtolnay/rust-toolchain@stable
@@ -62,10 +110,6 @@ jobs:
           pnpm i
           pnpm run prebuild ${{ matrix.target }}
 
-      - name: Set app version
-        run: |
-          pnpm run release-version v${{ github.event.inputs.version }}
-
       - name: Extract release notes from Changelog
         id: changelog
         shell: bash
@@ -74,7 +118,6 @@ jobs:
           awk '/^## v\(/{if(found) exit; found=1} found{print}' Changelog.md > release_notes.md
           echo "Extracted release notes:"
           cat release_notes.md
-          # Store as output for tauri-action (multiline)
           {
             echo "notes<<EOF"
             cat release_notes.md
@@ -89,11 +132,11 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.event.inputs.tag }}
-          releaseName: "Personal ${{ github.event.inputs.tag }}"
+          tagName: ${{ needs.check_personal_tag.outputs.tag_name }}
+          releaseName: "Personal ${{ needs.check_personal_tag.outputs.tag_name }}"
           releaseBody: ${{ steps.changelog.outputs.notes }}
           releaseDraft: false
-          prerelease: false
+          prerelease: ${{ needs.check_personal_tag.outputs.is_prerelease == 'true' }}
           tauriScript: pnpm
           args: --target ${{ matrix.target }}
           updaterJsonKeepUniversal: true
@@ -105,7 +148,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $configDir | Out-Null
           Set-Content -Path (Join-Path $configDir "PORTABLE") -Value ""
 
-          $version = "${{ github.event.inputs.version }}"
+          $version = "${{ needs.check_personal_tag.outputs.version }}"
           $zipFile = "Clash.Verge_${version}_x64_portable.zip"
 
           Compress-Archive -Path @(
@@ -122,9 +165,7 @@ jobs:
       - name: Use tauri-generated latest.json as update.json
         shell: bash
         run: |
-          # Download the latest.json that tauri-action uploaded (has correct asset URLs)
-          gh release download "${{ github.event.inputs.tag }}" --pattern "latest.json" --output "update.json" --clobber
-          # Inject release notes into update.json (tauri build generates empty notes)
+          gh release download "${{ needs.check_personal_tag.outputs.tag_name }}" --pattern "latest.json" --output "update.json" --clobber
           node -e "
             const fs = require('fs');
             const data = JSON.parse(fs.readFileSync('update.json', 'utf8'));
@@ -139,9 +180,9 @@ jobs:
       - name: Upload portable to release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.tag }}
+          tag_name: ${{ needs.check_personal_tag.outputs.tag_name }}
           files: |
-            Clash.Verge_${{ github.event.inputs.version }}_x64_portable.zip
+            Clash.Verge_${{ needs.check_personal_tag.outputs.version }}_x64_portable.zip
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload update.json to updater release
