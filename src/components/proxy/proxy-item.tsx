@@ -11,6 +11,7 @@ import {
   Theme,
 } from "@mui/material";
 import { useCallback, useEffect, useReducer, useRef } from "react";
+import { unfixedProxy } from "tauri-plugin-mihomo-api";
 
 import { BaseLoading } from "@/components/base";
 import delayManager, { DelayUpdate } from "@/services/delay";
@@ -111,13 +112,20 @@ export const ProxyItem = (props: Props) => {
     delayLockRef.current = true;
     try {
       setDelayState({ delay: -2, updatedAt: Date.now() });
-      setDelayState(
-        await delayManager.checkDelay(proxy.name, group.name, timeout),
+      const nextState = await delayManager.checkDelay(
+        proxy.name,
+        group.name,
+        timeout,
       );
+      // Align with the original URLTest behavior: delay checks should clear fixed pinning.
+      if (group.type === "URLTest") {
+        await unfixedProxy(group.name).catch(() => {});
+      }
+      setDelayState(nextState);
     } finally {
       delayLockRef.current = false;
     }
-  }, [proxy.name, group.name, timeout]);
+  }, [proxy.name, group.name, group.type, timeout]);
 
   const delayValue = delayState.delay;
 

@@ -344,6 +344,10 @@ export const ProxyGroups = (props: Props) => {
       } finally {
         // 只有当前轮未被取消时才做收尾工作
         if (!abortController.signal.aborted) {
+          // The original URLTest flow treated delay checks as a way to clear fixed pinning.
+          if (group?.type === "URLTest") {
+            await unfixedProxy(groupName).catch(() => {});
+          }
           const headState = getGroupHeadState(groupName);
           if (headState?.sortType === 1) {
             onHeadState(groupName, { sortType: headState.sortType });
