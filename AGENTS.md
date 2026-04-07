@@ -1,40 +1,32 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
+`src/` contains the React 19 + Vite frontend. Keep UI in `components/`, route-level screens in `pages/`, shared logic in `hooks/`, `providers/`, `services/`, and utility helpers in `utils/`. Localized strings live in `src/locales/`, and generated TS types live under `src/types/generated/`.
 
-- `src/`: React 19 + TypeScript frontend (pages, components, hooks, providers, services, locales, assets).
-- `src-tauri/`: Rust backend for the Tauri 2 app (IPC commands in `src-tauri/src/cmd/`, core services in `src-tauri/src/core/`, config/enhance pipeline in `src-tauri/src/config/` and `src-tauri/src/enhance/`).
-- `crates/`: Rust workspace crates (logging, i18n, limiter, sysinfo plugin, etc.).
-- `scripts/`: Node scripts (notably `scripts/prebuild.mjs` for downloading/packaging the mihomo sidecar binaries).
-- `dist/`: Vite build output (Tauri bundles this via `src-tauri/tauri.conf.json`).
+`src-tauri/` contains the desktop shell, bundled resources, and the main Rust application. Shared Rust crates live in `crates/` (for example `clash-verge-i18n`, `clash-verge-logging`, and `tauri-plugin-mihomo`). Build and release helpers are in `scripts/`, with additional workflow utilities in `scripts-workflow/`. Project docs are under `docs/`.
 
 ## Build, Test, and Development Commands
+Use `pnpm` for JS tasks and `cargo` for Rust tasks.
 
-- `pnpm install`: install frontend tooling and script deps.
-- `pnpm run prebuild`: download/prepare mihomo core binaries required for local run.
-- `pnpm dev`: run Tauri dev (backend + frontend). Use `pnpm web:dev` for frontend-only.
-- `pnpm build` / `pnpm build:fast`: production build (fast uses Rust `fast-release` profile).
-- `pnpm lint` / `pnpm typecheck` / `pnpm format`: ESLint, TypeScript checks, Prettier formatting.
-- `cargo fmt` / `cargo clippy --all-targets --all-features`: Rust formatting and linting.
-- `cargo test`: run Rust unit tests (some exist under `src-tauri/src/**`).
+- `pnpm dev`: start the default Tauri dev app.
+- `pnpm dev:tauri`: run the pure Tauri development profile.
+- `pnpm web:dev`: run the frontend only in Vite.
+- `pnpm run prebuild`: download or refresh Mihomo sidecar binaries.
+- `pnpm build` / `pnpm build:fast`: create production or faster test builds.
+- `pnpm lint` and `pnpm typecheck`: run frontend linting and TS checks.
+- `cargo test --workspace`: run Rust tests across workspace crates.
+- `cargo test -p tauri-plugin-mihomo`: run the plugin integration tests in `crates/tauri-plugin-mihomo/tests/`.
+- `cargo make pre-commit` / `cargo make pre-push`: run the same checks wired into Husky hooks.
 
 ## Coding Style & Naming Conventions
+Follow `.editorconfig`: 2 spaces for TS/JS/JSON/Markdown, 4 spaces for Rust, LF endings, UTF-8. Prettier enforces 80-column formatting, semicolons, double quotes, and trailing commas. Rust uses `rustfmt` with a 120-column limit.
 
-- TypeScript/React: 2-space indentation; prefer `PascalCase` components and `camelCase` functions/vars. Keep UI logic in `src/pages/` and shared logic in `src/services/`, `src/hooks/`.
-- Rust: `snake_case` for modules/functions, `CamelCase` for types; avoid `unwrap()`/`expect()` (workspace Clippy lints are strict).
-- Run formatters before PR: `pnpm format` and `cargo fmt`.
+Prefer `kebab-case` for frontend file names (`traffic-sampler.ts`), `PascalCase` for React components, and clear crate names matching the existing `clash-verge-*` pattern. Run `pnpm format` and `cargo fmt` before pushing.
 
 ## Testing Guidelines
-
-- Rust: add focused unit tests near the module under test (`#[test]`); keep tests deterministic.
-- Frontend: no dedicated test runner is enforced; prefer small, testable utilities and manual verification steps in PR notes.
+Frontend changes must pass `pnpm lint` and `pnpm typecheck`. Rust changes should pass `cargo clippy --all-targets --all-features -- -D warnings` and relevant `cargo test` targets. Add Rust tests in crate-level `tests/` folders using descriptive `*_test.rs` names. There is no dedicated JS unit-test runner configured, so validate UI changes in `pnpm dev` and include screenshots for visible changes.
 
 ## Commit & Pull Request Guidelines
+Recent history uses concise conventional prefixes such as `fix:`, `perf:`, and `release:`. Keep commit subjects imperative and scoped to one change. Signed commits are required.
 
-- Commits generally follow Conventional Commit style: `feat:`, `fix:`, `refactor:`, `chore:`, `perf:`, `doc:`, `style:`, `ci:` with optional scopes (e.g., `fix(macos): ...`).
-- PRs: describe the problem + approach, link related issues, include screenshots/GIFs for UI changes, and note platform-specific behavior (Windows/macOS/Linux) when relevant.
-
-## Security & Configuration Tips
-
-- Treat Tauri capabilities (`src-tauri/capabilities/`) as security boundaries; avoid widening `fs`/`shell` scopes without strong justification.
-- For profile scripts (Boa JS in `src-tauri/src/enhance/`), consider input size and execution time impact when adding new features.
+Pull requests should describe the change, note affected platforms, link related issues, and include screenshots or recordings for UI work. Call out any sidecar, packaging, or migration impact explicitly.
