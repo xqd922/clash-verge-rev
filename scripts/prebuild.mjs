@@ -180,10 +180,11 @@ const META_VERSION_URL =
 const META_URL_PREFIX = `https://github.com/MetaCubeX/mihomo/releases/download`;
 let META_VERSION;
 
-const META_SMART_VERSION_URL =
-  "https://github.com/vernesong/mihomo/releases/download/Prerelease-Alpha/version.txt";
 const META_SMART_URL_PREFIX = `https://github.com/vernesong/mihomo/releases/download/Prerelease-Alpha`;
+const META_SMART_RELEASE_API =
+  "https://api.github.com/repos/vernesong/mihomo/releases/tags/Prerelease-Alpha";
 let META_SMART_VERSION;
+let META_SMART_DOWNLOAD_URL;
 
 const META_ALPHA_MAP = {
   "win32-x64": "mihomo-windows-amd64-v2",
@@ -315,15 +316,39 @@ async function getLatestSmartVersion() {
   if (httpProxy) options.agent = new HttpsProxyAgent(httpProxy);
 
   try {
-    const response = await fetch(META_SMART_VERSION_URL, {
+    const smartName = META_SMART_MAP[`${platform}-${arch}`];
+    const smartExt = platform === "win32" ? ".zip" : ".gz";
+    const response = await fetch(META_SMART_RELEASE_API, {
       ...options,
       method: "GET",
+      headers: {
+        Accept: "application/vnd.github+json",
+        "User-Agent": "clash-verge-prebuild",
+      },
     });
     if (!response.ok)
       throw new Error(
-        `Failed to fetch ${META_SMART_VERSION_URL}: ${response.status}`,
+        `Failed to fetch ${META_SMART_RELEASE_API}: ${response.status}`,
       );
-    META_SMART_VERSION = (await response.text()).trim();
+    const release = await response.json();
+    const asset = release.assets?.find(
+      (item) =>
+        item?.name?.startsWith(`${smartName}-`) &&
+        item.name.endsWith(smartExt),
+    );
+    if (!asset?.browser_download_url) {
+      const availableAssets = (release.assets ?? [])
+        .map((item) => item.name)
+        .join(", ");
+      throw new Error(
+        `No smart asset matched ${smartName}*${smartExt}. Available assets: ${availableAssets}`,
+      );
+    }
+    META_SMART_DOWNLOAD_URL = asset.browser_download_url;
+    META_SMART_VERSION = asset.name.slice(
+      `${smartName}-`.length,
+      -smartExt.length,
+    );
     log_info(`Latest smart version: ${META_SMART_VERSION}`);
     await setCachedVersion("META_SMART_VERSION", META_SMART_VERSION);
   } catch (err) {
@@ -387,7 +412,9 @@ function clashMetaSmart() {
     targetFile: `verge-mihomo-smart-${SIDECAR_HOST}${isWin ? ".exe" : ""}`,
     exeFile: `${name}${isWin ? ".exe" : ""}`,
     zipFile: `${name}-${META_SMART_VERSION}.${urlExt}`,
-    downloadURL: `${META_SMART_URL_PREFIX}/${name}-${META_SMART_VERSION}.${urlExt}`,
+    downloadURL:
+      META_SMART_DOWNLOAD_URL ??
+      `${META_SMART_URL_PREFIX}/${name}-${META_SMART_VERSION}.${urlExt}`,
   };
 }
 
