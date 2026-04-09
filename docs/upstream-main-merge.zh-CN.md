@@ -1,6 +1,7 @@
 # Upstream Main 合并指南
 
 英文版: [upstream-main-merge.md](/D:/Me/clash-verge-rev/docs/upstream-main-merge.md)
+快速流程版: [upstream-main-merge-checklist.zh-CN.md](/D:/Me/clash-verge-rev/docs/upstream-main-merge-checklist.zh-CN.md)
 
 这个仓库通过 `upstream/main` 同步原项目，并把本地长期维护分支固定在
 `personal`。
