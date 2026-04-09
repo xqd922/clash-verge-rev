@@ -12,7 +12,6 @@ use crate::{
     },
     core::{CoreManager, handle, timer::Timer, tray::Tray},
     feat,
-    module::auto_backup::{AutoBackupManager, AutoBackupTrigger},
     process::AsyncHandler,
     utils::{dirs, help},
 };
@@ -96,11 +95,10 @@ pub async fn import_profile(url: std::string::String, option: Option<PrfOption>)
 
     if let Some(uid) = &item.uid {
         logging!(info, Type::Cmd, "[导入订阅] 发送配置变更通知: {}", uid);
-        handle::Handle::notify_profile_changed(uid.clone());
+        handle::Handle::notify_profile_changed(uid);
     }
 
     logging!(info, Type::Cmd, "[导入订阅] 导入完成: {}", url);
-    AutoBackupManager::trigger_backup(AutoBackupTrigger::ProfileChange);
     Ok(())
 }
 
@@ -130,10 +128,9 @@ pub async fn create_profile(item: PrfItem, file_data: Option<String>) -> CmdResu
             // 发送配置变更通知
             if let Some(uid) = item.uid.clone() {
                 logging!(info, Type::Cmd, "[创建订阅] 发送配置变更通知: {}", uid);
-                handle::Handle::notify_profile_changed(uid);
+                handle::Handle::notify_profile_changed(&uid);
             }
             Config::profiles().await.apply();
-            AutoBackupManager::trigger_backup(AutoBackupTrigger::ProfileChange);
             Ok(())
         }
         Err(err) => {
@@ -149,7 +146,7 @@ pub async fn create_profile(item: PrfItem, file_data: Option<String>) -> CmdResu
 /// 更新配置文件
 #[tauri::command]
 pub async fn update_profile(index: String, option: Option<PrfOption>) -> CmdResult {
-    match feat::update_profile(&index, option.as_ref(), true, true).await {
+    match feat::update_profile(&index, option.as_ref(), true, true, true).await {
         Ok(_) => {
             let _: () = Config::profiles().await.apply();
             Ok(())
@@ -175,8 +172,7 @@ pub async fn delete_profile(index: String) -> CmdResult {
                 handle::Handle::refresh_clash();
                 // 发送配置变更通知
                 logging!(info, Type::Cmd, "[删除订阅] 发送配置变更通知: {}", index);
-                handle::Handle::notify_profile_changed(index);
-                AutoBackupManager::trigger_backup(AutoBackupTrigger::ProfileChange);
+                handle::Handle::notify_profile_changed(&index);
             }
             Err(e) => {
                 logging!(error, Type::Cmd, "{}", e);
@@ -271,7 +267,7 @@ async fn handle_success(current_value: Option<&String>) -> CmdResult<bool> {
         && WindowManager::get_main_window().is_some()
     {
         logging!(info, Type::Cmd, "向前端发送配置变更事件: {}", current);
-        handle::Handle::notify_profile_changed(current.to_owned());
+        handle::Handle::notify_profile_changed(current);
     }
 
     // 托盘更新和文件保存异步执行，不阻塞返回
@@ -408,12 +404,11 @@ pub async fn patch_profile(index: String, profile: PrfItem) -> CmdResult {
                 logging!(error, Type::Timer, "刷新定时器失败: {}", e);
             } else {
                 // 刷新成功后发送自定义事件，不触发配置重载
-                crate::core::handle::Handle::notify_timer_updated(index);
+                crate::core::handle::Handle::notify_timer_updated(&index);
             }
         });
     }
 
-    AutoBackupManager::trigger_backup(AutoBackupTrigger::ProfileChange);
     Ok(())
 }
 
