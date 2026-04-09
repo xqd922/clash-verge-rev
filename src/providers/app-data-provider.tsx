@@ -61,6 +61,9 @@ export const AppDataProvider = ({
     let lastProfileId: string | null = null;
     let lastUpdateTime = 0;
     const refreshThrottle = 800;
+    const profileRefreshDelay = 150;
+    const profileRefreshRetryDelay = 250;
+    const profileRefreshMaxRetries = 1;
 
     let isUnmounted = false;
     const scheduledTimeouts = new Set<number>();
@@ -119,50 +122,40 @@ export const AppDataProvider = ({
       lastProfileId = newProfileId;
       lastUpdateTime = now;
 
-      // Use longer delay (500ms) to ensure mihomo has fully loaded the new config
+      // Keep profile switching lightweight: restore proxy state first and
+      // defer heavier pages to their own refresh paths.
       scheduleTimeout(async () => {
-        // Directly call calcuProxies with retry to bypass SWR deduplication
-        // and handle slow core initialization (e.g., Smart core loading LightGBM model)
-        const maxRetries = 3;
-        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        for (
+          let attempt = 0;
+          attempt <= profileRefreshMaxRetries;
+          attempt += 1
+        ) {
           try {
             const newProxies = await calcuProxies();
             await refreshProxy(newProxies, { revalidate: false });
+
+            refreshClashConfig().catch((error) =>
+              console.warn(
+                "[DataProvider] Clash config refresh failed:",
+                error,
+              ),
+            );
             break;
           } catch (error) {
-            if (attempt < maxRetries) {
+            if (attempt < profileRefreshMaxRetries) {
               // eslint-disable-next-line @eslint-react/web-api/no-leaked-timeout
-              await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+              await new Promise((r) =>
+                setTimeout(r, profileRefreshRetryDelay * (attempt + 1)),
+              );
             } else {
               console.warn(
-                `[DataProvider] All ${maxRetries + 1} proxy refresh attempts failed:`,
+                "[DataProvider] Proxy refresh after switch failed:",
                 error,
               );
             }
           }
         }
-        // Refresh other data in parallel
-        Promise.all([
-          refreshClashConfig().catch((error) =>
-            console.warn("[DataProvider] Clash config refresh failed:", error),
-          ),
-          refreshProxyProviders().catch((error) =>
-            console.warn(
-              "[DataProvider] Proxy providers refresh failed:",
-              error,
-            ),
-          ),
-          refreshRules().catch((error) =>
-            console.warn("[DataProvider] Rules refresh failed:", error),
-          ),
-          refreshRuleProviders().catch((error) =>
-            console.warn(
-              "[DataProvider] Rule providers refresh failed:",
-              error,
-            ),
-          ),
-        ]);
-      }, 500);
+      }, profileRefreshDelay);
     };
 
     const handleRefreshClash = () => {
@@ -257,13 +250,7 @@ export const AppDataProvider = ({
         );
       }
     };
-  }, [
-    refreshProxy,
-    refreshClashConfig,
-    refreshProxyProviders,
-    refreshRules,
-    refreshRuleProviders,
-  ]);
+  }, [refreshProxy, refreshClashConfig]);
 
   const { data: sysproxy, mutate: refreshSysproxy } = useSWR(
     "getSystemProxy",

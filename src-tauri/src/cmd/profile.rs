@@ -24,6 +24,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 static CURRENT_SWITCHING_PROFILE: AtomicBool = AtomicBool::new(false);
+const PROFILE_SWITCH_TIMEOUT_SECS: u64 = 12;
 
 #[tauri::command]
 pub async fn get_profiles() -> CmdResult<SharedDraft<IProfiles>> {
@@ -313,7 +314,10 @@ async fn handle_update_error<E: std::fmt::Display>(e: E) -> CmdResult<bool> {
 }
 
 async fn handle_timeout(current_profile: Option<&String>) -> CmdResult<bool> {
-    let timeout_msg = "配置更新超时(30秒)，可能是配置验证或核心通信阻塞";
+    let timeout_msg = format!(
+        "配置更新超时({}秒)，可能是配置验证或核心通信阻塞",
+        PROFILE_SWITCH_TIMEOUT_SECS
+    );
     logging!(error, Type::Cmd, "{}", timeout_msg);
     Config::profiles().await.discard();
     if let Some(prev_profile) = current_profile {
@@ -327,7 +331,11 @@ async fn perform_config_update(current_value: Option<&String>, current_profile: 
     defer! {
         CURRENT_SWITCHING_PROFILE.store(false, Ordering::Release);
     }
-    let update_result = tokio::time::timeout(Duration::from_secs(30), CoreManager::global().update_config()).await;
+    let update_result = tokio::time::timeout(
+        Duration::from_secs(PROFILE_SWITCH_TIMEOUT_SECS),
+        CoreManager::global().update_config(),
+    )
+    .await;
 
     match update_result {
         Ok(Ok((true, _))) => handle_success(current_value).await,
