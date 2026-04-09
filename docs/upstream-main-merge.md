@@ -1,5 +1,7 @@
 # Upstream Main Merge Guide
 
+Chinese version: [upstream-main-merge.zh-CN.md](/D:/Me/clash-verge-rev/docs/upstream-main-merge.zh-CN.md)
+
 This repository syncs the original project from `upstream/main` into the
 long-lived local branch `personal`.
 
