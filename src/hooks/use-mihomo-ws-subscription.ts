@@ -1,6 +1,6 @@
 import { useLocalStorage } from 'foxact/use-local-storage'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { type MutatorCallback, useSWRConfig } from 'swr'
+import { useCallback, useEffect, useRef } from 'react'
+import { mutate, type MutatorCallback } from 'swr'
 import useSWRSubscription from 'swr/subscription'
 import { type Message, type MihomoWebSocket } from 'tauri-plugin-mihomo-api'
 
@@ -41,19 +41,14 @@ export const useMihomoWsSubscription = <T>(
     setupHandlers,
   } = options
 
-  const { cache, mutate } = useSWRConfig()
-  const [initialDate] = useState(() => Date.now())
-  const [date, setDate] = useLocalStorage(storageKey, initialDate)
+  // eslint-disable-next-line @eslint-react/purity
+  const [date, setDate] = useLocalStorage(storageKey, Date.now())
   const subscriptKey = buildSubscriptKey(date)
   const subscriptionCacheKey = subscriptKey ? `$sub$${subscriptKey}` : null
 
   const wsRef = useRef<MihomoWebSocket | null>(null)
   const wsFirstConnectionRef = useRef<boolean>(true)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const prevKeysRef = useRef<{ raw: string | null; cache: string | null }>({
-    raw: null,
-    cache: null,
-  })
 
   const response = useSWRSubscription<T, any, string | null>(
     subscriptKey,
@@ -148,24 +143,11 @@ export const useMihomoWsSubscription = <T>(
     },
   )
 
-  // Clean up stale SWR cache entries when the subscription key changes
-  useEffect(() => {
-    const prev = prevKeysRef.current
-    // Delete old entries from cache entirely (not just set to undefined)
-    if (prev.cache && prev.cache !== subscriptionCacheKey) {
-      cache.delete(prev.cache)
-    }
-    if (prev.raw && prev.raw !== subscriptKey) {
-      cache.delete(prev.raw)
-    }
-    prevKeysRef.current = { raw: subscriptKey, cache: subscriptionCacheKey }
-  }, [cache, subscriptKey, subscriptionCacheKey])
-
   useEffect(() => {
     if (subscriptionCacheKey) {
       mutate(subscriptionCacheKey)
     }
-  }, [mutate, subscriptionCacheKey])
+  }, [subscriptionCacheKey])
 
   const refresh = useCallback(() => {
     setDate(Date.now())

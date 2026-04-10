@@ -43,7 +43,6 @@ import { useVerge } from '@/hooks/use-verge'
 import { useWindowDecorations } from '@/hooks/use-window'
 import ProxiesPage from '@/pages/proxies'
 import { useThemeMode } from '@/services/states'
-import { swrCacheProvider } from '@/services/swr-cache-provider'
 import getSystem from '@/utils/get-system'
 
 import {
@@ -260,7 +259,6 @@ const Layout = () => {
   return (
     <SWRConfig
       value={{
-        provider: swrCacheProvider,
         errorRetryCount: 3,
         // TODO remove the 5000ms
         errorRetryInterval: 5000,

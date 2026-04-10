@@ -1,4 +1,3 @@
-import { type RefObject } from 'react'
 import { MihomoWebSocket, Traffic } from 'tauri-plugin-mihomo-api'
 
 import { useMihomoWsSubscription } from './use-mihomo-ws-subscription'
@@ -6,12 +5,8 @@ import { useTrafficMonitorEnhanced } from './use-traffic-monitor'
 
 const FALLBACK_TRAFFIC: Traffic = { up: 0, down: 0 }
 
-export const useTrafficData = (options?: {
-  enabled?: boolean
-  onDataRef?: RefObject<((data: Traffic) => void) | null>
-}) => {
+export const useTrafficData = (options?: { enabled?: boolean }) => {
   const enabled = options?.enabled ?? true
-  const onDataRef = options?.onDataRef
 
   const {
     graphData: { appendData },
@@ -24,13 +19,13 @@ export const useTrafficData = (options?: {
     setupHandlers: ({ next, scheduleReconnect }) => ({
       handleMessage: (data) => {
         if (data.startsWith('Websocket error')) {
+          next(data, FALLBACK_TRAFFIC)
           void scheduleReconnect()
           return
         }
 
         try {
           const parsed = JSON.parse(data) as Traffic
-          onDataRef?.current?.(parsed)
           appendData(parsed)
           next(null, parsed)
         } catch (error) {
