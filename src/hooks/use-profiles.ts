@@ -1,5 +1,5 @@
 import useSWR, { mutate } from 'swr'
-import { selectNodeForGroup, unfixedProxy } from 'tauri-plugin-mihomo-api'
+import { selectNodeForGroup } from 'tauri-plugin-mihomo-api'
 
 import {
   calcuProxies,
@@ -73,14 +73,12 @@ export const useProfiles = () => {
   }
 
   // 根据selected的节点选择
-  const activateSelected = async () => {
+  const activateSelected = async (profileOverride?: IProfilesConfig) => {
     try {
       debugLog('[ActivateSelected] 开始处理代理选择')
 
-      const [proxiesData, profileData] = await Promise.all([
-        calcuProxies(),
-        getProfiles(), // 始终从后端获取最新数据，避免 SWR 缓存过时
-      ])
+      const proxiesData = await calcuProxies()
+      const profileData = profileOverride ?? profiles
 
       if (!profileData || !proxiesData || !profileData.items) {
         debugLog('[ActivateSelected] 代理或配置数据不可用，跳过处理')
@@ -119,7 +117,6 @@ export const useProfiles = () => {
         'URLTest',
         'Fallback',
         'LoadBalance',
-        'Smart',
       ])
 
       // 处理所有代理组
@@ -170,10 +167,6 @@ export const useProfiles = () => {
           )
           hasChange = true
           selectNodeForGroup(name, savedProxy)
-          // Smart groups should not be fixed after restoring selection
-          if (type === 'Smart') {
-            unfixedProxy(name)
-          }
         }
 
         newSelected.push({ name, now: savedProxy })

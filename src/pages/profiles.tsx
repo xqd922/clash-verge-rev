@@ -21,7 +21,7 @@ import {
   TextSnippetOutlined,
 } from '@mui/icons-material'
 import { LoadingButton } from '@mui/lab'
-import { Box, Button, Grid, IconButton, Stack } from '@mui/material'
+import { Box, Button, Divider, Grid, IconButton, Stack } from '@mui/material'
 import { listen, TauriEvent } from '@tauri-apps/api/event'
 import { readText } from '@tauri-apps/plugin-clipboard-manager'
 import { readTextFile } from '@tauri-apps/plugin-fs'
@@ -35,6 +35,7 @@ import { closeAllConnections } from 'tauri-plugin-mihomo-api'
 
 import { BasePage, BaseStyledTextField, DialogRef } from '@/components/base'
 import { ProfileItem } from '@/components/profile/profile-item'
+import { ProfileMore } from '@/components/profile/profile-more'
 import {
   ProfileViewer,
   ProfileViewerRef,
@@ -43,10 +44,10 @@ import { ConfigViewer } from '@/components/setting/mods/config-viewer'
 import { useListen } from '@/hooks/use-listen'
 import { useProfiles } from '@/hooks/use-profiles'
 import {
-  calcuProxies,
   createProfile,
   deleteProfile,
   enhanceProfiles,
+  getProfiles,
   //restartCore,
   getRuntimeLogs,
   importProfile,
@@ -54,7 +55,7 @@ import {
   updateProfile,
 } from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
-import { useSetLoadingCache } from '@/services/states'
+import { useSetLoadingCache, useThemeMode } from '@/services/states'
 import { debugLog } from '@/utils/debug'
 
 // 记录profile切换状态
@@ -159,7 +160,9 @@ const ProfilePage = () => {
     [],
   )
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
@@ -170,7 +173,6 @@ const ProfilePage = () => {
     profiles = {},
     activateSelected,
     patchProfiles,
-    patchCurrent,
     mutateProfiles,
     error,
     isStale,
@@ -247,7 +249,10 @@ const ProfilePage = () => {
     }
   })
 
-  const { mutate: mutateLogs } = useSWR('getRuntimeLogs', getRuntimeLogs)
+  const { data: chainLogs = {}, mutate: mutateLogs } = useSWR(
+    'getRuntimeLogs',
+    getRuntimeLogs,
+  )
 
   const viewerRef = useRef<ProfileViewerRef>(null)
   const configRef = useRef<DialogRef>(null)
@@ -274,11 +279,16 @@ const ProfilePage = () => {
     }
     setLoading(true)
 
+    const handleImportSuccess = async (noticeKey: string) => {
+      showNotice.success(noticeKey)
+      setUrl('')
+      await performRobustRefresh()
+    }
+
     try {
       // 尝试正常导入
       await importProfile(url)
-      showNotice.success('shared.feedback.notifications.importSuccess')
-      setUrl('')
+      await handleImportSuccess('shared.feedback.notifications.importSuccess')
     } catch (initialErr) {
       console.warn('[订阅导入] 首次导入失败:', initialErr)
 
@@ -289,8 +299,9 @@ const ProfilePage = () => {
           with_proxy: false,
           self_proxy: true,
         })
-        showNotice.success('shared.feedback.notifications.importWithClashProxy')
-        setUrl('')
+        await handleImportSuccess(
+          'shared.feedback.notifications.importWithClashProxy',
+        )
       } catch (retryErr) {
         // 回退导入也失败
         showNotice.error(
@@ -301,6 +312,57 @@ const ProfilePage = () => {
     } finally {
       setDisabled(false)
       setLoading(false)
+    }
+  }
+
+  // 强化的刷新策略
+  const performRobustRefresh = async () => {
+    let retryCount = 0
+    const maxRetries = 5
+    const baseDelay = 200
+
+    while (retryCount < maxRetries) {
+      try {
+        debugLog(`[导入刷新] 第${retryCount + 1}次尝试刷新配置数据`)
+
+        // 强制刷新，绕过所有缓存
+        await mutateProfiles(undefined, {
+          revalidate: true,
+          rollbackOnError: false,
+        })
+
+        // 等待状态稳定
+        await new Promise((resolve) =>
+          setTimeout(resolve, baseDelay * (retryCount + 1)),
+        )
+
+        await onEnhance(false)
+        return
+      } catch (error) {
+        console.error(`[导入刷新] 第${retryCount + 1}次刷新失败:`, error)
+        retryCount++
+        await new Promise((resolve) =>
+          setTimeout(resolve, baseDelay * retryCount),
+        )
+      }
+    }
+
+    // 所有重试失败后的最后尝试
+    console.warn(`[导入刷新] 常规刷新失败，尝试清除缓存重新获取`)
+    try {
+      // 清除SWR缓存并重新获取
+      await mutate('getProfiles', getProfiles(), { revalidate: true })
+      await onEnhance(false)
+      showNotice.error(
+        'profiles.page.feedback.notifications.importNeedsRefresh',
+        3000,
+      )
+    } catch (finalError) {
+      console.error(`[导入刷新] 最终刷新尝试失败:`, finalError)
+      showNotice.error(
+        'profiles.page.feedback.notifications.importSuccess',
+        5000,
+      )
     }
   }
 
@@ -315,32 +377,31 @@ const ProfilePage = () => {
   }
 
   const executeBackgroundTasks = useCallback(
-    (profile: string, sequence: number, abortController: AbortController) => {
-      // Note: switchingProfileRef.current is already null here because
-      // cleanupSwitchState in the finally block runs before this callback.
-      // Only check sequence and abort status.
-      if (
-        sequence !== requestSequenceRef.current ||
-        abortController.signal.aborted
-      ) {
-        debugProfileSwitch(
-          'BACKGROUND_TASK_SKIPPED',
-          profile,
-          `序列号过期或被中断: ${sequence} vs ${requestSequenceRef.current}`,
-        )
-        return
-      }
-
-      // 异步执行，不等待结果
-      activateSelected()
-        .then(() => {
+    async (
+      profile: string,
+      sequence: number,
+      abortController: AbortController,
+    ) => {
+      try {
+        if (
+          sequence === requestSequenceRef.current &&
+          switchingProfileRef.current === profile &&
+          !abortController.signal.aborted
+        ) {
+          await activateSelected(profiles)
           debugLog(`[Profile] 后台处理完成，序列号: ${sequence}`)
-        })
-        .catch((err: any) => {
-          console.warn('Failed to activate selected proxies:', err)
-        })
+        } else {
+          debugProfileSwitch(
+            'BACKGROUND_TASK_SKIPPED',
+            profile,
+            `序列号过期或被中断: ${sequence} vs ${requestSequenceRef.current}`,
+          )
+        }
+      } catch (err: any) {
+        console.warn('Failed to activate selected proxies:', err)
+      }
     },
-    [activateSelected],
+    [activateSelected, profiles],
   )
 
   const activateProfile = useCallback(
@@ -388,30 +449,13 @@ const ProfilePage = () => {
           return
         }
 
-        // 异步保存当前 profile 的代理选择状态（不阻塞切换）
-        if (profiles.current) {
-          const currentProfile = profiles.current
-          calcuProxies()
-            .then((proxiesData) => {
-              const { global, groups } = proxiesData
-              const allGroups = [global, ...groups].filter(Boolean)
-              const selected = allGroups
-                .filter((g) => g.now)
-                .map((g) => ({ name: g.name, now: g.now! }))
-              if (selected.length > 0) {
-                return patchCurrent({ selected })
-              }
-            })
-            .catch((e) => {
-              console.warn(`[Profile] 保存代理选择失败(${currentProfile}):`, e)
-            })
-        }
-
         // 执行切换请求
         const requestPromise = patchProfiles(
           { current: profile },
           currentAbortController.signal,
-          { deferRefreshOnSuccess: true },
+          {
+            deferRefreshOnSuccess: true,
+          },
         )
         pendingRequestRef.current = requestPromise
 
@@ -429,8 +473,8 @@ const ProfilePage = () => {
           return
         }
 
-        // 完成切换（异步不阻塞）
-        mutateLogs()
+        // 完成切换
+        await mutateLogs()
         closeAllConnections()
 
         if (notifySuccess && success) {
@@ -444,8 +488,16 @@ const ProfilePage = () => {
           `[Profile] 切换到 ${profile} 完成，序列号: ${currentSequence}，开始后台处理`,
         )
 
-        // 直接执行后台任务，不再延迟
-        executeBackgroundTasks(profile, currentSequence, currentAbortController)
+        // 延迟执行后台任务
+        setTimeout(
+          () =>
+            executeBackgroundTasks(
+              profile,
+              currentSequence,
+              currentAbortController,
+            ),
+          50,
+        )
       } catch (err: any) {
         if (pendingRequestRef.current) {
           pendingRequestRef.current = null
@@ -480,7 +532,6 @@ const ProfilePage = () => {
     [
       profiles,
       patchProfiles,
-      patchCurrent,
       mutateLogs,
       executeBackgroundTasks,
       handleProfileInterrupt,
@@ -675,6 +726,12 @@ const ProfilePage = () => {
       setActivatings([])
     }
   })
+
+  const mode = useThemeMode()
+  const isLight = mode === 'light'
+  const dividercolor = isLight
+    ? 'rgba(0, 0, 0, 0.06)'
+    : 'rgba(255, 255, 255, 0.06)'
 
   // 监听后端配置变更
   useEffect(() => {
@@ -973,6 +1030,36 @@ const ProfilePage = () => {
                   </Grid>
                 ))}
               </SortableContext>
+            </Grid>
+          </Box>
+          <Divider
+            variant="middle"
+            flexItem
+            sx={{ width: `calc(100% - 32px)`, borderColor: dividercolor }}
+          ></Divider>
+          <Box sx={{ mt: 1.5, mb: '10px' }}>
+            <Grid container spacing={{ xs: 1, lg: 1 }}>
+              <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
+                <ProfileMore
+                  id="Merge"
+                  onSave={async (prev, curr) => {
+                    if (prev !== curr) {
+                      await onEnhance(false)
+                    }
+                  }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
+                <ProfileMore
+                  id="Script"
+                  logInfo={chainLogs['Script']}
+                  onSave={async (prev, curr) => {
+                    if (prev !== curr) {
+                      await onEnhance(false)
+                    }
+                  }}
+                />
+              </Grid>
             </Grid>
           </Box>
         </Box>
