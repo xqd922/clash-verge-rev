@@ -73,14 +73,12 @@ export const router = createBrowserRouter([
   {
     path: '/',
     Component: Layout,
-    children: navItems
-      .filter((item) => item.path !== '/') // 代理页由 Layout 直接渲染（keep-alive）
-      .map(
-        (item) =>
-          ({
-            path: item.path,
-            Component: item.Component,
-          }) as RouteObject,
-      ),
+    children: navItems.map(
+      (item) =>
+        ({
+          path: item.path,
+          Component: item.Component,
+        }) as RouteObject,
+    ),
   },
 ])
