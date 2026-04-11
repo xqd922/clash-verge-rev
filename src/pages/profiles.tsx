@@ -314,7 +314,7 @@ const ProfilePage = () => {
   // 强化的刷新策略
   const performRobustRefresh = async () => {
     let retryCount = 0
-    const maxRetries = 5
+    const maxRetries = 1
     const baseDelay = 200
 
     while (retryCount < maxRetries) {
@@ -997,6 +997,7 @@ const ProfilePage = () => {
                       selected={profiles.current === item.uid}
                       activating={activatings.includes(item.uid)}
                       itemData={item}
+                      mutateProfiles={mutateProfiles}
                       onSelect={(f) => onSelect(item.uid, f)}
                       onEdit={() => viewerRef.current?.edit(item)}
                       onSave={async (prev, curr) => {
