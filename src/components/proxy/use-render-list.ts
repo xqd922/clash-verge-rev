@@ -417,7 +417,9 @@ export const useRenderList = (
           return ret.concat(
             groupProxies(proxies, col).map((proxyCol, colIndex) => ({
               type: 4,
-              key: `col-${group.name}-${proxyCol[0].name}-${colIndex}`,
+              // Keep Virtuoso row identity stable while delay checks update
+              // or reorder proxies inside the row.
+              key: `col-${group.name}-${colIndex}`,
               group,
               headState,
               col,
