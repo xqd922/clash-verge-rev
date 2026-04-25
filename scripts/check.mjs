@@ -10,6 +10,10 @@ import { execSync } from "child_process";
 const cwd = process.cwd();
 const TEMP_DIR = path.join(cwd, "node_modules/.verge");
 const FORCE = process.argv.includes("--force");
+const META_VERSION_PIN = process.env.META_VERSION?.trim();
+const META_ALPHA_VERSION_PIN = process.env.META_ALPHA_VERSION?.trim();
+const META_RULES_TAG = (process.env.META_RULES_TAG || "latest").trim();
+const UWP_TOOL_TAG = (process.env.UWP_TOOL_TAG || "latest").trim();
 
 const PLATFORM_MAP = {
   "x86_64-pc-windows-msvc": "win32",
@@ -57,6 +61,27 @@ const META_ALPHA_VERSION_URL =
 const META_ALPHA_URL_PREFIX = `https://github.com/MetaCubeX/mihomo/releases/download/Prerelease-Alpha`;
 let META_ALPHA_VERSION;
 
+function ensureOk(response, url) {
+  if (!response.ok) {
+    throw new Error(
+      `unexpected ${response.status} ${response.statusText} while fetching ${url}`
+    );
+  }
+}
+
+function ensureVersionString(version, label) {
+  if (!/^[0-9A-Za-z._-]+$/.test(version)) {
+    const preview = version.replace(/\s+/g, " ").slice(0, 80);
+    throw new Error(`invalid ${label} version payload "${preview}"`);
+  }
+  return version;
+}
+
+function looksLikeHtml(buffer) {
+  const sample = Buffer.from(buffer).subarray(0, 256).toString("utf8").trim();
+  return /^<!doctype html/i.test(sample) || /^<html/i.test(sample);
+}
+
 const META_ALPHA_MAP = {
   "win32-x64": "mihomo-windows-amd64-compatible",
   "win32-ia32": "mihomo-windows-386",
@@ -73,6 +98,12 @@ const META_ALPHA_MAP = {
 
 // Fetch the latest alpha release version from the version.txt file
 async function getLatestAlphaVersion() {
+  if (META_ALPHA_VERSION_PIN) {
+    META_ALPHA_VERSION = ensureVersionString(META_ALPHA_VERSION_PIN, "alpha");
+    console.log(`Pinned alpha version: ${META_ALPHA_VERSION}`);
+    return;
+  }
+
   const options = {};
 
   const httpProxy =
@@ -89,8 +120,9 @@ async function getLatestAlphaVersion() {
       ...options,
       method: "GET",
     });
+    ensureOk(response, META_ALPHA_VERSION_URL);
     let v = await response.text();
-    META_ALPHA_VERSION = v.trim(); // Trim to remove extra whitespaces
+    META_ALPHA_VERSION = ensureVersionString(v.trim(), "alpha");
     console.log(`Latest alpha version: ${META_ALPHA_VERSION}`);
   } catch (error) {
     console.error("Error fetching latest alpha version:", error.message);
@@ -120,6 +152,12 @@ const META_MAP = {
 
 // Fetch the latest release version from the version.txt file
 async function getLatestReleaseVersion() {
+  if (META_VERSION_PIN) {
+    META_VERSION = ensureVersionString(META_VERSION_PIN, "release");
+    console.log(`Pinned release version: ${META_VERSION}`);
+    return;
+  }
+
   const options = {};
 
   const httpProxy =
@@ -136,8 +174,9 @@ async function getLatestReleaseVersion() {
       ...options,
       method: "GET",
     });
+    ensureOk(response, META_VERSION_URL);
     let v = await response.text();
-    META_VERSION = v.trim(); // Trim to remove extra whitespaces
+    META_VERSION = ensureVersionString(v.trim(), "release");
     console.log(`Latest release version: ${META_VERSION}`);
   } catch (error) {
     console.error("Error fetching latest release version:", error.message);
@@ -315,7 +354,20 @@ async function downloadFile(url, path) {
     method: "GET",
     headers: { "Content-Type": "application/octet-stream" },
   });
+  ensureOk(response, url);
   const buffer = await response.arrayBuffer();
+  const contentType = (
+    response.headers.get("content-type") || ""
+  ).toLowerCase();
+
+  if (!buffer.byteLength) {
+    throw new Error(`empty response body while downloading ${url}`);
+  }
+
+  if (contentType.includes("text/html") || looksLikeHtml(buffer)) {
+    throw new Error(`unexpected HTML response while downloading ${url}`);
+  }
+
   await fs.writeFile(path, new Uint8Array(buffer));
 
   console.log(`[INFO]: download finished "${url}"`);
@@ -403,22 +455,22 @@ const resolveUninstall = () => {
 const resolveMmdb = () =>
   resolveResource({
     file: "Country.mmdb",
-    downloadURL: `https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/country.mmdb`,
+    downloadURL: `https://github.com/MetaCubeX/meta-rules-dat/releases/download/${META_RULES_TAG}/country.mmdb`,
   });
 const resolveGeosite = () =>
   resolveResource({
     file: "geosite.dat",
-    downloadURL: `https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat`,
+    downloadURL: `https://github.com/MetaCubeX/meta-rules-dat/releases/download/${META_RULES_TAG}/geosite.dat`,
   });
 const resolveGeoIP = () =>
   resolveResource({
     file: "geoip.dat",
-    downloadURL: `https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.dat`,
+    downloadURL: `https://github.com/MetaCubeX/meta-rules-dat/releases/download/${META_RULES_TAG}/geoip.dat`,
   });
 const resolveEnableLoopback = () =>
   resolveResource({
     file: "enableLoopback.exe",
-    downloadURL: `https://github.com/Kuingsmile/uwp-tool/releases/download/latest/enableLoopback.exe`,
+    downloadURL: `https://github.com/Kuingsmile/uwp-tool/releases/download/${UWP_TOOL_TAG}/enableLoopback.exe`,
   });
 
 const tasks = [

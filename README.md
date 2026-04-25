@@ -65,6 +65,8 @@ pnpm run check
 pnpm dev
 ```
 
+`pnpm build` now runs the resource/sidecar preparation step automatically before packaging.
+
 ## Contributions
 
 Issue and PR welcome!
