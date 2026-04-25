@@ -242,6 +242,7 @@ impl IVerge {
             proxy_guard_duration: Some(30),
             auto_close_connection: Some(true),
             auto_check_update: Some(true),
+            default_latency_timeout: Some(2000),
             enable_builtin_enhanced: Some(true),
             auto_log_clean: Some(3),
             ..Self::default()
