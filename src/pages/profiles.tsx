@@ -1,7 +1,7 @@
-import useSWR, { mutate } from "swr";
+import { mutate } from "swr";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLockFn } from "ahooks";
-import { Box, Button, Grid, IconButton, Stack, Divider } from "@mui/material";
+import { Box, Button, Grid, IconButton, Stack } from "@mui/material";
 import {
   DndContext,
   closestCenter,
@@ -28,7 +28,6 @@ import {
   getProfiles,
   importProfile,
   enhanceProfiles,
-  getRuntimeLogs,
   deleteProfile,
   updateProfile,
   reorderProfile,
@@ -41,7 +40,6 @@ import {
   ProfileViewer,
   ProfileViewerRef,
 } from "@/components/profile/profile-viewer";
-import { ProfileMore } from "@/components/profile/profile-more";
 import { ProfileItem } from "@/components/profile/profile-item";
 import { useProfiles } from "@/hooks/use-profiles";
 import { ConfigViewer } from "@/components/setting/mods/config-viewer";
@@ -100,11 +98,6 @@ const ProfilePage = () => {
     mutateProfiles,
   } = useProfiles();
 
-  const { data: chainLogs = {}, mutate: mutateLogs } = useSWR(
-    "getRuntimeLogs",
-    getRuntimeLogs
-  );
-
   const viewerRef = useRef<ProfileViewerRef>(null);
   const configRef = useRef<DialogRef>(null);
 
@@ -140,7 +133,6 @@ const ProfilePage = () => {
         if (newProfiles.current && remoteItem) {
           const current = remoteItem.uid;
           await patchProfiles({ current });
-          mutateLogs();
           setTimeout(() => activateSelected(), 2000);
         }
       });
@@ -171,7 +163,6 @@ const ProfilePage = () => {
     }, 100);
     try {
       await patchProfiles({ current });
-      await mutateLogs();
       closeAllConnections();
       activateSelected().then(() => {
         Notice.success(t("Profile Switched"), 1000);
@@ -188,7 +179,6 @@ const ProfilePage = () => {
     setActivatings(currentActivatings());
     try {
       await enhanceProfiles();
-      mutateLogs();
       Notice.success(t("Profile Reactivated"), 1000);
     } catch (err: any) {
       Notice.error(err.message || err.toString(), 3000);
@@ -203,7 +193,6 @@ const ProfilePage = () => {
       setActivatings([...(current ? currentActivatings() : []), uid]);
       await deleteProfile(uid);
       mutateProfiles();
-      mutateLogs();
       current && (await onEnhance());
     } catch (err: any) {
       Notice.error(err?.message || err.toString());
@@ -391,36 +380,6 @@ const ProfilePage = () => {
             </Grid>
           </Box>
         </DndContext>
-        <Divider
-          variant="middle"
-          flexItem
-          sx={{ width: `calc(100% - 32px)`, borderColor: dividercolor }}
-        ></Divider>
-        <Box sx={{ mt: 1.5 }}>
-          <Grid container spacing={{ xs: 1, lg: 1 }}>
-            <Grid item xs={12} sm={6} md={6} lg={6}>
-              <ProfileMore
-                id="Merge"
-                onSave={async (prev, curr) => {
-                  if (prev !== curr) {
-                    await onEnhance();
-                  }
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={6} lg={6}>
-              <ProfileMore
-                id="Script"
-                logInfo={chainLogs["Script"]}
-                onSave={async (prev, curr) => {
-                  if (prev !== curr) {
-                    await onEnhance();
-                  }
-                }}
-              />
-            </Grid>
-          </Grid>
-        </Box>
       </Box>
 
       <ProfileViewer ref={viewerRef} onChange={() => mutateProfiles()} />
