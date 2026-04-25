@@ -135,6 +135,8 @@ jobs:
           run_install: false
 
       - name: Pnpm install and check
+        env:
+          LEGACY_SERVICE_TAG: v1.7.7
         run: |
           pnpm i
           pnpm check ${{ matrix.target }}
@@ -201,6 +203,8 @@ jobs:
           run_install: false
 
       - name: Pnpm install and check
+        env:
+          LEGACY_SERVICE_TAG: v1.7.7
         run: |
           pnpm i
           pnpm check ${{ matrix.target }}

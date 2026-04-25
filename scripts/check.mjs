@@ -14,6 +14,11 @@ const META_VERSION_PIN = process.env.META_VERSION?.trim();
 const META_ALPHA_VERSION_PIN = process.env.META_ALPHA_VERSION?.trim();
 const META_RULES_TAG = (process.env.META_RULES_TAG || "latest").trim();
 const UWP_TOOL_TAG = (process.env.UWP_TOOL_TAG || "latest").trim();
+const DEFAULT_LEGACY_SERVICE_TAG = "v1.7.7";
+const LEGACY_SERVICE_REPO = (
+  process.env.LEGACY_SERVICE_REPO || "clash-verge-rev/clash-verge-rev"
+).trim();
+const LEGACY_SERVICE_TAG = resolveLegacyServiceTag();
 
 const PLATFORM_MAP = {
   "x86_64-pc-windows-msvc": "win32",
@@ -41,6 +46,11 @@ const ARCH_MAP = {
   "riscv64gc-unknown-linux-gnu": "riscv64",
   "loongarch64-unknown-linux-gnu": "loong64",
 };
+const LEGACY_WINDOWS_PORTABLE_ARCH_MAP = {
+  "win32-x64": "x64",
+  "win32-ia32": "x86",
+  "win32-arm64": "arm64",
+};
 
 const arg1 = process.argv.slice(2)[0];
 const arg2 = process.argv.slice(2)[1];
@@ -60,6 +70,7 @@ const META_ALPHA_VERSION_URL =
   "https://github.com/MetaCubeX/mihomo/releases/download/Prerelease-Alpha/version.txt";
 const META_ALPHA_URL_PREFIX = `https://github.com/MetaCubeX/mihomo/releases/download/Prerelease-Alpha`;
 let META_ALPHA_VERSION;
+let legacyWindowsServiceResourcesPromise;
 
 function ensureOk(response, url) {
   if (!response.ok) {
@@ -80,6 +91,25 @@ function ensureVersionString(version, label) {
 function looksLikeHtml(buffer) {
   const sample = Buffer.from(buffer).subarray(0, 256).toString("utf8").trim();
   return /^<!doctype html/i.test(sample) || /^<html/i.test(sample);
+}
+
+function resolveLegacyServiceTag() {
+  const explicitTag = process.env.LEGACY_SERVICE_TAG?.trim();
+  if (explicitTag) {
+    return explicitTag.startsWith("v") ? explicitTag : `v${explicitTag}`;
+  }
+
+  const releaseTag = process.env.RELEASE_TAG?.trim();
+  if (!releaseTag || !releaseTag.includes("-legacy.")) {
+    return DEFAULT_LEGACY_SERVICE_TAG;
+  }
+
+  const baseTag = releaseTag.replace(/-legacy\..*$/, "");
+  return baseTag.startsWith("v") ? baseTag : `v${baseTag}`;
+}
+
+function normalizeZipEntryName(entryName) {
+  return entryName.replace(/\\/g, "/");
 }
 
 const META_ALPHA_MAP = {
@@ -333,6 +363,106 @@ async function resolveResource(binInfo) {
   console.log(`[INFO]: ${file} finished`);
 }
 
+function shouldUseLegacyWindowsServiceBundle() {
+  return platform === "win32" && !!LEGACY_SERVICE_TAG;
+}
+
+function getLegacyWindowsPortableInfo() {
+  const legacyArch = LEGACY_WINDOWS_PORTABLE_ARCH_MAP[`${platform}-${arch}`];
+  if (!legacyArch) {
+    throw new Error(
+      `legacy service bundle unsupported platform "${platform}-${arch}"`
+    );
+  }
+
+  const version = LEGACY_SERVICE_TAG.replace(/^v/, "");
+  const zipFile = `Clash.Verge_${version}_${legacyArch}_portable.zip`;
+
+  return {
+    zipFile,
+    downloadURL: `https://github.com/${LEGACY_SERVICE_REPO}/releases/download/${LEGACY_SERVICE_TAG}/${zipFile}`,
+  };
+}
+
+async function resolveLegacyWindowsServiceResources() {
+  const files = [
+    "clash-verge-service.exe",
+    "install-service.exe",
+    "uninstall-service.exe",
+  ];
+  const resDir = path.join(cwd, "src-tauri/resources");
+  const targetPaths = files.map((file) => path.join(resDir, file));
+  const existing = await Promise.all(
+    targetPaths.map((item) => fs.pathExists(item))
+  );
+
+  if (!FORCE && existing.every(Boolean)) {
+    return;
+  }
+
+  const { zipFile, downloadURL } = getLegacyWindowsPortableInfo();
+  const tempDir = path.join(
+    TEMP_DIR,
+    "legacy-service",
+    path.parse(zipFile).name
+  );
+  const tempZip = path.join(tempDir, zipFile);
+
+  await fs.mkdirp(resDir);
+  await fs.mkdirp(tempDir);
+
+  console.log(
+    `[INFO]: resolving legacy service bundle from "${LEGACY_SERVICE_TAG}" (${zipFile})`
+  );
+
+  try {
+    if (!(await fs.pathExists(tempZip))) {
+      await downloadFile(downloadURL, tempZip);
+    }
+
+    const zip = new AdmZip(tempZip);
+
+    for (const file of files) {
+      const entry = zip
+        .getEntries()
+        .find(
+          (item) =>
+            normalizeZipEntryName(item.entryName) === `resources/${file}`
+        );
+
+      if (!entry) {
+        throw new Error(
+          `expected "${file}" in legacy portable package "${zipFile}"`
+        );
+      }
+
+      const content = zip.readFile(entry);
+      if (!content) {
+        throw new Error(
+          `failed to read "${file}" from legacy portable package "${zipFile}"`
+        );
+      }
+
+      await fs.writeFile(path.join(resDir, file), content);
+      console.log(`[INFO]: extracted "${file}" from "${zipFile}"`);
+    }
+  } finally {
+    await fs.remove(tempDir);
+  }
+}
+
+function ensureLegacyWindowsServiceResources() {
+  if (!legacyWindowsServiceResourcesPromise) {
+    legacyWindowsServiceResourcesPromise =
+      resolveLegacyWindowsServiceResources().catch((error) => {
+        legacyWindowsServiceResourcesPromise = undefined;
+        throw error;
+      });
+  }
+
+  return legacyWindowsServiceResourcesPromise;
+}
+
 /**
  * download file and save to `path`
  */
@@ -429,24 +559,36 @@ const resolveServicePermission = async () => {
 const SERVICE_URL = `https://github.com/clash-verge-rev/clash-verge-service/releases/download/${SIDECAR_HOST}`;
 
 const resolveService = () => {
+  if (shouldUseLegacyWindowsServiceBundle()) {
+    return ensureLegacyWindowsServiceResources();
+  }
+
   let ext = platform === "win32" ? ".exe" : "";
-  resolveResource({
+  return resolveResource({
     file: "clash-verge-service" + ext,
     downloadURL: `${SERVICE_URL}/clash-verge-service${ext}`,
   });
 };
 
 const resolveInstall = () => {
+  if (shouldUseLegacyWindowsServiceBundle()) {
+    return ensureLegacyWindowsServiceResources();
+  }
+
   let ext = platform === "win32" ? ".exe" : "";
-  resolveResource({
+  return resolveResource({
     file: "install-service" + ext,
     downloadURL: `${SERVICE_URL}/install-service${ext}`,
   });
 };
 
 const resolveUninstall = () => {
+  if (shouldUseLegacyWindowsServiceBundle()) {
+    return ensureLegacyWindowsServiceResources();
+  }
+
   let ext = platform === "win32" ? ".exe" : "";
-  resolveResource({
+  return resolveResource({
     file: "uninstall-service" + ext,
     downloadURL: `${SERVICE_URL}/uninstall-service${ext}`,
   });
