@@ -1,3 +1,18 @@
+## v1.7.7-legacy.4
+
+### Notice
+
+- `release/1.x-legacy` 维护线第四个补丁版本
+- 聚焦修复安装版 Service Mode / TUN 模式与新 service 二进制不兼容的问题
+
+### Bugs Fixes
+
+- Legacy 打包流程不再下载最新 `clash-verge-service` 产物
+- Windows legacy 构建改为固定复用 `v1.7.7` portable 包内的兼容 service 三件套
+- 避免安装版显示服务安装成功后，TUN 模式仍反复提示安装服务
+
+---
+
 ## v1.7.7-legacy.3
 
 ### Notice
