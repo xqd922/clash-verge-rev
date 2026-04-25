@@ -14,6 +14,8 @@ import { useVerge } from "@/hooks/use-verge";
 import { BaseDialog, DialogRef, Notice, Switch } from "@/components/base";
 import { TooltipIcon } from "@/components/base/base-tooltip-icon";
 
+const DEFAULT_LATENCY_TEST_URL = "https://www.gstatic.com/generate_204";
+
 export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
   const { t } = useTranslation();
   const { verge, patchVerge } = useVerge();
@@ -25,7 +27,7 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
     autoCheckUpdate: true,
     enableBuiltinEnhanced: true,
     proxyLayoutColumn: 6,
-    defaultLatencyTest: "",
+    defaultLatencyTest: DEFAULT_LATENCY_TEST_URL,
     autoLogClean: 0,
     defaultLatencyTimeout: 2000,
   });
@@ -39,7 +41,8 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
         autoCheckUpdate: verge?.auto_check_update ?? true,
         enableBuiltinEnhanced: verge?.enable_builtin_enhanced ?? true,
         proxyLayoutColumn: verge?.proxy_layout_column || 6,
-        defaultLatencyTest: verge?.default_latency_test || "",
+        defaultLatencyTest:
+          verge?.default_latency_test || DEFAULT_LATENCY_TEST_URL,
         autoLogClean: verge?.auto_log_clean || 0,
         defaultLatencyTimeout: verge?.default_latency_timeout || 2000,
       });
@@ -205,7 +208,7 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
             spellCheck="false"
             sx={{ width: 250, marginLeft: "auto" }}
             value={values.defaultLatencyTest}
-            placeholder="http://1.1.1.1"
+            placeholder={DEFAULT_LATENCY_TEST_URL}
             onChange={(e) =>
               setValues((v) => ({ ...v, defaultLatencyTest: e.target.value }))
             }

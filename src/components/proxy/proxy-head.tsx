@@ -19,6 +19,8 @@ import type { HeadState } from "./use-head-state";
 import type { ProxySortType } from "./use-filter-sort";
 import delayManager from "@/services/delay";
 
+const DEFAULT_LATENCY_TEST_URL = "https://www.gstatic.com/generate_204";
+
 interface Props {
   sx?: SxProps;
   url?: string;
@@ -48,7 +50,7 @@ export const ProxyHead = (props: Props) => {
   useEffect(() => {
     delayManager.setUrl(
       groupName,
-      testUrl || url || verge?.default_latency_test!
+      testUrl || url || verge?.default_latency_test || DEFAULT_LATENCY_TEST_URL
     );
   }, [groupName, testUrl, verge?.default_latency_test]);
 
