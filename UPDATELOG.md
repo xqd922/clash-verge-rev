@@ -1,3 +1,18 @@
+## v1.7.7-legacy.3
+
+### Notice
+
+- `release/1.x-legacy` 维护线第三个补丁版本
+- 聚焦代理页延迟测试默认行为调整，不涉及测试页面逻辑
+
+### Bugs Fixes
+
+- 将代理页默认测速超时时间从 `10000ms` 下调为 `2000ms`
+- 将默认测速链接切换为 `https://www.gstatic.com/generate_204`
+- 对于没有组内测速链接的代理组，未手动指定时统一回退到 `gstatic` 默认测速地址
+
+---
+
 ## v1.7.7-legacy.2
 
 ### Notice
