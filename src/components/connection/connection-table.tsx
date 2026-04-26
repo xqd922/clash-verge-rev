@@ -29,6 +29,7 @@ export const ConnectionTable = (props: Props) => {
       width: 88,
       align: "right",
       headerAlign: "right",
+      sortingOrder: ["desc", "asc", null],
       valueFormatter: (value: number) => parseTraffic(value).join(" "),
     },
     {
@@ -37,6 +38,7 @@ export const ConnectionTable = (props: Props) => {
       width: 88,
       align: "right",
       headerAlign: "right",
+      sortingOrder: ["desc", "asc", null],
       valueFormatter: (value: number) => parseTraffic(value).join(" "),
     },
     {
@@ -45,6 +47,7 @@ export const ConnectionTable = (props: Props) => {
       width: 88,
       align: "right",
       headerAlign: "right",
+      sortingOrder: ["desc", "asc", null],
       valueFormatter: (value: number) => parseTraffic(value).join(" ") + "/s",
     },
     {
@@ -53,6 +56,7 @@ export const ConnectionTable = (props: Props) => {
       width: 88,
       align: "right",
       headerAlign: "right",
+      sortingOrder: ["desc", "asc", null],
       valueFormatter: (value: number) => parseTraffic(value).join(" ") + "/s",
     },
     { field: "chains", headerName: t("Chains"), flex: 360, minWidth: 360 },
