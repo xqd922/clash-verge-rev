@@ -116,6 +116,13 @@ const ProfilePage = () => {
     return [...new Set([profiles.current ?? ""])].filter(Boolean);
   };
 
+  const setProfilesCurrentOptimistic = (
+    current: IProfilesConfig["current"],
+    baseProfiles: IProfilesConfig = profiles
+  ) => {
+    mutate("getProfiles", { ...baseProfiles, current }, false);
+  };
+
   const onImport = async () => {
     if (!url) return;
     setLoading(true);
@@ -132,6 +139,7 @@ const ProfilePage = () => {
         const remoteItem = newProfiles.items?.find((e) => e.type === "remote");
         if (newProfiles.current && remoteItem) {
           const current = remoteItem.uid;
+          setProfilesCurrentOptimistic(current, newProfiles);
           await patchProfiles({ current });
           setTimeout(() => activateSelected(), 2000);
         }
@@ -157,21 +165,18 @@ const ProfilePage = () => {
 
   const onSelect = useLockFn(async (current: string, force: boolean) => {
     if (!force && current === profiles.current) return;
-    // 避免大多数情况下loading态闪烁
-    const reset = setTimeout(() => {
-      setActivatings([...currentActivatings(), current]);
-    }, 100);
+    const previousCurrent = profiles.current;
+    // 立即乐观更新，卡片瞬间切换；不再叠加 loading 蒙层
+    setProfilesCurrentOptimistic(current);
     try {
       await patchProfiles({ current });
       closeAllConnections();
-      activateSelected().then(() => {
-        Notice.success(t("Profile Switched"), 1000);
-      });
+      setTimeout(() => activateSelected(), 1500);
+      Notice.success(t("Profile Switched"), 1000);
     } catch (err: any) {
+      // 失败回滚到原选中项
+      setProfilesCurrentOptimistic(previousCurrent);
       Notice.error(err?.message || err.toString(), 4000);
-    } finally {
-      clearTimeout(reset);
-      setActivatings([]);
     }
   });
 
