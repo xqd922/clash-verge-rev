@@ -141,7 +141,8 @@ const ProfilePage = () => {
           const current = remoteItem.uid;
           setProfilesCurrentOptimistic(current, newProfiles);
           await patchProfiles({ current });
-          setTimeout(() => activateSelected(), 2000);
+          mutate("getProxies");
+          activateSelected();
         }
       });
     } catch (err: any) {
@@ -166,15 +167,18 @@ const ProfilePage = () => {
   const onSelect = useLockFn(async (current: string, force: boolean) => {
     if (!force && current === profiles.current) return;
     const previousCurrent = profiles.current;
-    // 立即乐观更新，卡片瞬间切换；不再叠加 loading 蒙层
+    // 立即乐观更新，卡片瞬间切换
     setProfilesCurrentOptimistic(current);
     try {
       await patchProfiles({ current });
       closeAllConnections();
-      setTimeout(() => activateSelected(), 1500);
-      Notice.success(t("Profile Switched"), 1000);
+      // 主动触发代理页 revalidate，不依赖 layout 事件时序
+      mutate("getProxies");
+      // 链式恢复用户 selector 偏好（异步，不阻塞 Notice）
+      activateSelected().then(() => {
+        Notice.success(t("Profile Switched"), 1000);
+      });
     } catch (err: any) {
-      // 失败回滚到原选中项
       setProfilesCurrentOptimistic(previousCurrent);
       Notice.error(err?.message || err.toString(), 4000);
     }

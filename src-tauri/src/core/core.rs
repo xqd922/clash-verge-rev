@@ -295,8 +295,9 @@ impl CoreManager {
         // 更新订阅
         Config::generate().await?;
 
-        // 检查订阅是否正常
-        self.check_config()?;
+        // 跳过 check_config：fork sidecar 跑 -t 校验是热路径最大延迟来源（300-1500ms）。
+        // 坏配置由下面 put_configs 的 4xx 响应兜底，mihomo 当前运行配置不会被破坏。
+        // self.check_config()?;
 
         // 更新运行时订阅
         let path = Config::generate_file(ConfigType::Run)?;

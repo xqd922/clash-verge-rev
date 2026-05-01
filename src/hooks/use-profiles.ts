@@ -26,7 +26,12 @@ export const useProfiles = () => {
 
   // 根据selected的节点选择
   const activateSelected = async () => {
-    const proxiesData = await getProxies();
+    // mihomo reload 后 group 树偶尔有几十毫秒空窗，重试一次容忍掉
+    let proxiesData = await getProxies();
+    for (let i = 0; i < 2 && !proxiesData?.groups?.length; i++) {
+      await new Promise((r) => setTimeout(r, 150));
+      proxiesData = await getProxies();
+    }
     const profileData = await getProfiles();
 
     if (!profileData || !proxiesData) return;
