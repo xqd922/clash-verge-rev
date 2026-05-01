@@ -14,8 +14,6 @@ import { useVerge } from "@/hooks/use-verge";
 import { BaseDialog, DialogRef, Notice, Switch } from "@/components/base";
 import { TooltipIcon } from "@/components/base/base-tooltip-icon";
 
-const DEFAULT_LATENCY_TEST_URL = "http://www.gstatic.com/generate_204";
-
 export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
   const { t } = useTranslation();
   const { verge, patchVerge } = useVerge();
@@ -27,9 +25,9 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
     autoCheckUpdate: true,
     enableBuiltinEnhanced: true,
     proxyLayoutColumn: 6,
-    defaultLatencyTest: DEFAULT_LATENCY_TEST_URL,
+    defaultLatencyTest: "",
     autoLogClean: 0,
-    defaultLatencyTimeout: 2000,
+    defaultLatencyTimeout: 10000,
   });
 
   useImperativeHandle(ref, () => ({
@@ -41,10 +39,9 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
         autoCheckUpdate: verge?.auto_check_update ?? true,
         enableBuiltinEnhanced: verge?.enable_builtin_enhanced ?? true,
         proxyLayoutColumn: verge?.proxy_layout_column || 6,
-        defaultLatencyTest:
-          verge?.default_latency_test || DEFAULT_LATENCY_TEST_URL,
+        defaultLatencyTest: verge?.default_latency_test || "",
         autoLogClean: verge?.auto_log_clean || 0,
-        defaultLatencyTimeout: verge?.default_latency_timeout || 2000,
+        defaultLatencyTimeout: verge?.default_latency_timeout || 10000,
       });
     },
     close: () => setOpen(false),
@@ -208,7 +205,7 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
             spellCheck="false"
             sx={{ width: 250, marginLeft: "auto" }}
             value={values.defaultLatencyTest}
-            placeholder={DEFAULT_LATENCY_TEST_URL}
+            placeholder="http://1.1.1.1"
             onChange={(e) =>
               setValues((v) => ({ ...v, defaultLatencyTest: e.target.value }))
             }
@@ -226,7 +223,7 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
             spellCheck="false"
             sx={{ width: 250 }}
             value={values.defaultLatencyTimeout}
-            placeholder="2000"
+            placeholder="10000"
             onChange={(e) =>
               setValues((v) => ({
                 ...v,
