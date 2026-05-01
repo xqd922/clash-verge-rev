@@ -1,3 +1,19 @@
+## v1.7.7-legacy.8
+
+### Notice
+
+- `release/1.x-legacy` 维护线第八个补丁版本
+- 调整杂项设置(Miscellaneous)默认值，新装即可获得更合理的初始体验
+
+### Tweaks
+
+- `Default Latency Test`：未配置时前端兜底为 `http://www.gstatic.com/generate_204`（弹窗输入框直接显示该 URL）
+- `Default Latency Timeout`：未配置时兜底为 `2000ms`（输入框 placeholder 同步更新）
+- `Auto Log Clean`：首次安装写入 `verge.yaml` 的默认值由 `保留 90 天` 改为 `保留 7 天`
+- 兜底逻辑仅修改前端显示与 `template()` 中的 `auto_log_clean`，不再向 `verge.yaml` 预写延迟测试相关字段，保持配置精简
+
+---
+
 ## v1.7.7-legacy.7
 
 ### Notice
