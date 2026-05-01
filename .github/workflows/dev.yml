@@ -30,7 +30,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Rust Stable
         uses: dtolnay/rust-toolchain@1.77.0
@@ -46,11 +46,11 @@ jobs:
           cache-on-failure: true
 
       - name: Install Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "20"
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v5
         name: Install pnpm
         with:
           run_install: false
