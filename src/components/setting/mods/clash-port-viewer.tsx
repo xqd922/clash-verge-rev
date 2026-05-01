@@ -15,28 +15,28 @@ export const ClashPortViewer = forwardRef<DialogRef>((props, ref) => {
   const { verge, patchVerge } = useVerge();
   const [open, setOpen] = useState(false);
   const [redirPort, setRedirPort] = useState(
-    verge?.verge_redir_port ?? clashInfo?.redir_port ?? 7895
+    verge?.verge_redir_port ?? clashInfo?.redir_port ?? 7893
   );
   const [redirEnabled, setRedirEnabled] = useState(
     verge?.verge_redir_enabled ?? false
   );
   const [tproxyPort, setTproxyPort] = useState(
-    verge?.verge_tproxy_port ?? clashInfo?.tproxy_port ?? 7896
+    verge?.verge_tproxy_port ?? clashInfo?.tproxy_port ?? 7894
   );
   const [tproxyEnabled, setTproxyEnabled] = useState(
     verge?.verge_tproxy_enabled ?? false
   );
   const [mixedPort, setMixedPort] = useState(
-    verge?.verge_mixed_port ?? clashInfo?.mixed_port ?? 7897
+    verge?.verge_mixed_port ?? clashInfo?.mixed_port ?? 7890
   );
   const [socksPort, setSocksPort] = useState(
-    verge?.verge_socks_port ?? clashInfo?.socks_port ?? 7898
+    verge?.verge_socks_port ?? clashInfo?.socks_port ?? 7891
   );
   const [socksEnabled, setSocksEnabled] = useState(
     verge?.verge_socks_enabled ?? false
   );
   const [port, setPort] = useState(
-    verge?.verge_port ?? clashInfo?.port ?? 7899
+    verge?.verge_port ?? clashInfo?.port ?? 7892
   );
   const [httpEnabled, setHttpEnabled] = useState(
     verge?.verge_http_enabled ?? false
