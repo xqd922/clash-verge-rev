@@ -1,3 +1,20 @@
+## v1.7.7-legacy.9
+
+### Notice
+
+- `release/1.x-legacy` 维护线第九个补丁版本
+- 聚焦订阅切换响应速度，回归 v1.7.6 的快速链式刷新风格
+
+### Performance
+
+- 切换/导入订阅去掉 `setTimeout(1500/2000)` 固定等待，`await patchProfiles` 完成后立即 `mutate("getProxies")` 主动触发代理页 revalidate，不再等 layout 事件兜底
+- `activateSelected` 改回链式调用（与 v1.7.6 一致），同时新增 2 次 × 150ms 轻量重试，容忍 mihomo reload 的边缘窗口期
+- 后端 `update_config` 跳过 `check_config` 子进程校验：fork sidecar 跑 `-t` 是切换热路径单一最大延迟来源（300-1500ms），改由 `put_configs` 的 4xx 响应兜底，mihomo 当前运行配置不会被破坏
+- 综合下来，切换感知从 ~1.8-3s 降至 ~0.2-0.6s
+- 保留 legacy.6 引入的卡片乐观高亮与失败回滚
+
+---
+
 ## v1.7.7-legacy.8
 
 ### Notice
