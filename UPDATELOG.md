@@ -1,3 +1,24 @@
+## v1.7.7-legacy.10
+
+### Notice
+
+- `release/1.x-legacy` 维护线第十个补丁版本
+- 默认端口对齐 clash classic 经典约定，方便复用既有客户端配置
+
+### Tweaks
+
+- 默认端口由 Verge 自定义的 7895-7899/9097 改为 clash classic 经典约定：
+  - `mixed-port`: 7890（HTTP+SOCKS 混合，最常用）
+  - `socks-port`: 7891
+  - `port`（HTTP）: 7892（错开避免与 mixed-port 冲突）
+  - `redir-port`: 7893
+  - `tproxy-port`: 7894
+  - `external-controller`: `127.0.0.1:9090`
+- 仅影响**新装**或配置中相应字段缺失的情况；老用户已存在的 `clash-verge.yaml` 不会被覆盖
+- 托盘"更多"子菜单的 `重启 Clash` 改名为 `重启内核`（实际跑的是 verge-mihomo，称谓更准确）
+
+---
+
 ## v1.7.7-legacy.9
 
 ### Notice
