@@ -243,7 +243,9 @@ impl IVerge {
             auto_close_connection: Some(true),
             auto_check_update: Some(true),
             enable_builtin_enhanced: Some(true),
-            auto_log_clean: Some(3),
+            auto_log_clean: Some(1),
+            default_latency_test: Some("http://www.gstatic.com/generate_204".into()),
+            default_latency_timeout: Some(2000),
             ..Self::default()
         }
     }

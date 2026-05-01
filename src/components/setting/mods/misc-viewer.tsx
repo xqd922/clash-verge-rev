@@ -25,9 +25,9 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
     autoCheckUpdate: true,
     enableBuiltinEnhanced: true,
     proxyLayoutColumn: 6,
-    defaultLatencyTest: "",
-    autoLogClean: 0,
-    defaultLatencyTimeout: 10000,
+    defaultLatencyTest: "http://www.gstatic.com/generate_204",
+    autoLogClean: 1,
+    defaultLatencyTimeout: 2000,
   });
 
   useImperativeHandle(ref, () => ({
@@ -39,9 +39,10 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
         autoCheckUpdate: verge?.auto_check_update ?? true,
         enableBuiltinEnhanced: verge?.enable_builtin_enhanced ?? true,
         proxyLayoutColumn: verge?.proxy_layout_column || 6,
-        defaultLatencyTest: verge?.default_latency_test || "",
-        autoLogClean: verge?.auto_log_clean || 0,
-        defaultLatencyTimeout: verge?.default_latency_timeout || 10000,
+        defaultLatencyTest:
+          verge?.default_latency_test || "http://www.gstatic.com/generate_204",
+        autoLogClean: verge?.auto_log_clean ?? 1,
+        defaultLatencyTimeout: verge?.default_latency_timeout || 2000,
       });
     },
     close: () => setOpen(false),
@@ -223,7 +224,7 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
             spellCheck="false"
             sx={{ width: 250 }}
             value={values.defaultLatencyTimeout}
-            placeholder="10000"
+            placeholder="2000"
             onChange={(e) =>
               setValues((v) => ({
                 ...v,
