@@ -1,3 +1,18 @@
+## v1.7.7-legacy.7
+
+### Notice
+
+- `release/1.x-legacy` 维护线第七个补丁版本
+- 撤销 legacy.2 / legacy.3 引入的"延迟测试默认值预填",回到 v1.7.7 原始行为
+
+### Bugs Fixes
+
+- 杂项设置中"默认测试链接"和"测试超时时间"恢复 v1.7.7 默认:输入框留空,只用 `http://1.1.1.1` 与 `10000ms` 作为 placeholder 提示,由用户按需填写
+- 后端 `IVerge::template()` 不再向 `verge.yaml` 预写 `default_latency_test` / `default_latency_timeout`,新装用户初始配置文件保持精简
+- 内部测速调用(`getProxyDelay` / `getGroupProxyDelays` / `clash_api::get_proxy_delay`)的兜底地址回到 `http://1.1.1.1`,不再强制走 `gstatic`
+
+---
+
 ## v1.7.7-legacy.6
 
 ### Notice
