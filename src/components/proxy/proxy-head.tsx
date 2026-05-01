@@ -19,7 +19,7 @@ import type { HeadState } from "./use-head-state";
 import type { ProxySortType } from "./use-filter-sort";
 import delayManager from "@/services/delay";
 
-const DEFAULT_LATENCY_TEST_URL = "https://www.gstatic.com/generate_204";
+const DEFAULT_LATENCY_TEST_URL = "http://www.gstatic.com/generate_204";
 
 interface Props {
   sx?: SxProps;

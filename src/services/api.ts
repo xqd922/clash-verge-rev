@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from "axios";
 import { getClashInfo } from "./cmds";
 
-const DEFAULT_LATENCY_TEST_URL = "https://www.gstatic.com/generate_204";
+const DEFAULT_LATENCY_TEST_URL = "http://www.gstatic.com/generate_204";
 
 let axiosIns: AxiosInstance = null!;
 

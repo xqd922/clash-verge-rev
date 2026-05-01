@@ -14,7 +14,7 @@ import { useVerge } from "@/hooks/use-verge";
 import { BaseDialog, DialogRef, Notice, Switch } from "@/components/base";
 import { TooltipIcon } from "@/components/base/base-tooltip-icon";
 
-const DEFAULT_LATENCY_TEST_URL = "https://www.gstatic.com/generate_204";
+const DEFAULT_LATENCY_TEST_URL = "http://www.gstatic.com/generate_204";
 
 export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
   const { t } = useTranslation();
