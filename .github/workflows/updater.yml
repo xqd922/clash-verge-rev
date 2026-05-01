@@ -9,15 +9,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Install Node
-        uses: actions/setup-node@v5
-        with:
-          node-version: "20"
-
       - uses: pnpm/action-setup@v5
         name: Install pnpm
         with:
           run_install: false
+
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20"
 
       - name: Pnpm install
         run: pnpm i
@@ -33,15 +33,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Install Node
-        uses: actions/setup-node@v5
-        with:
-          node-version: "20"
-
       - uses: pnpm/action-setup@v5
         name: Install pnpm
         with:
           run_install: false
+
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20"
 
       - name: Pnpm install
         run: pnpm i
