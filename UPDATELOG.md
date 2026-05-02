@@ -1,3 +1,17 @@
+## v1.7.7-legacy.13
+
+### Notice
+
+- `release/1.x-legacy` 维护线第十三个补丁版本
+- 修复连接页路由切换回来时短暂的"白色一块再出现文字"的视觉闪烁
+
+### Bugs Fixes
+
+- 连接页 MUI X DataGrid 容器/列头/虚拟滚动区/overlay 的背景未跟随主题:`use-custom-theme.ts` 只设了 `palette.background.paper`,而 DataGrid 这些区域用的是 `palette.background.default`(MUI 出厂默认 `#fff`)。叠加 `_layout.tsx` 用 `TransitionGroup + key=pathname` 会让切回连接页时整页重挂载——重挂载第一帧 DataGrid 露出白底,WebSocket 数据到位后行的 `!important` 背景才覆盖,呈现"一块白色 → 立马出现文字"的视觉闪烁
+- 修法:在 `connection-table.tsx` 的 DataGrid `sx` 中显式覆盖 `.MuiDataGrid-main / .MuiDataGrid-columnHeaders / .MuiDataGrid-virtualScroller / .MuiDataGrid-overlayWrapper` 与 root 容器的 `bgcolor`,沿用同一份基于主题的 `backgroundColor`。dark mode 下闪烁消除,light mode 无视觉变化
+
+---
+
 ## v1.7.7-legacy.12
 
 ### Notice
