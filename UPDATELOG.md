@@ -1,3 +1,21 @@
+## v1.7.7-legacy.11
+
+### Notice
+
+- `release/1.x-legacy` 维护线第十一个补丁版本
+- 维护性版本：编辑器 schema 跟进 mihomo 字段更新，同步整理 CI 配置
+
+### Tweaks
+
+- 配置编辑器 JSON Schema (`meta-json-schema`) 由 1.18.6 升至 1.19.24，跟上 mihomo 近一年的字段变更：`mode: Rule`、`sniffer.skip-domain` 含空格等 mihomo 实际接受的写法不再被编辑器误标红
+- 纯前端 schema 校验包升级，不影响后端运行时；schema 文件路径未变
+
+### Chore
+
+- `.github/workflows/` 五个工作流（alpha / dev / release / release-1x-legacy / updater）整体回退到 legacy.7 时已知稳定的形态，撤销中间围绕 Node 24 升级、pnpm 安装顺序、release 上传权限的几次尝试性改动，CI 行为与 legacy.7 一致
+
+---
+
 ## v1.7.7-legacy.10
 
 ### Notice
