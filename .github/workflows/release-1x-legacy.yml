@@ -95,6 +95,16 @@ jobs:
               core.info(`No existing tag found for ${tag}`);
             }
 
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.release_tag }}
+          name: ${{ steps.meta.outputs.release_name }}
+          body: ${{ steps.notes.outputs.release_body }}
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+
   release:
     needs: prepare-release
     strategy:
@@ -145,18 +155,22 @@ jobs:
         run: pnpm legacy:prepare-release ${{ needs.prepare-release.outputs.release_tag }}
 
       - name: Tauri build
+        id: build
         uses: tauri-apps/tauri-action@v0
         env:
           NODE_OPTIONS: "--max_old_space_size=8192"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
-          tagName: ${{ needs.prepare-release.outputs.release_tag }}
-          releaseName: ${{ needs.prepare-release.outputs.release_name }}
-          releaseBody: ${{ needs.prepare-release.outputs.release_body }}
           tauriScript: pnpm
           args: --target ${{ matrix.target }}
+
+      - name: Upload Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare-release.outputs.release_tag }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*setup*
 
       - name: Portable Bundle
         run: pnpm legacy:portable ${{ matrix.target }}
