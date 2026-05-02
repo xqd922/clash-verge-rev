@@ -118,7 +118,12 @@ export const ConnectionTable = (props: Props) => {
       density="compact"
       sx={{
         border: "none",
+        bgcolor: backgroundColor,
         "div:focus": { outline: "none !important" },
+        "& .MuiDataGrid-main": { bgcolor: backgroundColor },
+        "& .MuiDataGrid-columnHeaders": { bgcolor: backgroundColor },
+        "& .MuiDataGrid-virtualScroller": { bgcolor: backgroundColor },
+        "& .MuiDataGrid-overlayWrapper": { bgcolor: backgroundColor },
         "& div[aria-rowindex]": {
           backgroundColor: `${backgroundColor} !important`,
         },
