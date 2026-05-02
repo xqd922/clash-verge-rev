@@ -27,7 +27,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Install Rust Stable
         uses: dtolnay/rust-toolchain@1.77.0
@@ -41,15 +41,15 @@ jobs:
           workspaces: src-tauri
           cache-all-crates: true
 
-      - uses: pnpm/action-setup@v5
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: pnpm/action-setup@v4
         name: Install pnpm
         with:
           run_install: false
-
-      - name: Install Node
-        uses: actions/setup-node@v5
-        with:
-          node-version: "20"
 
       - name: Pnpm install and check
         run: |
@@ -98,7 +98,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Build for Linux
         uses: ./.github/build-for-linux
@@ -143,7 +143,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Add Rust Target
         run: rustup target add ${{ matrix.target }}
@@ -153,15 +153,15 @@ jobs:
         with:
           workspaces: src-tauri
 
-      - uses: pnpm/action-setup@v5
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: pnpm/action-setup@v4
         name: Install pnpm
         with:
           run_install: false
-
-      - name: Install Node
-        uses: actions/setup-node@v5
-        with:
-          node-version: "20"
 
       - name: Pnpm install and check
         run: |
@@ -212,17 +212,17 @@ jobs:
     needs: [release, release-for-linux]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v5
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: pnpm/action-setup@v4
         name: Install pnpm
         with:
           run_install: false
-
-      - name: Install Node
-        uses: actions/setup-node@v5
-        with:
-          node-version: "20"
 
       - name: Pnpm install
         run: pnpm i
@@ -237,17 +237,17 @@ jobs:
     needs: [release-for-fixed-webview2]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v5
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: pnpm/action-setup@v4
         name: Install pnpm
         with:
           run_install: false
-
-      - name: Install Node
-        uses: actions/setup-node@v5
-        with:
-          node-version: "20"
 
       - name: Pnpm install
         run: pnpm i
@@ -262,7 +262,7 @@ jobs:
     needs: [release-update]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Get Version
