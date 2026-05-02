@@ -1,3 +1,27 @@
+## v1.7.7-legacy.12
+
+### Notice
+
+- `release/1.x-legacy` 维护线第十二个补丁版本
+- 围绕 legacy.9 的切换提速做防御性加固：竞态、超时、静默失败一并堵上
+
+### Bugs Fixes
+
+- 切换订阅时连点 A → B → A 不再污染 selector 偏好：`activateSelected` 纳入 `useLockFn` 锁内，`updateProxy` / `patchProfile` 改为 `await Promise.all` 后串行落盘，避免上一次切换的尾部写入覆盖当前 current 的偏好
+- selector 偏好恢复失败不再静默吞错，弹 `Notice.info("Selectors Restore Failed")` 让用户感知（新增 i18n key 覆盖 zh / en / fa / ru 四语言）
+
+### Performance
+
+- 后端 `put_configs` / `patch_configs` 加客户端 30s timeout (`CONFIG_REQUEST_TIMEOUT`)：mihomo 卡死时单次 PUT 不再无限等待。30s 是覆盖最坏情况的安全值——hot reload 期间要重新加载所有 rule provider / external UI，rule provider 多 + 网络抖动时实际可能 5-20s
+- `update_config` 取消外层重试，单次 PUT 走到底：之前的 5 次重试在 reload 慢的场景下会反复打断 mihomo，rule provider 较多 / 部分 URL 失效时 mihomo 永远完不成 reload（实测 17 分钟内被反复 reload 30+ 次）
+- 切换成功的 Notice 提前到 `patchProfiles` 完成时立即弹出，主观提速 ~150ms；selector 偏好恢复改为后台串行任务
+
+### Tweaks
+
+- `onSelect` 切换期间设置 `activatings` 状态，复用 `profile-item.tsx` 已有的 spinner 蒙层组件，让"卡片已切 + 后台仍在工作"的过渡有视觉反馈，消除"切了好像没切"的不安
+
+---
+
 ## v1.7.7-legacy.11
 
 ### Notice
