@@ -48,22 +48,22 @@ export const useProfiles = () => {
       selected.map((each) => [each.name!, each.now!])
     );
 
-    let hasChange = false;
-
+    const pendingUpdates: Promise<unknown>[] = [];
     const newSelected: typeof selected = [];
     const { global, groups } = proxiesData;
 
     [global, ...groups].forEach(({ type, name, now }) => {
       if (!now || type !== "Selector") return;
       if (selectedMap[name] != null && selectedMap[name] !== now) {
-        hasChange = true;
-        updateProxy(name, selectedMap[name]);
+        pendingUpdates.push(updateProxy(name, selectedMap[name]));
       }
       newSelected.push({ name, now: selectedMap[name] });
     });
 
-    if (hasChange) {
-      patchProfile(profileData.current!, { selected: newSelected });
+    if (pendingUpdates.length > 0) {
+      // 等所有 selector 偏好都恢复完，再持久化 selected 状态
+      await Promise.all(pendingUpdates);
+      await patchProfile(profileData.current!, { selected: newSelected });
       mutate("getProxies", getProxies());
     }
   };

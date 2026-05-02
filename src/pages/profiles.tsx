@@ -167,20 +167,27 @@ const ProfilePage = () => {
   const onSelect = useLockFn(async (current: string, force: boolean) => {
     if (!force && current === profiles.current) return;
     const previousCurrent = profiles.current;
-    // 立即乐观更新，卡片瞬间切换
+    // 立即乐观更新，卡片瞬间切换 + spinner 蒙层提示后台仍在工作
     setProfilesCurrentOptimistic(current);
+    setActivatings([current]);
     try {
       await patchProfiles({ current });
       closeAllConnections();
       // 主动触发代理页 revalidate，不依赖 layout 事件时序
       mutate("getProxies");
-      // 链式恢复用户 selector 偏好（异步，不阻塞 Notice）
-      activateSelected().then(() => {
-        Notice.success(t("Profile Switched"), 1000);
-      });
+      // patch 已成功，立即给反馈；selector 偏好恢复纳入 lock，防止连点竞态
+      Notice.success(t("Profile Switched"), 1000);
+      try {
+        await activateSelected();
+      } catch (err: any) {
+        // selector 偏好恢复失败不影响切换本身，仅 info 级提示
+        Notice.info(t("Selectors Restore Failed"), 2000);
+      }
     } catch (err: any) {
       setProfilesCurrentOptimistic(previousCurrent);
       Notice.error(err?.message || err.toString(), 4000);
+    } finally {
+      setActivatings([]);
     }
   });
 

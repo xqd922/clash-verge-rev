@@ -352,6 +352,7 @@
   "Clash Config Updated": "Clash 配置已更新",
   "Profile Switched": "订阅已切换",
   "Profile Reactivated": "订阅已激活",
+  "Selectors Restore Failed": "选择器偏好恢复失败",
   "Only YAML Files Supported": "仅支持 YAML 文件",
   "Settings Applied": "设置已应用",
   "Service Installed Successfully": "已成功安装服务",
