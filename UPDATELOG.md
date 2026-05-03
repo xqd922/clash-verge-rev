@@ -1,3 +1,18 @@
+## v1.7.7-legacy.16
+
+### Notice
+
+- `release/1.x-legacy` 维护线第十六个补丁版本
+- 让 legacy 包能与上游 mainline 同机共存（配置目录改名，自用故重装即可）
+
+### Bugs Fixes
+
+- **legacy 与 mainline 共用配置目录互相覆盖**：`APP_ID` 加 `-legacy` 后缀，配置目录从 `...clash-verge-rev` 改为 `...clash-verge-rev-legacy`
+- **日志页过滤切到别的页面再回来被重置成 ALL**：组件级 `useState` 改用 `useLocalStorage`，跨页面与重启都保留
+- **连接页表格 DataGrid 把外层白色卡片盖掉**：legacy.14 把背景色接到 `palette.background.paper`，但它是 `#F5F5F5` 不是外层 Box 用的 `#ffffff`，整片盖住外层白底。回退到写死 hex 与外层重新对齐
+
+---
+
 ## v1.7.7-legacy.15
 
 ### Notice
