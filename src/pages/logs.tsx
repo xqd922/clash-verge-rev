@@ -7,7 +7,7 @@ import {
   PauseCircleOutlineRounded,
 } from "@mui/icons-material";
 import { useLogData } from "@/hooks/use-log-data";
-import { useEnableLog } from "@/services/states";
+import { useEnableLog, useLogLevel } from "@/services/states";
 import { BaseEmpty, BasePage } from "@/components/base";
 import LogItem from "@/components/log/log-item";
 import { useCustomTheme } from "@/components/layout/use-custom-theme";
@@ -21,7 +21,7 @@ const LogPage = () => {
   const [enableLog, setEnableLog] = useEnableLog();
   const { theme } = useCustomTheme();
   const isDark = theme.palette.mode === "dark";
-  const [logState, setLogState] = useState("all");
+  const [logState, setLogState] = useLogLevel();
   const [match, setMatch] = useState(() => (_: string) => true);
 
   const filterLogs = useMemo(() => {
