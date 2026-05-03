@@ -105,7 +105,7 @@ const Layout = () => {
   }, [language, start_page]);
 
   return (
-    <SWRConfig value={{ errorRetryCount: 3 }}>
+    <SWRConfig value={{ errorRetryCount: 3, revalidateOnFocus: false }}>
       <ThemeProvider theme={theme}>
         <Paper
           square
