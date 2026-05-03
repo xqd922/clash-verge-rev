@@ -46,6 +46,22 @@ export const ProxyRender = (props: RenderProps) => {
     initIconCachePath();
   }, [group]);
 
+  // 多列网格的 item 列表。提到组件顶部以保证 hooks 调用顺序稳定，
+  // 避免 React 关于条件 useMemo 的告警与潜在重挂载。
+  const proxyColItemsMemo = useMemo(() => {
+    if (type !== 4 || !proxyCol) return null;
+    return proxyCol.map((proxy) => (
+      <ProxyItemMini
+        key={item.key + proxy.name}
+        group={group}
+        proxy={proxy!}
+        selected={group.now === proxy.name}
+        showType={headState?.showType}
+        onClick={() => onChangeProxy(group, proxy!)}
+      />
+    ));
+  }, [type, proxyCol, group, headState, item.key, onChangeProxy]);
+
   async function initIconCachePath() {
     if (group.icon && group.icon.trim().startsWith("http")) {
       const fileName =
@@ -171,18 +187,6 @@ export const ProxyRender = (props: RenderProps) => {
   }
 
   if (type === 4 && !group.hidden) {
-    const proxyColItemsMemo = useMemo(() => {
-      return proxyCol?.map((proxy) => (
-        <ProxyItemMini
-          key={item.key + proxy.name}
-          group={group}
-          proxy={proxy!}
-          selected={group.now === proxy.name}
-          showType={headState?.showType}
-          onClick={() => onChangeProxy(group, proxy!)}
-        />
-      ));
-    }, [proxyCol, group, headState]);
     return (
       <Box
         sx={{

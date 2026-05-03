@@ -1,5 +1,5 @@
 import useSWR from "swr";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useLockFn } from "ahooks";
 import { useTranslation } from "react-i18next";
 import { Box, Button, ButtonGroup } from "@mui/material";
@@ -14,12 +14,33 @@ import { BasePage } from "@/components/base";
 import { ProxyGroups } from "@/components/proxy/proxy-groups";
 import { ProviderButton } from "@/components/proxy/provider-button";
 
+const CLASH_CONFIG_CACHE_KEY = "clash-config-fallback";
+
 const ProxyPage = () => {
   const { t } = useTranslation();
 
+  // 同步从 localStorage 读取上次的 clash config 作为 fallback，
+  // 避免首屏 mode 为 undefined → ProxyGroups 结构跳变。
+  const clashConfigFallback = useMemo(() => {
+    try {
+      const raw = localStorage.getItem(CLASH_CONFIG_CACHE_KEY);
+      return raw ? JSON.parse(raw) : undefined;
+    } catch {
+      return undefined;
+    }
+  }, []);
+
   const { data: clashConfig, mutate: mutateClash } = useSWR(
     "getClashConfig",
-    getClashConfig
+    getClashConfig,
+    {
+      fallbackData: clashConfigFallback,
+      onSuccess: (data) => {
+        try {
+          localStorage.setItem(CLASH_CONFIG_CACHE_KEY, JSON.stringify(data));
+        } catch {}
+      },
+    }
   );
 
   const { verge } = useVerge();

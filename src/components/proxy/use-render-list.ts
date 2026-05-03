@@ -21,11 +21,32 @@ export interface IRenderItem {
   headState?: HeadState;
 }
 
+const PROXIES_CACHE_KEY = "proxies-fallback";
+
 export const useRenderList = (mode: string) => {
+  // 同步从 localStorage 读取上次的 proxies 数据作为 fallback，
+  // 避免首屏 renderList 从空跳到完整，触发 Virtuoso 抖动。
+  const proxiesFallback = useMemo(() => {
+    try {
+      const raw = localStorage.getItem(PROXIES_CACHE_KEY);
+      return raw ? JSON.parse(raw) : undefined;
+    } catch {
+      return undefined;
+    }
+  }, []);
+
   const { data: proxiesData, mutate: mutateProxies } = useSWR(
     "getProxies",
     getProxies,
-    { refreshInterval: 45000 }
+    {
+      refreshInterval: 45000,
+      fallbackData: proxiesFallback,
+      onSuccess: (data) => {
+        try {
+          localStorage.setItem(PROXIES_CACHE_KEY, JSON.stringify(data));
+        } catch {}
+      },
+    }
   );
 
   const { verge } = useVerge();
