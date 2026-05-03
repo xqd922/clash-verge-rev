@@ -1,3 +1,23 @@
+## v1.7.7-legacy.15
+
+### Notice
+
+- `release/1.x-legacy` 维护线第十五个补丁版本
+- 主题：根治"关闭后从托盘恢复"出现的边框黑线闪烁、启动慢、代理页节点列表抖动三类回归。这三类症状共享一个根因——之前所有"关闭"路径（标题栏 X、ESC、`open_or_close_dashboard` 快捷键）都走 `window.close()` 销毁 WebView2，托盘恢复要完整重建窗口与前端，等价于每次冷启动；本次拦截 `CloseRequested` 改为 hide，托盘恢复走 `unminimize/show/set_focus` 早返回分支，再叠加四处放大器修复
+
+### Bugs Fixes
+
+- **托盘恢复时窗口边框出现黑线闪烁**：Tauri 在 Windows 上用 `transparent + decorations(false) + window-shadows`，DWM 在客户区外画一圈暗色 frame；React/MUI 挂载前 body 是浏览器默认白底，与暗框对比就是观感上的"边框黑线 + 闪一下"。`index.html` 内联首帧底色（`prefers-color-scheme`：dark `#2E303D` / light `#F5F5F5`），React 挂载前就有正确底色；同时 `use-custom-theme.ts` 在 `palette.background` 补 `default` 字段（之前只设 `paper`），防止 MUI 默认 `#fff` 在挂载后某些子组件露白（同源于 legacy.13 的 DataGrid 修复）
+- **托盘恢复后启动慢可感知**：`main.rs` 的 `CloseRequested` 之前只存窗口尺寸位置不阻止销毁，每次"关闭 → 托盘恢复"都重建 WebView2 + 前端首屏。改为 `api.prevent_close() + window.hide()`，恢复路径走 `resolve::create_window` 早返回分支（`unminimize/show/set_focus`），不再重建。Quit 路径仍走 `cmds::exit_app` 的 `std::process::exit(0)`，不受影响
+- **托盘恢复 / 切回应用瞬间 IPC 风暴**：SWRConfig 默认 `revalidateOnFocus:true`，focus 时整批 `useSWR(getProxies/getRules/getProxyProviders/getClashConfig/...)` 同帧并发 invoke，Tauri IPC cold-jitter 叠加形成"启动后卡一下"。`_layout.tsx` SWRConfig 加 `revalidateOnFocus:false`，各 hook 的定时刷新和事件驱动 `mutate` 仍是兜底，不影响数据新鲜度
+- **代理页节点列表打开时抖动**（三处协同来源）：
+  - `use-head-state.ts`：`useEffect` 异步 hydrate localStorage 折叠状态，首帧所有 group 走 `DEFAULT_STATE.open=false` 仅 group 头（~56px），下帧爆开到完整列表，Virtuoso 整列重测。改为 `useLayoutEffect` 在 paint 前完成 hydrate
+  - `use-window-width.ts`：仅监听 `window.resize` 一次性读 `clientWidth`，托盘恢复 / WebView2 重新激活初期 resize 可能漏触发，导致 col 计算读到 0 → 单列布局，随后真正 resize 跳到 3/4 列，整列行类型从 type=2 切到 type=4 全部重测。补 `ResizeObserver(document.body)` 兜底
+  - `proxy-render.tsx`：group 头 `<img width=32>` 缺 `height`，缓存图二次 onload 时由 intrinsic 决定行高，型号 0 行高度先后两次结算引发抖动。补 `height=32`
+- **节点选中态横向 3px 位移引发可见抖动**：`ProxyItem` / `ProxyItemMini` 的 `&.Mui-selected` 之前用 `width: calc(100% + 3px); marginLeft: -3px; borderLeft: 3px solid;` 实现左边条，会让选中行真实宽度变化、整行水平 3px 位移；`group.now` 异步到达 / selected 切换瞬间会触发可见的横向抖动。改为 `boxShadow: inset 3px 0 0 selectColor`，视觉一致但不占布局
+
+---
+
 ## v1.7.7-legacy.14
 
 ### Notice
