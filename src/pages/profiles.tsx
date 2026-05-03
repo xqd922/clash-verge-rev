@@ -179,9 +179,8 @@ const ProfilePage = () => {
       Notice.success(t("Profile Switched"), 1000);
       try {
         await activateSelected();
-      } catch (err: any) {
-        // selector 偏好恢复失败不影响切换本身，仅 info 级提示
-        Notice.info(t("Selectors Restore Failed"), 2000);
+      } catch {
+        // selector 偏好恢复失败不影响切换本身，静默处理
       }
     } catch (err: any) {
       setProfilesCurrentOptimistic(previousCurrent);

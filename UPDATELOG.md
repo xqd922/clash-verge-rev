@@ -22,7 +22,6 @@
 ### Bugs Fixes
 
 - 切换订阅时连点 A → B → A 不再污染 selector 偏好：`activateSelected` 纳入 `useLockFn` 锁内，`updateProxy` / `patchProfile` 改为 `await Promise.all` 后串行落盘，避免上一次切换的尾部写入覆盖当前 current 的偏好
-- selector 偏好恢复失败不再静默吞错，弹 `Notice.info("Selectors Restore Failed")` 让用户感知（新增 i18n key 覆盖 zh / en / fa / ru 四语言）
 
 ### Performance
 
