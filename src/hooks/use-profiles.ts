@@ -26,10 +26,11 @@ export const useProfiles = () => {
 
   // 根据selected的节点选择
   const activateSelected = async () => {
-    // mihomo reload 后 group 树偶尔有几十毫秒空窗，重试一次容忍掉
+    // mihomo hot reload 后 group 树有 0.3-2s 空窗（rule provider 多更久）。
+    // 重试 ~3s 内间隔轮询，仍空就放弃 selector 偏好恢复。
     let proxiesData = await getProxies();
-    for (let i = 0; i < 2 && !proxiesData?.groups?.length; i++) {
-      await new Promise((r) => setTimeout(r, 150));
+    for (let i = 0; i < 10 && !proxiesData?.groups?.length; i++) {
+      await new Promise((r) => setTimeout(r, 300));
       proxiesData = await getProxies();
     }
     const profileData = await getProfiles();
@@ -57,14 +58,15 @@ export const useProfiles = () => {
       if (selectedMap[name] != null && selectedMap[name] !== now) {
         pendingUpdates.push(updateProxy(name, selectedMap[name]));
       }
-      newSelected.push({ name, now: selectedMap[name] });
+      // 没有历史偏好的 group 用当前 now 兜底，避免 selected 落盘 undefined
+      newSelected.push({ name, now: selectedMap[name] ?? now });
     });
 
     if (pendingUpdates.length > 0) {
       // 等所有 selector 偏好都恢复完，再持久化 selected 状态
       await Promise.all(pendingUpdates);
       await patchProfile(profileData.current!, { selected: newSelected });
-      mutate("getProxies", getProxies());
+      mutate("getProxies");
     }
   };
 

@@ -55,8 +55,11 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
         auto_check_update: values.autoCheckUpdate,
         enable_builtin_enhanced: values.enableBuiltinEnhanced,
         proxy_layout_column: values.proxyLayoutColumn,
-        default_latency_test: values.defaultLatencyTest || undefined,
-        default_latency_timeout: values.defaultLatencyTimeout || undefined,
+        // 发空字符串/0 而不是 undefined：patch! 宏遇 None 会跳过赋值，
+        // 用户清空输入框就再也写不掉旧值。consumer 端已用 `|| 默认值` 兜底，
+        // 落盘 "" 或 0 等价于"用默认"。
+        default_latency_test: values.defaultLatencyTest,
+        default_latency_timeout: values.defaultLatencyTimeout,
         auto_log_clean: values.autoLogClean as any,
       });
       setOpen(false);

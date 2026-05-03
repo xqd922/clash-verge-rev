@@ -123,7 +123,7 @@ const ProfilePage = () => {
     mutate("getProfiles", { ...baseProfiles, current }, false);
   };
 
-  const onImport = async () => {
+  const onImport = useLockFn(async () => {
     if (!url) return;
     setLoading(true);
 
@@ -131,28 +131,44 @@ const ProfilePage = () => {
       await importProfile(url);
       Notice.success(t("Profile Imported Successfully"));
       setUrl("");
-      setLoading(false);
 
-      getProfiles().then(async (newProfiles) => {
-        mutate("getProfiles", newProfiles);
+      const newProfiles = await getProfiles();
+      mutate("getProfiles", newProfiles);
 
-        const remoteItem = newProfiles.items?.find((e) => e.type === "remote");
-        if (newProfiles.current && remoteItem) {
-          const current = remoteItem.uid;
-          setProfilesCurrentOptimistic(current, newProfiles);
+      // 取最后一个 remote（append_item 是 push 到末尾），即刚导入的；
+      // 旧实现 find(type==="remote") 会拿到第一个 remote，已有订阅时切错。
+      const remoteItems =
+        newProfiles.items?.filter((e) => e?.type === "remote") ?? [];
+      const newRemote = remoteItems[remoteItems.length - 1];
+
+      if (newProfiles.current && newRemote) {
+        const current = newRemote.uid!;
+        const previousCurrent = newProfiles.current;
+        setProfilesCurrentOptimistic(current, newProfiles);
+        setActivatings([current]);
+        try {
           await patchProfiles({ current });
+          closeAllConnections();
           mutate("getProxies");
-          activateSelected();
+          try {
+            await activateSelected();
+          } catch {
+            // selector 偏好恢复失败不影响切换本身
+          }
+        } catch (err: any) {
+          setProfilesCurrentOptimistic(previousCurrent);
+          Notice.error(err?.message || err.toString(), 4000);
+        } finally {
+          setActivatings([]);
         }
-      });
+      }
     } catch (err: any) {
       Notice.error(err.message || err.toString());
-      setLoading(false);
     } finally {
       setDisabled(false);
       setLoading(false);
     }
-  };
+  });
 
   const onDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;

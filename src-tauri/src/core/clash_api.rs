@@ -5,12 +5,11 @@ use serde::{Deserialize, Serialize};
 use serde_yaml::Mapping;
 use std::{collections::HashMap, time::Duration};
 
-/// 配置下发与控制类请求的客户端超时
-/// mihomo 在 hot reload 时要重新加载所有 rule provider / external UI 等，
-/// 网络抖动 / provider 拉取慢的环境下 reload 实际可能 5-20s。timeout 必须
-/// 足够长，否则会触发外层重试，把 mihomo 反复打断永远完不成 reload。
-/// 30s 是覆盖最坏情况的安全值；mihomo 真的卡死时 30s 后才报失败可接受。
-const CONFIG_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+/// PUT /configs（mihomo hot reload，rule provider 多 / 网络抖动可能 5-20s）
+const PUT_CONFIG_TIMEOUT: Duration = Duration::from_secs(30);
+/// PATCH /configs（仅切单个字段如 tun.enable，应该亚秒返回；
+/// 用于 stop_core 等关键路径，避免 mihomo 卡死时阻塞退出）
+const PATCH_CONFIG_TIMEOUT: Duration = Duration::from_secs(3);
 
 /// PUT /configs
 /// path 是绝对路径
@@ -23,7 +22,7 @@ pub async fn put_configs(path: &str) -> Result<()> {
 
     let client = reqwest::ClientBuilder::new()
         .no_proxy()
-        .timeout(CONFIG_REQUEST_TIMEOUT)
+        .timeout(PUT_CONFIG_TIMEOUT)
         .build()?;
     let builder = client.put(&url).headers(headers).json(&data);
     let response = builder.send().await?;
@@ -43,7 +42,7 @@ pub async fn patch_configs(config: &Mapping) -> Result<()> {
 
     let client = reqwest::ClientBuilder::new()
         .no_proxy()
-        .timeout(CONFIG_REQUEST_TIMEOUT)
+        .timeout(PATCH_CONFIG_TIMEOUT)
         .build()?;
     let builder = client.patch(&url).headers(headers.clone()).json(config);
     builder.send().await?;

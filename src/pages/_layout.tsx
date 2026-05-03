@@ -77,6 +77,10 @@ const Layout = () => {
         case "set_config::error":
           Notice.error(msg);
           break;
+        case "config_validate::warn":
+          // 后端 dry-run 校验失败：切换主路径不阻塞，但提示用户配置有问题
+          Notice.info(msg, 5000);
+          break;
         default:
           break;
       }
