@@ -4,10 +4,11 @@
 
 - `release/1.x-legacy` 维护线第十五个补丁版本
 - 主题：根治"关闭后从托盘恢复"出现的边框黑线闪烁、启动慢、代理页节点列表抖动三类回归。这三类症状共享一个根因——之前所有"关闭"路径（标题栏 X、ESC、`open_or_close_dashboard` 快捷键）都走 `window.close()` 销毁 WebView2，托盘恢复要完整重建窗口与前端，等价于每次冷启动；本次拦截 `CloseRequested` 改为 hide，托盘恢复走 `unminimize/show/set_focus` 早返回分支，再叠加四处放大器修复
+- **修订重发**：初版白闪修复在 `src/index.html` 注入 inline `<style>`，触发 Tauri 1.x 的 CSP nonce 注入流程，最终 CSP 退化为 `style-src 'self' 'nonce-...'`（按规范覆盖 `'unsafe-inline'`），导致 emotion 运行时注入的 MUI 样式（图标尺寸 / 字体 / 布局）全部被阻断，安装后整页 UI 错乱。本次将首帧底色移至 `src/assets/styles/index.scss` 走外链 CSS，Vite 把它产到 `<head>` 的 `<link>`（paint 前同步加载），既避开 nonce 模式又保留首帧上色效果
 
 ### Bugs Fixes
 
-- **托盘恢复时窗口边框出现黑线闪烁**：Tauri 在 Windows 上用 `transparent + decorations(false) + window-shadows`，DWM 在客户区外画一圈暗色 frame；React/MUI 挂载前 body 是浏览器默认白底，与暗框对比就是观感上的"边框黑线 + 闪一下"。`index.html` 内联首帧底色（`prefers-color-scheme`：dark `#2E303D` / light `#F5F5F5`），React 挂载前就有正确底色；同时 `use-custom-theme.ts` 在 `palette.background` 补 `default` 字段（之前只设 `paper`），防止 MUI 默认 `#fff` 在挂载后某些子组件露白（同源于 legacy.13 的 DataGrid 修复）
+- **托盘恢复时窗口边框出现黑线闪烁**：Tauri 在 Windows 上用 `transparent + decorations(false) + window-shadows`，DWM 在客户区外画一圈暗色 frame；React/MUI 挂载前 body 是浏览器默认白底，与暗框对比就是观感上的"边框黑线 + 闪一下"。`index.scss` 顶部加首帧底色（`prefers-color-scheme`：dark `#2E303D` / light `#F5F5F5`），React 挂载前外链 CSS 已同步加载完成，DWM frame 不再有白色对比；同时 `use-custom-theme.ts` 在 `palette.background` 补 `default` 字段（之前只设 `paper`），防止 MUI 默认 `#fff` 在挂载后某些子组件露白（同源于 legacy.13 的 DataGrid 修复）
 - **托盘恢复后启动慢可感知**：`main.rs` 的 `CloseRequested` 之前只存窗口尺寸位置不阻止销毁，每次"关闭 → 托盘恢复"都重建 WebView2 + 前端首屏。改为 `api.prevent_close() + window.hide()`，恢复路径走 `resolve::create_window` 早返回分支（`unminimize/show/set_focus`），不再重建。Quit 路径仍走 `cmds::exit_app` 的 `std::process::exit(0)`，不受影响
 - **托盘恢复 / 切回应用瞬间 IPC 风暴**：SWRConfig 默认 `revalidateOnFocus:true`，focus 时整批 `useSWR(getProxies/getRules/getProxyProviders/getClashConfig/...)` 同帧并发 invoke，Tauri IPC cold-jitter 叠加形成"启动后卡一下"。`_layout.tsx` SWRConfig 加 `revalidateOnFocus:false`，各 hook 的定时刷新和事件驱动 `mutate` 仍是兜底，不影响数据新鲜度
 - **代理页节点列表打开时抖动**（三处协同来源）：
