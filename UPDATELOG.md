@@ -1,3 +1,19 @@
+## v1.7.7-legacy.14
+
+### Notice
+
+- `release/1.x-legacy` 维护线第十四个补丁版本
+- 修复关闭软件再打开时，代理页首屏 item 位置错位、滚动后才"归位"的视觉抖动
+
+### Bugs Fixes
+
+- 代理页 `react-virtuoso` 列表未设置 `defaultItemHeight`：5 种行类型 (组头 / ProxyHead / ProxyItem / 空 / 多列) 高度差异较大，Virtuoso 用单点估算逐项测量，首屏出现 item Y 坐标反复修正的"抖动 → 归位"现象。`proxy-groups.tsx` 显式给定 `defaultItemHeight={56}`（接近实际平均行高），首次布局总高接近真实值，仅做小幅修正
+- `useHeadStateNew` 首帧用空对象初始化、随后在 `useEffect` 异步从 localStorage 恢复展开状态：导致 `renderList` 长度二段跳变（先全折叠 → 再恢复记忆），触发 Virtuoso 整列表重测高度。改为 lazy `useState` 同步读取上次 profile 状态，新增 `proxy-head-last-profile` localStorage key 持久化最近活跃 profile，所有 localStorage 访问均 try/catch 包裹保留原健壮性
+- `useSWR("getProxies")` 与 `useSWR("getClashConfig")` 缺失 `fallbackData`：首屏 `proxiesData=undefined` → `renderList=[]`、`clashConfig?.mode=undefined` → `ProxyGroups` 结构跳变。两处加 localStorage 缓存上次响应作为 `fallbackData`，`onSuccess` 写回缓存；SWR 仍正常 revalidate，过期数据立刻被真实响应替换。模式与 `use-log-data.ts` 既有 `fallbackData` 用法一致
+- `proxy-render.tsx` `if (type === 4)` 分支里调用 `useMemo`，违反 React hooks 规则：实际因外层 `key` 隔离每个实例 `type` 稳定，运行期未触发 bug 但有 lint 告警与重构脆弱性。把 `useMemo` 提到组件顶部，内部按 `type` 早返回 `null`，hooks 调用顺序保持稳定
+
+---
+
 ## v1.7.7-legacy.13
 
 ### Notice
