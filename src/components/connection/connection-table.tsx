@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
-import { useTheme } from "@mui/material";
+import { useThemeMode } from "@/services/states";
 import { truncateStr } from "@/utils/truncate-str";
 import parseTraffic from "@/utils/parse-traffic";
 import { t } from "i18next";
@@ -13,9 +13,12 @@ interface Props {
 
 export const ConnectionTable = (props: Props) => {
   const { connections, onShowDetail } = props;
-  const theme = useTheme();
-  // 接 theme palette 而不是写死 hex：自定义主题色 / 跟随系统时也能对齐其他面板背景。
-  const backgroundColor = theme.palette.background.paper;
+  const mode = useThemeMode();
+  const isDark = mode === "light" ? false : true;
+  // 与 connections.tsx 外层 Box / BasePage .base-container 的写死 hex 对齐，
+  // 保留外层 #ffffff "白色 paper 卡片" 浮在 #f0f0f0 灰底上的视觉。
+  // theme.palette.background.paper 在 light 模式是 #F5F5F5，会把外层白底盖掉。
+  const backgroundColor = isDark ? "#282A36" : "#ffffff";
 
   const [columnVisible, setColumnVisible] = useState<
     Partial<Record<keyof IConnectionsItem, boolean>>
