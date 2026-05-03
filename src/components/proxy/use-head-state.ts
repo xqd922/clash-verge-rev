@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import { ProxySortType } from "./use-filter-sort";
 import { useProfiles } from "@/hooks/use-profiles";
 
@@ -29,7 +29,8 @@ export function useHeadStateNew() {
 
   const [state, setState] = useState<Record<string, HeadState>>({});
 
-  useEffect(() => {
+  // 用 useLayoutEffect 在 paint 前同步 hydrate，避免「首帧全部折叠 → 下帧爆开」的列表抖动
+  useLayoutEffect(() => {
     if (!current) {
       setState({});
       return;
