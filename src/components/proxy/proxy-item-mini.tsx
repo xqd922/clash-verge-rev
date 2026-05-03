@@ -79,9 +79,9 @@ export const ProxyItemMini = (props: Props) => {
             },
             "& .the-unpin": { filter: "grayscale(1)" },
             "&.Mui-selected": {
-              width: `calc(100% + 3px)`,
-              marginLeft: `-3px`,
-              borderLeft: `3px solid ${selectColor}`,
+              // 用 inset boxShadow 替代 width/marginLeft/borderLeft，
+              // 避免选中态出现/切换时整行水平 3px 位移引发的视觉抖动
+              boxShadow: `inset 3px 0 0 ${selectColor}`,
               bgcolor:
                 mode === "light"
                   ? alpha(primary.main, 0.15)
