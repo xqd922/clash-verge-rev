@@ -1,3 +1,27 @@
+## v1.7.7-legacy.14
+
+### Notice
+
+- `release/1.x-legacy` 维护线第十四个补丁版本
+- 集中收紧 .8 → .13 修复链遗留的 7 处隐患：清空逻辑、退出阻塞、重试窗口、导入硬化、配置降级提示、主题适配
+
+### Bugs Fixes
+
+- **杂项设置里清空"自定义延迟测试 URL/超时"无效**：`misc-viewer.tsx` `onSave` 之前发 `value || undefined`，配合后端 `patch!` 宏（None 跳过赋值）等于"用户清空 → 旧值锁死，placeholder 永远显示不出来"。改为直接发空字符串/0，`proxy-head.tsx` / `proxy-item*.tsx` 已有 `|| 默认` 兜底
+- **关闭应用时 mihomo 卡死会阻塞退出最长 30s**：`stop_core` 内的 disable-tun PATCH 共用了 `put_configs` 的 30s 超时常量。拆成 `PUT_CONFIG_TIMEOUT = 30s`（hot reload）/ `PATCH_CONFIG_TIMEOUT = 3s`（控制类），退出最长 ≤ 3s
+- **导入新订阅切错到已有的 remote**：`onImport` 旧实现 `find(type==="remote")` 取**第一个** remote，已有订阅时会切到老的而不是刚导入的。改为取最后一个（`append_item` push 末尾）
+- **`onImport` 链路裸 unhandled rejection**：legacy.12 硬化了 `onSelect`，但 `onImport` 内的同等流程被遗漏——`activateSelected()` 未 await 未 try/catch。补齐 `useLockFn` / `setActivatings` spinner / 失败回滚 / try-catch
+- **selector 偏好恢复重试窗口与注释矛盾**：`activateSelected` 仅 2×150ms = 300ms，但 .12 注释明确写"reload 实际可能 5-20s"——rule provider 多的用户切换后所有 selector 静默回到默认。改为 10×300ms（~3s 上限）
+- **`activateSelected` 触发多余 `getProxies` fetch**：`mutate("getProxies", getProxies())` 第二参传了 promise 但 SWR 仍会 revalidate，相当于跑两次。改为单参 `mutate("getProxies")`
+- **`newSelected` 落盘 `now: undefined`**：新出现的 Selector group 没有历史偏好时，旧逻辑会写 `{name, now: undefined}` 到 verge profile。改为用当前 `now` 兜底
+
+### Performance / Tweaks
+
+- **坏配置不再静默降级运行**：legacy.9 跳过 `check_config` 后，mihomo PUT 对部分软错误（rule provider URL 不可达、proxy 解析失败但其他可用）返回 204 但运行配置实际是降级版。把 `check_config` 改为 `spawn_blocking` 后台并行跑，失败时通过 `notice_message("config_validate::warn")` 弹 Notice.info（5s），不阻塞热路径。`_layout.tsx` 加对应监听 case
+- **连接表背景接 theme palette**：`connection-table.tsx` 把写死的 `#282A36` / `#ffffff` 改用 `theme.palette.background.paper`，自定义主题色 / 跟随系统时与 BasePage 等其他面板背景对齐
+
+---
+
 ## v1.7.7-legacy.13
 
 ### Notice
