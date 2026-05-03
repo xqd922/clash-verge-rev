@@ -14,6 +14,7 @@ export interface HeadState {
 type HeadStateStorage = Record<string, Record<string, HeadState>>;
 
 const HEAD_STATE_KEY = "proxy-head-state";
+const LAST_PROFILE_KEY = "proxy-head-last-profile";
 export const DEFAULT_STATE: HeadState = {
   open: false,
   showType: true,
@@ -23,31 +24,38 @@ export const DEFAULT_STATE: HeadState = {
   testUrl: "",
 };
 
+function readHeadStateFor(profileId: string): Record<string, HeadState> {
+  try {
+    const data = JSON.parse(
+      localStorage.getItem(HEAD_STATE_KEY) || "{}"
+    ) as HeadStateStorage;
+    const value = data[profileId];
+    if (value && typeof value === "object") return value;
+  } catch {}
+  return {};
+}
+
 export function useHeadStateNew() {
   const { profiles } = useProfiles();
   const current = profiles?.current || "";
 
-  const [state, setState] = useState<Record<string, HeadState>>({});
+  // 同步从 localStorage 读取上次 profile 的状态作为初值，
+  // 避免首帧用空对象渲染、随后 effect 恢复时 renderList 长度跳变导致 Virtuoso 抖动。
+  const [state, setState] = useState<Record<string, HeadState>>(() => {
+    try {
+      const lastProfile = localStorage.getItem(LAST_PROFILE_KEY);
+      return lastProfile ? readHeadStateFor(lastProfile) : {};
+    } catch {
+      return {};
+    }
+  });
 
   useEffect(() => {
-    if (!current) {
-      setState({});
-      return;
-    }
-
+    if (!current) return;
     try {
-      const data = JSON.parse(
-        localStorage.getItem(HEAD_STATE_KEY)!
-      ) as HeadStateStorage;
-
-      const value = data[current] || {};
-
-      if (value && typeof value === "object") {
-        setState(value);
-      } else {
-        setState({});
-      }
+      localStorage.setItem(LAST_PROFILE_KEY, current);
     } catch {}
+    setState(readHeadStateFor(current));
   }, [current]);
 
   const setHeadState = useCallback(
