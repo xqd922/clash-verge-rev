@@ -83,8 +83,11 @@ pub async fn resolve_setup(app: &mut App) {
     log::trace!("init system tray");
     log_err!(tray::Tray::update_systray(&app.app_handle()));
 
-    let silent_start = { Config::verge().data().enable_silent_start };
-    if !silent_start.unwrap_or(false) {
+    let silent_start = Config::verge().data().enable_silent_start.unwrap_or(false);
+    // 仅在开机自启（auto-launch 注册项带 --silent 参数）时才静默到托盘；
+    // 手动双击 / 命令行启动总是显示窗口。
+    let launched_silent = std::env::args().any(|a| a == "--silent");
+    if !(silent_start && launched_silent) {
         create_window(&app.app_handle());
     }
 

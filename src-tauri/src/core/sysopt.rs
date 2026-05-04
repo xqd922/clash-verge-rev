@@ -315,6 +315,7 @@ impl Sysopt {
         let auto = AutoLaunchBuilder::new()
             .set_app_name(app_name)
             .set_app_path(&app_path)
+            .set_args(&["--silent"])
             .build()?;
 
         *self.auto_launch.lock() = Some(auto);
