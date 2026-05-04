@@ -11,7 +11,7 @@ mod feat;
 mod utils;
 
 use crate::utils::{init, resolve, server};
-use tauri::{api, Manager, SystemTray};
+use tauri::{api, SystemTray};
 
 fn main() -> std::io::Result<()> {
     // 单例检测
@@ -135,14 +135,8 @@ fn main() -> std::io::Result<()> {
                     tauri::WindowEvent::Destroyed => {
                         let _ = resolve::save_window_size_position(app_handle, true);
                     }
-                    tauri::WindowEvent::CloseRequested { api, .. } => {
-                        // 拦截关闭：仅隐藏到托盘，避免每次"关闭→托盘恢复"都重建 WebView2
-                        // (重建会同时引发 边框黑线/启动慢/代理列表抖动 三类回归)
-                        api.prevent_close();
+                    tauri::WindowEvent::CloseRequested { .. } => {
                         let _ = resolve::save_window_size_position(app_handle, true);
-                        if let Some(window) = app_handle.get_window("main") {
-                            let _ = window.hide();
-                        }
                     }
                     tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_) => {
                         let _ = resolve::save_window_size_position(app_handle, false);
