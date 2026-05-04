@@ -1,3 +1,18 @@
+## v1.7.7-legacy.17
+
+### Notice
+
+- `release/1.x-legacy` 维护线第十七个补丁版本
+- 主题：撤回 .15 的 `hide-on-close` 路径（在 Win11 上换了一种黑线表现仍存在），回归 v1.7.7 默认 close 行为；修正"静默启动"配置不分启动方式一刀切的设计错乱；额外回退 legacy 早先引入的"导入新订阅自动切换"行为
+
+### Bugs Fixes
+
+- **粘贴新订阅后会自动跳转到刚导入的订阅**：legacy 早先为修复 `find(type==="remote")` 取错第一个 remote 的 bug，把 `onImport` 改为已有 current 时也强制切换到最后一个 remote。这与上游 v1.7.7 的语义不一致——上游仅在 `!newProfiles.current`（首次导入）时自动选中。改回 `if (!newProfiles.current && newRemote)`：已有订阅时不再主动切换，保留用户当前选择，切换由用户手动点击卡片完成
+- **托盘恢复时窗口边框仍出现黑线（.15 修复路径换了表现仍存在）**：.15 把 close 改成 `prevent_close + window.hide()` 之后，Win11 上 hide → show 反而触发 DWM 用分层窗口默认属性合成 1 帧（直角 + 1px 深色 frame），仍是边框黑线一闪。撤回 `e7879fb0`，恢复 v1.7.7 的默认 close（销毁窗口）：托盘重开走完整 `WindowBuilder` 路径，`set_shadow(true)` 在 build 时一次性应用，DWM 拿到正确的合成属性，从源头消除黑线。代价是每次"关闭 → 托盘恢复"会重建 WebView2，启动稍慢、前端状态重置——接受这个权衡换掉视觉回归
+- **手动双击只进托盘不显示窗口**：`resolve_setup` 之前对 `enable_silent_start=true` 一刀切跳过 `create_window`，导致用户手动双击快捷方式也只显示托盘，与"静默启动仅针对开机自启"的常规语义不符。`AutoLaunchBuilder` 注册开机自启项时附加 `--silent` 参数，`resolve_setup` 改为仅当 argv 包含 `--silent` 且配置开启时才静默；手动启动 / 命令行启动（无 `--silent`）一律走 `create_window`。**迁移**：现有"开机自启 + 静默启动"用户需要卸载重装一次（或在设置面板 toggle 一次"开机自启"），让启动项更新为带 `--silent` 的命令行
+
+---
+
 ## v1.7.7-legacy.16
 
 ### Notice

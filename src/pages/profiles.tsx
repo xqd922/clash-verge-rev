@@ -135,13 +135,13 @@ const ProfilePage = () => {
       const newProfiles = await getProfiles();
       mutate("getProfiles", newProfiles);
 
-      // 取最后一个 remote（append_item 是 push 到末尾），即刚导入的；
-      // 旧实现 find(type==="remote") 会拿到第一个 remote，已有订阅时切错。
+      // 仅在还没有 current 时（首次导入）才自动选中刚导入的 remote；
+      // 已有订阅时不主动切换，保留用户当前选择。
       const remoteItems =
         newProfiles.items?.filter((e) => e?.type === "remote") ?? [];
       const newRemote = remoteItems[remoteItems.length - 1];
 
-      if (newProfiles.current && newRemote) {
+      if (!newProfiles.current && newRemote) {
         const current = newRemote.uid!;
         const previousCurrent = newProfiles.current;
         setProfilesCurrentOptimistic(current, newProfiles);
