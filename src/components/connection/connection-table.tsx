@@ -15,9 +15,6 @@ export const ConnectionTable = (props: Props) => {
   const { connections, onShowDetail } = props;
   const mode = useThemeMode();
   const isDark = mode === "light" ? false : true;
-  // 与 connections.tsx 外层 Box / BasePage .base-container 的写死 hex 对齐，
-  // 保留外层 #ffffff "白色 paper 卡片" 浮在 #f0f0f0 灰底上的视觉。
-  // theme.palette.background.paper 在 light 模式是 #F5F5F5，会把外层白底盖掉。
   const backgroundColor = isDark ? "#282A36" : "#ffffff";
 
   const [columnVisible, setColumnVisible] = useState<
@@ -121,12 +118,7 @@ export const ConnectionTable = (props: Props) => {
       density="compact"
       sx={{
         border: "none",
-        bgcolor: backgroundColor,
         "div:focus": { outline: "none !important" },
-        "& .MuiDataGrid-main": { bgcolor: backgroundColor },
-        "& .MuiDataGrid-columnHeaders": { bgcolor: backgroundColor },
-        "& .MuiDataGrid-virtualScroller": { bgcolor: backgroundColor },
-        "& .MuiDataGrid-overlayWrapper": { bgcolor: backgroundColor },
         "& div[aria-rowindex]": {
           backgroundColor: `${backgroundColor} !important`,
         },
