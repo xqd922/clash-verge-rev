@@ -1,3 +1,16 @@
+## v1.7.7-legacy.18
+
+### Notice
+
+- `release/1.x-legacy` 维护线第十八个补丁版本
+- 主题:再次尝试关闭到托盘以保留 WebView 状态(避免重建);此修复**未在 Win11 实机验证**,若 .17 文档中描述的 DWM 黑线复发将再次回滚
+
+### Bugs Fixes
+
+- **关闭后从托盘重开会丢失前端状态**:.17 选择"关闭即销毁窗口"以从源头规避边框黑线,代价是每次托盘重开都重建 WebView2,前端状态(滚动位置、流量图、SPA 路由)被重置。本次重新拦截 `CloseRequested`,在 `hide()` 之前先调用 `window.minimize()` + `set_skip_taskbar(true)`,意图让 WebView2 合成器有序挂起;从托盘重开走 `create_window` 的 `unminimize/show/set_focus` 早返回分支保留状态。**已知风险**:.17 changelog 已经分析过,黑线根因是 Win11 DWM 在 hide → show 时用分层窗口默认属性合成 1 帧,与 WebView2 合成器无关;`minimize()` 不会改变 DWM 的合成属性恢复路径,因此本修复在 Win11 上**很可能不能消除黑线**——若实测确认复发,将再次回滚到 .17 的 destroy 路径
+
+---
+
 ## v1.7.7-legacy.17
 
 ### Notice
