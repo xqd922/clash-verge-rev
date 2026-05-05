@@ -119,6 +119,7 @@ pub fn resolve_reset() {
 /// create main window
 pub fn create_window(app_handle: &AppHandle) {
     if let Some(window) = app_handle.get_window("main") {
+        trace_err!(window.set_skip_taskbar(false), "set win skip_taskbar(false)");
         trace_err!(window.unminimize(), "set win unminimize");
         trace_err!(window.show(), "set win visible");
         trace_err!(window.set_focus(), "set win focus");
