@@ -5,6 +5,7 @@ import {
   CloseRounded,
   CheckCircleRounded,
   ErrorRounded,
+  InfoRounded,
 } from "@mui/icons-material";
 import { useVerge } from "@/hooks/use-verge";
 import { appWindow } from "@tauri-apps/api/window";
@@ -50,22 +51,20 @@ const NoticeInner = (props: InnerProps) => {
     };
   }, [theme_mode]);
 
-  const msgElement =
-    type === "info" ? (
-      message
-    ) : (
-      <Box sx={{ width: 328, display: "flex", alignItems: "center" }}>
-        {type === "error" && <ErrorRounded color="error" />}
-        {type === "success" && <CheckCircleRounded color="success" />}
+  const msgElement = (
+    <Box sx={{ width: 328, display: "flex", alignItems: "center" }}>
+      {type === "error" && <ErrorRounded color="error" />}
+      {type === "success" && <CheckCircleRounded color="success" />}
+      {type === "info" && <InfoRounded color="info" />}
 
-        <Typography
-          component="span"
-          sx={{ ml: 1, wordWrap: "break-word", width: "calc(100% - 35px)" }}
-        >
-          {message}
-        </Typography>
-      </Box>
-    );
+      <Typography
+        component="span"
+        sx={{ ml: 1, wordWrap: "break-word", width: "calc(100% - 35px)" }}
+      >
+        {message}
+      </Typography>
+    </Box>
+  );
 
   return (
     <Snackbar
