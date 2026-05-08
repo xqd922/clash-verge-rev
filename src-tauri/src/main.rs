@@ -139,10 +139,13 @@ fn main() -> std::io::Result<()> {
                         api.prevent_close();
                         let _ = resolve::save_window_size_position(app_handle, true);
                         if let Some(window) = app_handle.get_window("main") {
-                            // 先 minimize 让 WebView2 合成器有序挂起,再隐藏并从任务栏移除,
-                            // 规避透明窗口 hide/show 的黑线问题
-                            let _ = window.minimize();
                             let _ = window.set_skip_taskbar(true);
+                            // Windows 透明 + 无边框窗口:不能 hide/minimize —— hide 会让 DWM
+                            // 合成层产生黑线、minimize 会让 WebView2 GPU 合成器挂起导致还原延迟。
+                            // 改为移到屏幕外保活:DWM 与 WebView2 合成器都保持运行,还原瞬间显示。
+                            #[cfg(target_os = "windows")]
+                            let _ = window.set_position(tauri::PhysicalPosition::new(-32000, -32000));
+                            #[cfg(not(target_os = "windows"))]
                             let _ = window.hide();
                         }
                     }

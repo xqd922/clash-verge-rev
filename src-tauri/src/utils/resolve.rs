@@ -120,7 +120,17 @@ pub fn resolve_reset() {
 pub fn create_window(app_handle: &AppHandle) {
     if let Some(window) = app_handle.get_window("main") {
         trace_err!(window.set_skip_taskbar(false), "set win skip_taskbar(false)");
-        trace_err!(window.unminimize(), "set win unminimize");
+        // Windows 还原:把屏幕外的窗口移回上次保存的可见位置(配对 CloseRequested 中的 offscreen)
+        #[cfg(target_os = "windows")]
+        if let Some(pos) = Config::verge().latest().window_size_position.clone() {
+            if pos.len() == 4 {
+                trace_err!(
+                    window.set_position(tauri::LogicalPosition::new(pos[2], pos[3])),
+                    "set win position"
+                );
+            }
+        }
+        #[cfg(not(target_os = "windows"))]
         trace_err!(window.show(), "set win visible");
         trace_err!(window.set_focus(), "set win focus");
         return;
@@ -232,6 +242,11 @@ pub fn save_window_size_position(app_handle: &AppHandle, save_to_file: bool) -> 
     let size = win.inner_size()?;
     let size = size.to_logical::<f64>(scale);
     let pos = win.outer_position()?;
+    // 窗口处于 close-to-tray 的屏幕外保活状态时,不要把 -32000 这种位置写回配置,
+    // 避免 Moved 事件污染下次启动/还原使用的可见位置
+    if pos.x < -10000 || pos.y < -10000 {
+        return Ok(());
+    }
     let pos = pos.to_logical::<f64>(scale);
     let is_maximized = win.is_maximized()?;
     verge.window_is_maximized = Some(is_maximized);
