@@ -1,12 +1,26 @@
+## v1.7.7-legacy.19
+
+### Notice
+
+- `release/1.x-legacy` 维护线第十九个补丁版本
+- 主题:用屏幕外保活替换 .18 的 `minimize+hide` 路径,从根源同时消除"DWM 黑线"与"WebView2 还原延迟"两个一直对立的回归。**未在 Win11 实机验证**,但与 .15/.17/.18 不同,本次方案不依赖任何 `hide → show` 或 `minimize → unminimize` 转换,理论上不再触发 DWM 合成属性恢复路径
+
+### Bugs Fixes
+
+- **关闭到托盘后还原仍有 1 帧黑线 + 内容重绘延迟**:.18 用 `minimize() + set_skip_taskbar(true) + hide()` 试图让 WebView2 合成器有序挂起,但 .18 changelog 已分析过——黑线根因是 DWM 在 hide → show 时用分层窗口默认属性合成 1 帧,与 WebView2 合成器无关;同时 `minimize()` 又把 WebView2 GPU 合成器挂起,unminimize 后需要重新初始化 → 还原瞬间内容重绘有可感知延迟。两个症状互相独立,任何 `hide`/`minimize` 组合都至少命中其一。本次改路径:`CloseRequested` 不再 `hide` / `minimize`,Windows 上改为 `set_position(PhysicalPosition::new(-32000, -32000))` 把窗口移到屏幕外保活,DWM 合成层和 WebView2 合成器都不拆;托盘还原走 `set_position(LogicalPosition(saved_x, saved_y))` 把窗口移回保存的可见坐标,无 hide → show 转换 → DWM 不重建合成属性 → 理论上根除黑线,且 WebView2 合成器全程在跑 → 还原瞬间显示原内容(滚动位置 / 表单 / 流量图保留)。`set_skip_taskbar(true/false)` 仍负责任务栏 + Alt-Tab 的可见性切换。`save_window_size_position` 加守卫:`outer_position.x < -10000 || pos.y < -10000` 时直接 return,避免 `Moved` 事件把屏幕外坐标(-32000)写进配置污染下次启动 / 还原使用的可见位置。macOS / Linux 路径不变(它们的合成器机制不同,无此问题)
+
+---
+
 ## v1.7.7-legacy.18
 
 ### Notice
 
 - `release/1.x-legacy` 维护线第十八个补丁版本
-- 主题:再次尝试关闭到托盘以保留 WebView 状态(避免重建);此修复**未在 Win11 实机验证**,若 .17 文档中描述的 DWM 黑线复发将再次回滚
+- 主题:统一 `Notice.info` 与 success/error 三种类型的布局观感;再次尝试关闭到托盘以保留 WebView 状态(避免重建)。后者**未在 Win11 实机验证**,若 .17 文档中描述的 DWM 黑线复发将再次回滚
 
 ### Bugs Fixes
 
+- **Notice.info 与 success/error 视觉不统一**:`src/components/base/base-notice.tsx` 中 info 分支此前直接渲染裸 `message`,跳过了 success/error 共用的 `Box(width:328) + 图标 + Typography` 布局,导致 SnackbarContent 高度、留白与圆角观感与其他两种类型不一致。统一渲染结构,info 类型补 `InfoRounded`(蓝色)图标,三种 Notice 现在盒模型与视觉权重一致。`config_validate::warn` 等 `Notice.info` 调用点逻辑不受影响
 - **关闭后从托盘重开会丢失前端状态**:.17 选择"关闭即销毁窗口"以从源头规避边框黑线,代价是每次托盘重开都重建 WebView2,前端状态(滚动位置、流量图、SPA 路由)被重置。本次重新拦截 `CloseRequested`,在 `hide()` 之前先调用 `window.minimize()` + `set_skip_taskbar(true)`,意图让 WebView2 合成器有序挂起;从托盘重开走 `create_window` 的 `unminimize/show/set_focus` 早返回分支保留状态。**已知风险**:.17 changelog 已经分析过,黑线根因是 Win11 DWM 在 hide → show 时用分层窗口默认属性合成 1 帧,与 WebView2 合成器无关;`minimize()` 不会改变 DWM 的合成属性恢复路径,因此本修复在 Win11 上**很可能不能消除黑线**——若实测确认复发,将再次回滚到 .17 的 destroy 路径
 
 ---
