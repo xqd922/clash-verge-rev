@@ -99,7 +99,7 @@ pub async fn resolve_setup(app: &mut App) {
     #[cfg(target_os = "windows")]
     if warm_to_tray {
         if let Some(window) = app.app_handle().get_window("main") {
-            let _ = window.set_skip_taskbar(true);
+            set_window_taskbar_skip(&window, true);
             let _ = window.set_position(tauri::PhysicalPosition::new(-32000, -32000));
             // tauri WindowBuilder visible(false) 创建的窗口在 Windows 上是 lazy 的:
             // WebView2 渲染进程不会启动,前端 JS 也不会加载,_layout.tsx 里的
@@ -138,9 +138,45 @@ pub fn resolve_reset() {
     });
 }
 
+/// Windows: 直接通过 SetWindowLongPtrW 改 WS_EX_TOOLWINDOW / WS_EX_APPWINDOW
+/// 风格,绕开 tauri::Window::set_skip_taskbar —— 后者在 Windows 上为应用 ex_style
+/// 改动会调 SW_HIDE,导致 DWM 拆合成层 + WebView2 GPU 合成器停止 → 还原冷启动。
+/// 直接改 ex_style + SetWindowPos(SWP_FRAMECHANGED) 让任务栏更新但窗口保持
+/// visible 状态,close-to-tray 屏幕外保活才能真生效。
+#[cfg(target_os = "windows")]
+pub fn set_window_taskbar_skip(window: &tauri::Window, skip: bool) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, SWP_FRAMECHANGED,
+        SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
+    };
+    if let Ok(hwnd) = window.hwnd() {
+        unsafe {
+            let cur = GetWindowLongPtrW(hwnd.0, GWL_EXSTYLE);
+            let new = if skip {
+                (cur | WS_EX_TOOLWINDOW as isize) & !(WS_EX_APPWINDOW as isize)
+            } else {
+                (cur & !(WS_EX_TOOLWINDOW as isize)) | WS_EX_APPWINDOW as isize
+            };
+            SetWindowLongPtrW(hwnd.0, GWL_EXSTYLE, new);
+            SetWindowPos(
+                hwnd.0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED,
+            );
+        }
+    }
+}
+
 /// create main window
 pub fn create_window(app_handle: &AppHandle) {
     if let Some(window) = app_handle.get_window("main") {
+        #[cfg(target_os = "windows")]
+        set_window_taskbar_skip(&window, false);
+        #[cfg(not(target_os = "windows"))]
         trace_err!(window.set_skip_taskbar(false), "set win skip_taskbar(false)");
         // Windows 还原:把屏幕外的窗口移回上次保存的可见位置(配对 CloseRequested 中的 offscreen)
         #[cfg(target_os = "windows")]

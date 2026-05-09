@@ -140,14 +140,21 @@ fn main() -> std::io::Result<()> {
                         api.prevent_close();
                         let _ = resolve::save_window_size_position(app_handle, true);
                         if let Some(window) = app_handle.get_window("main") {
-                            let _ = window.set_skip_taskbar(true);
                             // Windows 透明 + 无边框窗口:不能 hide/minimize —— hide 会让 DWM
                             // 合成层产生黑线、minimize 会让 WebView2 GPU 合成器挂起导致还原延迟。
                             // 改为移到屏幕外保活:DWM 与 WebView2 合成器都保持运行,还原瞬间显示。
+                            // 注意:tauri set_skip_taskbar 在 Windows 上内部 SW_HIDE 应用 ex_style,
+                            // 会拆合成器,所以 Windows 走 set_window_taskbar_skip 直接改风格。
                             #[cfg(target_os = "windows")]
-                            let _ = window.set_position(tauri::PhysicalPosition::new(-32000, -32000));
+                            {
+                                resolve::set_window_taskbar_skip(&window, true);
+                                let _ = window.set_position(tauri::PhysicalPosition::new(-32000, -32000));
+                            }
                             #[cfg(not(target_os = "windows"))]
-                            let _ = window.hide();
+                            {
+                                let _ = window.set_skip_taskbar(true);
+                                let _ = window.hide();
+                            }
                         }
                     }
                     tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_) => {
