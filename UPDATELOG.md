@@ -1,3 +1,16 @@
+## v1.7.7-legacy.20
+
+### Notice
+
+- `release/1.x-legacy` 维护线第二十个补丁版本
+- 主题:开机自启 + 静默启动模式下首次从托盘打开窗口慢(实测 2-5 秒冷启动)的诊断与修复。.19 的 close-to-tray offscreen 方案此前只覆盖"用户主动关到托盘"路径,未覆盖"开机即静默到托盘"路径。**未在 Win11 实机验证**,但方案与 .19 同样依赖屏幕外保活,理论模型一致
+
+### Bugs Fixes
+
+- **开机自启后首次点托盘窗口出现慢(2-5 秒)**:.17 引入的"`--silent` + `enable_silent_start=true` 静默到托盘"路径在 `resolve_setup` 直接跳过 `create_window`(`src-tauri/src/utils/resolve.rs:86-92`),进程启动后 WebView2 + Tauri 主窗口从未被实例化(实测特征:`WebView2 cache` 长期未写入,`verge.yaml` 中 `window_size_position` 字段为空,主进程 top-level 窗口列表只有 `tao_system_tray_app`)。用户首次点托盘 → `create_window` 没有命中"已存在"早返回分支 → 走完整 `WindowBuilder` 路径 → WebView2 进程冷启动 + Tauri 窗口创建 + 前端首屏 ≈ 2-5 秒。本次引入 warm-to-tray 模式:`silent_start && --silent` 时仍调 `create_window` 预热 WebView2 + 前端,Windows 上随后 `set_skip_taskbar(true) + set_position(-32000, -32000)` 把窗口移到屏幕外保活;新增 Tauri command `is_warm_to_tray` 暴露当前启动模式,前端 `_layout.tsx` 50ms 后通过它判断,warm 模式下只调 `show()` 让 WebView2 合成器真正激活完成预热,**跳过 `setFocus()`** 避免开机时偷走用户当前活动窗口的焦点;用户首次点托盘走 `create_window` 还原分支(`set_skip_taskbar(false) + set_position(saved logical pos)`)瞬间显示。代价:开机后 WebView2 进程常驻,大约多 100-200 MB 内存 + 几 % 后台 CPU(空闲合成器),用户仍可通过关闭"静默启动"开关回退到 .19 行为
+
+---
+
 ## v1.7.7-legacy.19
 
 ### Notice
