@@ -1,3 +1,20 @@
+## v1.7.7-legacy.21
+
+### Notice
+
+- `release/1.x-legacy` 维护线第二十一个补丁版本
+- 主题:.20 实测验证后发现**两个独立的回归**——(1) silent 启动 WebView2 实际仍未真预热 (2) `.18` 引入的 close-to-tray 屏幕外保活方案**从未生效**。本次同时修两条路径,**待 Win11 实机再次验证**。两个问题根因都是 Tauri 1.x Windows 后端在 hidden / ex_style 切换时机上对 WebView2 GPU 合成器的副作用未被感知
+
+### Bugs Fixes
+
+- **.20 silent 启动 WebView2 未真预热(实测每次仍 2-5 秒冷启动)**:.20 commit 描述声称 `create_window` + `set_position(-32000,-32000)` 已完成预热,实测重启系统后等 10 分钟仍未点托盘的状态下,主进程 PID 下挂的 `msedgewebview2.exe` 子进程为零;直到用户首次点托盘那一刻 WebView2 子进程才被创建 → 实质等价 .19 行为。根因:`tauri::WindowBuilder::visible(false)` 在 Windows 上 wry 对 hidden 窗口惰性实例化 WebView2 渲染进程——即便 `ICoreWebView2Controller` 已构造,渲染管线也要等 `ShowWindow` 才启动;前端 `_layout.tsx` 里 `await isWarmToTray()` 后的 `appWindow.show()` 永远跑不到,因为 JS 根本没被加载到 webview。修复:warm_to_tray 块 `set_skip_taskbar(true) + set_position(-32000,-32000)` 之后立即调 `ShowWindow(hwnd, SW_SHOWNOACTIVATE)`,直接经新增的 `windows-sys` 依赖 `Win32_UI_WindowsAndMessaging` 模块,绕过 `tauri::Window::show()` 的默认 `SW_SHOW`(后者会激活窗口偷走开机时用户当前活动窗口的焦点) → 强制 WebView2 渲染进程 spawn + 前端 JS 加载 + 合成器在屏幕外(`-32000,-32000`,Windows `SM_X/YVIRTUALSCREEN` 边界外)持续运行,且不抢焦点
+
+- **.18 close-to-tray 屏幕外保活从未生效(每次打开关闭循环都 2-5 秒冷启动)**:实测用户主动关闭窗口后,主进程 top-level 窗口列表里主 webview 窗口**直接消失**,只剩 `tao_system_tray_app` + `Tao Thread Event Target` + IME 辅助窗口,下次点托盘走 `create_window` builder **重新创建**主窗口 + WebView2 **重新启动** → 每次打开关闭循环都是冷启动,与 .15/.17/.18 行为等价。根因:`tauri::Window::set_skip_taskbar(true)` 在 Windows 上为了应用 `WS_EX_TOOLWINDOW` ex_style 改动,内部会调 `ShowWindow(SW_HIDE)` 但不调对应的 `SW_SHOW` 还原(也无法可靠还原——`WS_EX_TOOLWINDOW` 一旦应用,窗口默认就不在任务栏显示) → 窗口被 hide → DWM 合成层释放 + WebView2 GPU 合成器停止 → 透明无边框窗口在 hidden 状态下被 wry 后续路径回收。后续的 `set_position(-32000,-32000)` 跑在 hide 之后,根本无效。修复:新增 `set_window_taskbar_skip` helper(`src-tauri/src/utils/resolve.rs`),直接 `GetWindowLongPtrW` + `SetWindowLongPtrW` 操作 `WS_EX_TOOLWINDOW`/`WS_EX_APPWINDOW` 位 + `SetWindowPos(SWP_FRAMECHANGED)` 让 shell 重新读取 ex_style,**全程不调 `SW_HIDE`** → 窗口保持 visible 状态,DWM 合成层 + WebView2 GPU 合成器持续运行 → 下次点托盘走还原分支,只需 `set_position` 把窗口从 `-32000,-32000` 移回保存的可见坐标,瞬间显示。close-to-tray (`main.rs` `CloseRequested`)、warm-to-tray (`resolve.rs` `resolve_setup`)、还原 (`create_window` 已存在分支) 共 3 处 `set_skip_taskbar` 调用统一替换为此 helper。macOS / Linux 走原 `tauri::Window::set_skip_taskbar` 路径不变(平台合成器机制不同,无此副作用)
+
+- 新增依赖:`windows-sys 0.52` (`Win32_UI_WindowsAndMessaging` + `Win32_Foundation` features),仅 Windows target;`tauri 1.x` 已传递依赖此 crate,实际编译产物体积无变化
+
+---
+
 ## v1.7.7-legacy.20
 
 ### Notice
