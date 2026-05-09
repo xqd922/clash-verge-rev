@@ -101,6 +101,15 @@ pub async fn resolve_setup(app: &mut App) {
         if let Some(window) = app.app_handle().get_window("main") {
             let _ = window.set_skip_taskbar(true);
             let _ = window.set_position(tauri::PhysicalPosition::new(-32000, -32000));
+            // tauri WindowBuilder visible(false) 创建的窗口在 Windows 上是 lazy 的:
+            // WebView2 渲染进程不会启动,前端 JS 也不会加载,_layout.tsx 里的
+            // isWarmToTray 检查永远跑不到。必须 ShowWindow 触发实际渲染,但用
+            // SW_SHOWNOACTIVATE 而非默认 SW_SHOW,避免开机时偷走用户当前活动
+            // 窗口的焦点。
+            if let Ok(hwnd) = window.hwnd() {
+                use windows_sys::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWNOACTIVATE};
+                unsafe { ShowWindow(hwnd.0, SW_SHOWNOACTIVATE) };
+            }
         }
     }
 
