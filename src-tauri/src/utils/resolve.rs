@@ -12,6 +12,9 @@ use tauri::{App, AppHandle, Manager};
 use window_shadows::set_shadow;
 
 pub static VERSION: OnceCell<String> = OnceCell::new();
+/// 当前启动是否为 warm-to-tray 模式(开机自启 --silent + enable_silent_start)。
+/// true 时窗口已被预创建并移到屏幕外保活,前端启动后不应再主动 setFocus 抢焦点。
+pub static WARM_TO_TRAY: OnceCell<bool> = OnceCell::new();
 
 pub fn find_unused_port() -> Result<u16> {
     match TcpListener::bind("127.0.0.1:0") {
@@ -84,11 +87,21 @@ pub async fn resolve_setup(app: &mut App) {
     log_err!(tray::Tray::update_systray(&app.app_handle()));
 
     let silent_start = Config::verge().data().enable_silent_start.unwrap_or(false);
-    // 仅在开机自启（auto-launch 注册项带 --silent 参数）时才静默到托盘；
-    // 手动双击 / 命令行启动总是显示窗口。
+    // 仅在开机自启（auto-launch 注册项带 --silent 参数）时进入 warm-to-tray 模式;
+    // 手动双击 / 命令行启动总是正常显示窗口。
     let launched_silent = std::env::args().any(|a| a == "--silent");
-    if !(silent_start && launched_silent) {
-        create_window(&app.app_handle());
+    let warm_to_tray = silent_start && launched_silent;
+    WARM_TO_TRAY.set(warm_to_tray).ok();
+    // 始终创建窗口预热 WebView2 + 前端,避免用户首次从托盘打开承担冷启动延迟。
+    // warm-to-tray 模式下随后移到屏幕外保活,用户首次点托盘走 create_window
+    // 还原分支(set_position 回保存的可见位置)瞬间显示。
+    create_window(&app.app_handle());
+    #[cfg(target_os = "windows")]
+    if warm_to_tray {
+        if let Some(window) = app.app_handle().get_window("main") {
+            let _ = window.set_skip_taskbar(true);
+            let _ = window.set_position(tauri::PhysicalPosition::new(-32000, -32000));
+        }
     }
 
     log_err!(sysopt::Sysopt::global().init_launch());

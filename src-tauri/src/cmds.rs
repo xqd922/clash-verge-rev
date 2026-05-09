@@ -383,6 +383,11 @@ pub fn exit_app(app_handle: tauri::AppHandle) {
     std::process::exit(0);
 }
 
+#[tauri::command]
+pub fn is_warm_to_tray() -> bool {
+    *resolve::WARM_TO_TRAY.get().unwrap_or(&false)
+}
+
 pub mod service {
     use super::*;
     use crate::core::service;
