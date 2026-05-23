@@ -6,11 +6,11 @@ on:
       tag:
         description: "Release tag to publish"
         required: true
-        default: "v1.7.7-legacy.7"
+        default: "v1.7.7-legacy.22"
       release_name:
         description: "GitHub release title"
         required: true
-        default: "Release 1.7.7-legacy.7"
+        default: "Release 1.7.7-legacy.22"
       overwrite_existing:
         description: "Delete the existing tag/release before publishing"
         required: true
