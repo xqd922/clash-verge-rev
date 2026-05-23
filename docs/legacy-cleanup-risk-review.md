@@ -58,6 +58,12 @@ Before touching the repository for this cleanup, the following skills were check
   - Current recovery defaults remain `7895/7896/7897/7898/7899` with controller `127.0.0.1:9097`.
   - Current recovery latency timeout fallback remains `10000`, and the latency-test placeholder remains `http://1.1.1.1`.
   - Messy branch changes to classic Clash ports `7890/7891/7892/9090`, `gstatic` latency URL, and `2000ms` fallback are not replayed because they are product-policy changes, not proven bug fixes.
+- Completed high-risk runtime exclusion audit:
+  - Recovery branch has no diff from `v1.7.7` for the remaining high-risk runtime files: `src-tauri/src/main.rs`, `src-tauri/src/utils/resolve.rs`, `src/pages/_layout.tsx`, `src/pages/profiles.tsx`, `src/hooks/use-profiles.ts`, `src-tauri/src/cmds.rs`, `src-tauri/src/core/core.rs`, and `src-tauri/src/core/clash_api.rs`.
+  - Window lifecycle and warm-to-tray changes remain excluded because they mix close handling, taskbar visibility, offscreen positioning, WebView2 warmup, and Win32 style mutation.
+  - Global `revalidateOnFocus: false` remains excluded because it suppresses refresh behavior for every SWR consumer instead of fixing a specific IPC storm path.
+  - Profile switching rewrites remain excluded because they expose draft backend state, use optimistic UI mutation during a multi-step core reload, and silently swallow selector restoration failures.
+  - Async config validation and single-`PUT /configs` behavior remain excluded as a redo candidate because request timeout changes, validation ordering, and retry removal should be split and tested separately.
 
 ## Scope
 
