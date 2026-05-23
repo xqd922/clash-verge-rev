@@ -88,4 +88,7 @@ async function resolvePortable() {
   });
 }
 
-resolvePortable().catch(console.error);
+resolvePortable().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

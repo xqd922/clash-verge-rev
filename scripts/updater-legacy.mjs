@@ -147,7 +147,7 @@ async function resolveUpdater() {
     }
   });
 
-  await Promise.allSettled(promises);
+  await Promise.all(promises);
 
   Object.entries(updateData.platforms).forEach(([key, value]) => {
     if (!value.url) {
@@ -198,7 +198,16 @@ async function getSignature(url) {
     headers: { "Content-Type": "application/octet-stream" },
   });
 
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch signature ${url}: ${response.status} ${response.statusText}`
+    );
+  }
+
   return response.text();
 }
 
-resolveUpdater().catch(console.error);
+resolveUpdater().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
