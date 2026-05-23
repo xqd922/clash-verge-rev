@@ -98,11 +98,13 @@ jobs:
           TITLE="Clash Verge Legacy $TAG"
           BODY="$(cat release_notes.md)"
           TARGET="$(git rev-parse HEAD)"
-          ID=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/$TAG" --jq .id 2>/dev/null || true)
+          ID=""
+          if RELEASE_JSON=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/$TAG" 2>/dev/null); then
+            ID=$(jq -r .id <<< "$RELEASE_JSON")
+          fi
           if [ -z "$ID" ]; then
-            ID=$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
-              --jq ".[] | select(.draft == true and .name == \"$TITLE\") | .id" \
-              | head -n 1)
+            RELEASES_JSON=$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100")
+            ID=$(jq -r --arg title "$TITLE" '.[] | select(.draft == true and .name == $title) | .id' <<< "$RELEASES_JSON" | head -n 1)
           fi
           if [ -n "$ID" ]; then
             gh api "repos/${GITHUB_REPOSITORY}/releases/$ID" \
