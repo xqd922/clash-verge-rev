@@ -3,7 +3,13 @@ use anyhow::{bail, Result};
 use reqwest::header::HeaderMap;
 use serde::{Deserialize, Serialize};
 use serde_yaml::Mapping;
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
+
+/// PUT /configs（mihomo hot reload，rule provider 多 / 网络抖动可能 5-20s）
+const PUT_CONFIG_TIMEOUT: Duration = Duration::from_secs(30);
+/// PATCH /configs（仅切单个字段如 tun.enable，应该亚秒返回；
+/// 用于 stop_core 等关键路径，避免 mihomo 卡死时阻塞退出）
+const PATCH_CONFIG_TIMEOUT: Duration = Duration::from_secs(3);
 
 /// PUT /configs
 /// path 是绝对路径
@@ -14,7 +20,10 @@ pub async fn put_configs(path: &str) -> Result<()> {
     let mut data = HashMap::new();
     data.insert("path", path);
 
-    let client = reqwest::ClientBuilder::new().no_proxy().build()?;
+    let client = reqwest::ClientBuilder::new()
+        .no_proxy()
+        .timeout(PUT_CONFIG_TIMEOUT)
+        .build()?;
     let builder = client.put(&url).headers(headers).json(&data);
     let response = builder.send().await?;
 
@@ -31,7 +40,10 @@ pub async fn patch_configs(config: &Mapping) -> Result<()> {
     let (url, headers) = clash_client_info()?;
     let url = format!("{url}/configs");
 
-    let client = reqwest::ClientBuilder::new().no_proxy().build()?;
+    let client = reqwest::ClientBuilder::new()
+        .no_proxy()
+        .timeout(PATCH_CONFIG_TIMEOUT)
+        .build()?;
     let builder = client.patch(&url).headers(headers.clone()).json(config);
     builder.send().await?;
     Ok(())

@@ -295,26 +295,26 @@ impl CoreManager {
         // 更新订阅
         Config::generate().await?;
 
-        // 检查订阅是否正常
-        self.check_config()?;
-
         // 更新运行时订阅
         let path = Config::generate_file(ConfigType::Run)?;
         let path = dirs::path_to_str(&path)?;
 
-        // 发送请求 发送5次
-        for i in 0..10 {
-            match clash_api::put_configs(path).await {
-                Ok(_) => break,
-                Err(err) => {
-                    if i < 9 {
-                        log::info!(target: "app", "{err}");
-                    } else {
-                        bail!(err);
-                    }
-                }
+        // 后台并行 dry-run 校验：不阻塞热路径，但失败时打 warn + 通知前端，
+        // 让坏 rule provider / proxy 不会静默降级运行。
+        // mihomo PUT /configs 对部分软错误返回 204 但实际降级，单纯靠 PUT 4xx 兜不住。
+        tauri::async_runtime::spawn_blocking(|| {
+            if let Err(err) = CoreManager::global().check_config() {
+                log::warn!(target: "app", "config dry-run failed: {err}");
+                handle::Handle::notice_message("config_validate::warn", format!("{err}"));
             }
-            sleep(Duration::from_millis(100)).await;
+        });
+
+        // 一次 PUT 即可。client 有 30s timeout 兜底，mihomo 卡死时会失败回退；
+        // 不再外层重试 —— hot reload 期间反复 PUT 会让 mihomo 反复重启 reload，
+        // 用户的 rule provider 数量较多 / 网络抖动时甚至永远完不成。
+        if let Err(err) = clash_api::put_configs(path).await {
+            log::info!(target: "app", "{err}");
+            bail!(err);
         }
         Ok(())
     }

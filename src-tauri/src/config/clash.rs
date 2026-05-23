@@ -40,16 +40,16 @@ impl IClashTemp {
         tun.insert("dns-hijack".into(), vec!["any:53"].into());
         tun.insert("mtu".into(), 1500.into());
         #[cfg(not(target_os = "windows"))]
-        map.insert("redir-port".into(), 7895.into());
+        map.insert("redir-port".into(), 7893.into());
         #[cfg(target_os = "linux")]
-        map.insert("tproxy-port".into(), 7896.into());
-        map.insert("mixed-port".into(), 7897.into());
-        map.insert("socks-port".into(), 7898.into());
-        map.insert("port".into(), 7899.into());
+        map.insert("tproxy-port".into(), 7894.into());
+        map.insert("mixed-port".into(), 7890.into());
+        map.insert("socks-port".into(), 7891.into());
+        map.insert("port".into(), 7892.into());
         map.insert("log-level".into(), "info".into());
         map.insert("allow-lan".into(), false.into());
         map.insert("mode".into(), "rule".into());
-        map.insert("external-controller".into(), "127.0.0.1:9097".into());
+        map.insert("external-controller".into(), "127.0.0.1:9090".into());
         map.insert("secret".into(), "".into());
         map.insert("tun".into(), tun.into());
 
@@ -129,9 +129,9 @@ impl IClashTemp {
                 Value::Number(val_num) => val_num.as_u64().map(|u| u as u16),
                 _ => None,
             })
-            .unwrap_or(7895);
+            .unwrap_or(7893);
         if port == 0 {
-            port = 7895;
+            port = 7893;
         }
         port
     }
@@ -145,9 +145,9 @@ impl IClashTemp {
                 Value::Number(val_num) => val_num.as_u64().map(|u| u as u16),
                 _ => None,
             })
-            .unwrap_or(7896);
+            .unwrap_or(7894);
         if port == 0 {
-            port = 7896;
+            port = 7894;
         }
         port
     }
@@ -160,9 +160,9 @@ impl IClashTemp {
                 Value::Number(val_num) => val_num.as_u64().map(|u| u as u16),
                 _ => None,
             })
-            .unwrap_or(7897);
+            .unwrap_or(7890);
         if port == 0 {
-            port = 7897;
+            port = 7890;
         }
         port
     }
@@ -175,9 +175,9 @@ impl IClashTemp {
                 Value::Number(val_num) => val_num.as_u64().map(|u| u as u16),
                 _ => None,
             })
-            .unwrap_or(7898);
+            .unwrap_or(7891);
         if port == 0 {
-            port = 7898;
+            port = 7891;
         }
         port
     }
@@ -190,9 +190,9 @@ impl IClashTemp {
                 Value::Number(val_num) => val_num.as_u64().map(|u| u as u16),
                 _ => None,
             })
-            .unwrap_or(7899);
+            .unwrap_or(7892);
         if port == 0 {
-            port = 7899;
+            port = 7892;
         }
         port
     }
@@ -215,7 +215,7 @@ impl IClashTemp {
                 }
                 None => None,
             })
-            .unwrap_or("127.0.0.1:9097".into())
+            .unwrap_or("127.0.0.1:9090".into())
     }
 
     pub fn guard_client_ctrl(config: &Mapping) -> String {
@@ -227,7 +227,7 @@ impl IClashTemp {
                 }
                 socket.to_string()
             }
-            Err(_) => "127.0.0.1:9097".into(),
+            Err(_) => "127.0.0.1:9090".into(),
         }
     }
 }
@@ -257,8 +257,8 @@ fn test_clash_info() {
     fn get_result<S: Into<String>>(port: u16, server: S) -> ClashInfo {
         ClashInfo {
             mixed_port: port,
-            socks_port: 7898,
-            port: 7899,
+            socks_port: 7891,
+            port: 7892,
             server: server.into(),
             secret: None,
         }
@@ -266,12 +266,12 @@ fn test_clash_info() {
 
     assert_eq!(
         IClashTemp(IClashTemp::guard(Mapping::new())).get_client_info(),
-        get_result(7897, "127.0.0.1:9097")
+        get_result(7890, "127.0.0.1:9090")
     );
 
-    assert_eq!(get_case("", ""), get_result(7897, "127.0.0.1:9097"));
+    assert_eq!(get_case("", ""), get_result(7890, "127.0.0.1:9090"));
 
-    assert_eq!(get_case(65537, ""), get_result(1, "127.0.0.1:9097"));
+    assert_eq!(get_case(65537, ""), get_result(1, "127.0.0.1:9090"));
 
     assert_eq!(
         get_case(8888, "127.0.0.1:8888"),
@@ -280,7 +280,7 @@ fn test_clash_info() {
 
     assert_eq!(
         get_case(8888, "   :98888 "),
-        get_result(8888, "127.0.0.1:9097")
+        get_result(8888, "127.0.0.1:9090")
     );
 
     assert_eq!(
@@ -305,7 +305,7 @@ fn test_clash_info() {
 
     assert_eq!(
         get_case(8888, "192.168.1.1:80800"),
-        get_result(8888, "127.0.0.1:9097")
+        get_result(8888, "127.0.0.1:9090")
     );
 }
 

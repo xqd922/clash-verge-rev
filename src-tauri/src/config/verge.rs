@@ -225,17 +225,17 @@ impl IVerge {
             pac_file_content: Some(DEFAULT_PAC.into()),
             enable_random_port: Some(false),
             #[cfg(not(target_os = "windows"))]
-            verge_redir_port: Some(7895),
+            verge_redir_port: Some(7893),
             #[cfg(not(target_os = "windows"))]
             verge_redir_enabled: Some(false),
             #[cfg(target_os = "linux")]
-            verge_tproxy_port: Some(7896),
+            verge_tproxy_port: Some(7894),
             #[cfg(target_os = "linux")]
             verge_tproxy_enabled: Some(false),
-            verge_mixed_port: Some(7897),
-            verge_socks_port: Some(7898),
+            verge_mixed_port: Some(7890),
+            verge_socks_port: Some(7891),
             verge_socks_enabled: Some(false),
-            verge_port: Some(7899),
+            verge_port: Some(7892),
             verge_http_enabled: Some(false),
             enable_proxy_guard: Some(false),
             use_default_bypass: Some(true),
@@ -243,7 +243,7 @@ impl IVerge {
             auto_close_connection: Some(true),
             auto_check_update: Some(true),
             enable_builtin_enhanced: Some(true),
-            auto_log_clean: Some(3),
+            auto_log_clean: Some(1),
             ..Self::default()
         }
     }
