@@ -77,7 +77,7 @@ impl Tray {
                 SystemTrayMenu::new()
                     .add_item(CustomMenuItem::new(
                         "restart_clash",
-                        t!("Restart Clash", "重启 Clash"),
+                        t!("Restart Core", "重启内核"),
                     ))
                     .add_item(CustomMenuItem::new(
                         "restart_app",
