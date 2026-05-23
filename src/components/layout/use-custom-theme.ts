@@ -57,6 +57,7 @@ export const useCustomTheme = () => {
           },
           background: {
             paper: dt.background_color,
+            default: dt.background_color,
           },
         },
         shadows: Array(25).fill("none") as Shadows,

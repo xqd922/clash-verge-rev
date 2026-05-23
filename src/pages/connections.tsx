@@ -112,9 +112,11 @@ const ConnectionsPage = () => {
 
   const [filterConn, download, upload] = useMemo(() => {
     const orderFunc = orderOpts[curOrderOpt];
-    let connections = connData.connections.filter((conn) =>
-      match(conn.metadata.host || conn.metadata.destinationIP || "")
-    );
+    let connections = connData.connections
+      .filter((conn) =>
+        match(conn.metadata.host || conn.metadata.destinationIP || "")
+      )
+      .slice();
 
     if (orderFunc) connections = orderFunc(connections);
 
