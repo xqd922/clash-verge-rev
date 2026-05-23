@@ -8,7 +8,7 @@
     "build": "tauri build",
     "tauri": "tauri",
     "web:dev": "vite",
-    "web:build": "tsc && vite build",
+    "web:build": "cross-env-shell NODE_OPTIONS=--max_old_space_size=4096 \"tsc && vite build\"",
     "web:serve": "vite preview",
     "check": "node scripts/check.mjs",
     "release-notes": "node scripts/release-notes.mjs",
