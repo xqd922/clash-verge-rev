@@ -69,6 +69,11 @@ Before touching the repository for this cleanup, the following skills were check
   - Replaced selected-state `width`, `marginLeft`, and `borderLeft` changes with an inset `boxShadow`, preserving the visual left bar without changing row width or horizontal position.
   - Added `tests/proxy-selected-style.test.ts` and widened `pnpm test` to run all `tests/*.test.ts`.
   - Verification: `pnpm test` first failed because the helper did not exist, then passed with 4 tests after implementation.
+- Completed first-paint and connection white-flash audit:
+  - The connection DataGrid background sequence (`60168dd3`, `76015e3a`, `8bea609e`) is not replayed because it already fixed dark-mode remount white flash, then adjusted light-mode card color, then reverted the DataGrid background overrides to restore rounded corners.
+  - Current recovery branch intentionally stays at the post-revert `v1.7.7`-compatible `connection-table.tsx` surface for this area.
+  - The first-paint external CSS idea from `fdbb916d` remains a separate redo candidate, but it is not replayed here because the original release-note context bundles it with excluded warm-to-tray/window lifecycle changes.
+  - Any first-paint background redo must be verified in an actual Tauri window for CSP behavior, MUI emotion runtime styles, light/dark first paint, rounded corners, and no white flash before it can be kept.
 
 ## Scope
 
@@ -401,8 +406,10 @@ Related commits:
 Recommendation:
 
 - Do not replay the connection DataGrid background sequence as-is because it already contains a fix and revert cycle.
+- The final state of that sequence (`8bea609e`) intentionally removed the DataGrid root and inner-container background overrides because they covered the outer rounded card corners. Recovery keeps that safer state.
 - If white flash remains important, redo with visual QA in dark and light mode, including rounded-corner checks.
-- The external CSS first-paint background can be considered separately because it avoids inline CSP nonce issues, but still needs a Tauri window smoke test.
+- Do not replay `c6a56c60` because inline `<style>` in `src/index.html` triggered Tauri 1.x CSP nonce mode and broke emotion/MUI runtime styles in the follow-up diagnosis.
+- The external CSS first-paint background from `fdbb916d` can be considered separately because it avoids inline CSP nonce issues, but it must be rebuilt as its own change without the warm-to-tray release-note context and with a Tauri window smoke test.
 
 #### Proxy List Jitter
 
