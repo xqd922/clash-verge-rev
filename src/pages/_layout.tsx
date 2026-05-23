@@ -24,7 +24,7 @@ import { useCustomTheme } from "@/components/layout/use-custom-theme";
 import getSystem from "@/utils/get-system";
 import "dayjs/locale/ru";
 import "dayjs/locale/zh-cn";
-import { getPortableFlag } from "@/services/cmds";
+import { getPortableFlag, isWarmToTray } from "@/services/cmds";
 import { useNavigate } from "react-router-dom";
 import React from "react";
 import { TransitionGroup, CSSTransition } from "react-transition-group";
@@ -77,6 +77,10 @@ const Layout = () => {
         case "set_config::error":
           Notice.error(msg);
           break;
+        case "config_validate::warn":
+          // 后端 dry-run 校验失败：切换主路径不阻塞，但提示用户配置有问题
+          Notice.info(msg, 5000);
+          break;
         default:
           break;
       }
@@ -84,6 +88,13 @@ const Layout = () => {
 
     setTimeout(async () => {
       portableFlag = await getPortableFlag();
+      // warm-to-tray 模式:Rust 已把窗口移到屏幕外保活。这里 show() 让 WebView2
+      // 合成器真正激活完成预热(屏幕外不可见,不抢焦点)。setFocus 会偷走用户
+      // 当前活动窗口的焦点,所以 warm 模式下跳过。
+      if (await isWarmToTray()) {
+        await appWindow.show();
+        return;
+      }
       await appWindow.unminimize();
       await appWindow.show();
       await appWindow.setFocus();
@@ -101,7 +112,7 @@ const Layout = () => {
   }, [language, start_page]);
 
   return (
-    <SWRConfig value={{ errorRetryCount: 3 }}>
+    <SWRConfig value={{ errorRetryCount: 3, revalidateOnFocus: false }}>
       <ThemeProvider theme={theme}>
         <Paper
           square

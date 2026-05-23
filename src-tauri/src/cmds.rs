@@ -21,7 +21,11 @@ pub fn copy_clash_env(app_handle: tauri::AppHandle) -> CmdResult {
 
 #[tauri::command]
 pub fn get_profiles() -> CmdResult<IProfiles> {
-    Ok(Config::profiles().data().clone())
+    // 用 latest 而不是 data：patch_profiles_config 期间 mihomo PUT 还没完成，
+    // data 仍是旧值，draft 已是新 current。前端 SWR 在切换中重新拉数据
+    // （比如切到代理页又切回）会被 data 打回旧值，导致 UI 闪回。
+    // latest 优先返回 draft，apply/discard 后自动 fallback 到 data，零回滚风险。
+    Ok(Config::profiles().latest().clone())
 }
 
 #[tauri::command]
@@ -377,6 +381,11 @@ pub fn exit_app(app_handle: tauri::AppHandle) {
     api::process::kill_children();
     app_handle.exit(0);
     std::process::exit(0);
+}
+
+#[tauri::command]
+pub fn is_warm_to_tray() -> bool {
+    *resolve::WARM_TO_TRAY.get().unwrap_or(&false)
 }
 
 pub mod service {

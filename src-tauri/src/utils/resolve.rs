@@ -12,6 +12,9 @@ use tauri::{App, AppHandle, Manager};
 use window_shadows::set_shadow;
 
 pub static VERSION: OnceCell<String> = OnceCell::new();
+/// 当前启动是否为 warm-to-tray 模式(开机自启 --silent + enable_silent_start)。
+/// true 时窗口已被预创建并移到屏幕外保活,前端启动后不应再主动 setFocus 抢焦点。
+pub static WARM_TO_TRAY: OnceCell<bool> = OnceCell::new();
 
 pub fn find_unused_port() -> Result<u16> {
     match TcpListener::bind("127.0.0.1:0") {
@@ -83,9 +86,31 @@ pub async fn resolve_setup(app: &mut App) {
     log::trace!("init system tray");
     log_err!(tray::Tray::update_systray(&app.app_handle()));
 
-    let silent_start = { Config::verge().data().enable_silent_start };
-    if !silent_start.unwrap_or(false) {
-        create_window(&app.app_handle());
+    let silent_start = Config::verge().data().enable_silent_start.unwrap_or(false);
+    // 仅在开机自启（auto-launch 注册项带 --silent 参数）时进入 warm-to-tray 模式;
+    // 手动双击 / 命令行启动总是正常显示窗口。
+    let launched_silent = std::env::args().any(|a| a == "--silent");
+    let warm_to_tray = silent_start && launched_silent;
+    WARM_TO_TRAY.set(warm_to_tray).ok();
+    // 始终创建窗口预热 WebView2 + 前端,避免用户首次从托盘打开承担冷启动延迟。
+    // warm-to-tray 模式下随后移到屏幕外保活,用户首次点托盘走 create_window
+    // 还原分支(set_position 回保存的可见位置)瞬间显示。
+    create_window(&app.app_handle());
+    #[cfg(target_os = "windows")]
+    if warm_to_tray {
+        if let Some(window) = app.app_handle().get_window("main") {
+            set_window_taskbar_skip(&window, true);
+            let _ = window.set_position(tauri::PhysicalPosition::new(-32000, -32000));
+            // tauri WindowBuilder visible(false) 创建的窗口在 Windows 上是 lazy 的:
+            // WebView2 渲染进程不会启动,前端 JS 也不会加载,_layout.tsx 里的
+            // isWarmToTray 检查永远跑不到。必须 ShowWindow 触发实际渲染,但用
+            // SW_SHOWNOACTIVATE 而非默认 SW_SHOW,避免开机时偷走用户当前活动
+            // 窗口的焦点。
+            if let Ok(hwnd) = window.hwnd() {
+                use windows_sys::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWNOACTIVATE};
+                unsafe { ShowWindow(hwnd.0, SW_SHOWNOACTIVATE) };
+            }
+        }
     }
 
     log_err!(sysopt::Sysopt::global().init_launch());
@@ -113,10 +138,57 @@ pub fn resolve_reset() {
     });
 }
 
+/// Windows: 直接通过 SetWindowLongPtrW 改 WS_EX_TOOLWINDOW / WS_EX_APPWINDOW
+/// 风格,绕开 tauri::Window::set_skip_taskbar —— 后者在 Windows 上为应用 ex_style
+/// 改动会调 SW_HIDE,导致 DWM 拆合成层 + WebView2 GPU 合成器停止 → 还原冷启动。
+/// 直接改 ex_style + SetWindowPos(SWP_FRAMECHANGED) 让任务栏更新但窗口保持
+/// visible 状态,close-to-tray 屏幕外保活才能真生效。
+#[cfg(target_os = "windows")]
+pub fn set_window_taskbar_skip(window: &tauri::Window, skip: bool) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, SWP_FRAMECHANGED,
+        SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
+    };
+    if let Ok(hwnd) = window.hwnd() {
+        unsafe {
+            let cur = GetWindowLongPtrW(hwnd.0, GWL_EXSTYLE);
+            let new = if skip {
+                (cur | WS_EX_TOOLWINDOW as isize) & !(WS_EX_APPWINDOW as isize)
+            } else {
+                (cur & !(WS_EX_TOOLWINDOW as isize)) | WS_EX_APPWINDOW as isize
+            };
+            SetWindowLongPtrW(hwnd.0, GWL_EXSTYLE, new);
+            SetWindowPos(
+                hwnd.0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED,
+            );
+        }
+    }
+}
+
 /// create main window
 pub fn create_window(app_handle: &AppHandle) {
     if let Some(window) = app_handle.get_window("main") {
-        trace_err!(window.unminimize(), "set win unminimize");
+        #[cfg(target_os = "windows")]
+        set_window_taskbar_skip(&window, false);
+        #[cfg(not(target_os = "windows"))]
+        trace_err!(window.set_skip_taskbar(false), "set win skip_taskbar(false)");
+        // Windows 还原:把屏幕外的窗口移回上次保存的可见位置(配对 CloseRequested 中的 offscreen)
+        #[cfg(target_os = "windows")]
+        if let Some(pos) = Config::verge().latest().window_size_position.clone() {
+            if pos.len() == 4 {
+                trace_err!(
+                    window.set_position(tauri::LogicalPosition::new(pos[2], pos[3])),
+                    "set win position"
+                );
+            }
+        }
+        #[cfg(not(target_os = "windows"))]
         trace_err!(window.show(), "set win visible");
         trace_err!(window.set_focus(), "set win focus");
         return;
@@ -228,6 +300,11 @@ pub fn save_window_size_position(app_handle: &AppHandle, save_to_file: bool) -> 
     let size = win.inner_size()?;
     let size = size.to_logical::<f64>(scale);
     let pos = win.outer_position()?;
+    // 窗口处于 close-to-tray 的屏幕外保活状态时,不要把 -32000 这种位置写回配置,
+    // 避免 Moved 事件污染下次启动/还原使用的可见位置
+    if pos.x < -10000 || pos.y < -10000 {
+        return Ok(());
+    }
     let pos = pos.to_logical::<f64>(scale);
     let is_maximized = win.is_maximized()?;
     verge.window_is_maximized = Some(is_maximized);
