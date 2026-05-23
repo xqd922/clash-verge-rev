@@ -89,27 +89,32 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            PRERELEASE=""
+          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-legacy\.r[0-9]+)?$ ]]; then
+            PRERELEASE_FLAG=""
+            IS_PRERELEASE=false
           else
-            PRERELEASE="--prerelease"
+            PRERELEASE_FLAG="--prerelease"
+            IS_PRERELEASE=true
           fi
           TITLE="Clash Verge Legacy $TAG"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" \
               --title "$TITLE" \
               --notes-file release_notes.md \
-              --draft=true \
-              $PRERELEASE
+              --draft=true
           else
             gh release create "$TAG" \
               --title "$TITLE" \
               --notes-file release_notes.md \
               --draft \
               --target "$(git rev-parse HEAD)" \
-              $PRERELEASE
+              $PRERELEASE_FLAG
           fi
           ID=$(gh release view "$TAG" --json databaseId -q .databaseId)
+          gh api "repos/${GITHUB_REPOSITORY}/releases/$ID" \
+            -X PATCH \
+            -F draft=true \
+            -F prerelease="$IS_PRERELEASE" >/dev/null
           echo "release_id=$ID" >> "$GITHUB_OUTPUT"
 
   release:
@@ -171,9 +176,29 @@ jobs:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
-          releaseId: ${{ needs.preflight.outputs.release_id }}
           tauriScript: pnpm
           args: --target ${{ matrix.target }}
+
+      - name: Upload macOS assets
+        if: matrix.os == 'macos-latest'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ needs.preflight.outputs.tag }}" \
+            src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg \
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz \
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig \
+            --clobber
+
+      - name: Upload Windows assets
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ needs.preflight.outputs.tag }}" \
+            src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*setup* \
+            --clobber
 
       - name: Portable Bundle
         if: matrix.os == 'windows-latest'
