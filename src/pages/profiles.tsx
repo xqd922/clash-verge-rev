@@ -53,7 +53,6 @@ const ProfilePage = () => {
   const { t } = useTranslation();
 
   const [url, setUrl] = useState("");
-  const [disabled, setDisabled] = useState(false);
   const [activatings, setActivatings] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const sensors = useSensors(
@@ -158,7 +157,7 @@ const ProfilePage = () => {
             // selector 偏好恢复失败不影响切换本身
           }
         } catch (err: any) {
-          setProfilesCurrentOptimistic(previousCurrent);
+          setProfilesCurrentOptimistic(previousCurrent, newProfiles);
           Notice.error(err?.message || err.toString(), 4000);
         } finally {
           setActivatings([]);
@@ -167,7 +166,6 @@ const ProfilePage = () => {
     } catch (err: any) {
       Notice.error(err.message || err.toString());
     } finally {
-      setDisabled(false);
       setLoading(false);
     }
   });
@@ -345,7 +343,7 @@ const ProfilePage = () => {
           }}
         />
         <LoadingButton
-          disabled={!url || disabled}
+          disabled={!url}
           loading={loading}
           variant="contained"
           size="small"
