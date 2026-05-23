@@ -88,6 +88,51 @@ Summary of the diff:
 
 The large number of fix/revert commits in a short period is the main signal that this branch should not be cleaned by continuing to patch on top. It should be reconstructed from the clean baseline with grouped, verified changes.
 
+## Full Messy Commit Coverage Audit
+
+This section is the explicit coverage ledger for commits that were not yet named elsewhere in this report. Its purpose is to make sure no commit from `v1.7.7..backup/messy-legacy-2026-05-24` remains silently unreviewed.
+
+### Release and Changelog Noise
+
+These commits are release-number or changelog-only churn from the messy branch. They are not replayed directly into the recovery branch because the clean branch should get fresh release metadata after its final content is settled.
+
+- `b17a565f` `docs(changelog): add v1.7.7-legacy.2 notes`
+- `2c125c6e` `docs(changelog): add v1.7.7-legacy.3 notes`
+- `0a4704e7` `docs: add legacy.4 release notes`
+- `a0288caa` `Release 1.7.7-legacy.5`
+- `6728b969` `Release 1.7.7-legacy.6`
+- `b8cd1d57` `Release 1.7.7-legacy.7`
+- `bb94db54` `Release 1.7.7-legacy.8`
+- `2b77594e` `Release 1.7.7-legacy.9`
+- `e3d325f7` `Release 1.7.7-legacy.10`
+- `f55e292f` `docs(changelog): add v1.7.7-legacy.11 release notes`
+- `103b2df4` `Release 1.7.7-legacy.12`
+- `6cd95b7c` `Release 1.7.7-legacy.13`
+- `f7eb98dc` `Release 1.7.7-legacy.14`
+- `df5fd603` `Release 1.7.7-legacy.15`
+- `8fc83ee0` `Release 1.7.7-legacy.16`
+- `0e3a2eec` `Release 1.7.7-legacy.17`
+- `c4a7db02` `Release 1.7.7-legacy.18`
+- `6b405bd2` `Release 1.7.7-legacy.19`
+- `58af7e44` `Release 1.7.7-legacy.20`
+
+### Already Rebuilt in Cleaner Form
+
+These commits are covered by recovery commits, but the original messy hashes are recorded here so the audit is traceable.
+
+- `8aa8de3b` `fix: pin legacy service binaries`: rebuilt inside `37d0854b` as part of the conservative release pipeline, with guarded downloads and verified `pnpm check x86_64-pc-windows-msvc --force`.
+- `729c86ec` `i18n(tray): rename "Restart Clash" to "Restart Core"`: replayed in `c695f5d9` as a narrow wording-only change.
+- `6ab5afd2` `fix(logs): persist log level filter across page navigation`: replayed in `c695f5d9` as a narrow UI-state persistence change.
+- `d44bcb71` `fix(notice): unify info variant layout with success/error`: replayed in `c695f5d9` as a narrow layout alignment change.
+
+### Explicitly Excluded or Deferred
+
+These commits were reviewed and intentionally kept out of the recovery branch.
+
+- `9751cafe` `tune(proxy): use http scheme for default latency test url`: excluded with the default-policy group because it changes latency-test URL behavior across config defaults, profile editing, proxy header UI, misc settings, and API fallback constants.
+- `5eeb9bdc` `ci: bump JS actions to first Node 24 release`: deferred to a separate CI maintenance branch. It touches multiple workflows and is not required for the legacy cleanup itself.
+- `5fcae711` `fix(launch): scope enable_silent_start to boot auto-launch only`: excluded with the launch/window lifecycle group. Although the patch is small, it changes `enable_silent_start` semantics around `--silent` and auto-launch, so it needs manual startup/autolaunch QA before inclusion.
+
 ## Recommended Strategy
 
 1. Keep `release/1.x-legacy` untouched as the current messy branch.
