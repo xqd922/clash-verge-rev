@@ -286,6 +286,77 @@ Recommendation:
 - Current recovery branch intentionally keeps `v1.7.7` defaults: ports `7895/7896/7897/7898/7899`, controller `9097`, latency fallback `10000`, and placeholder `http://1.1.1.1`.
 - The latency placeholder cleanup can be reconsidered separately only if it has a narrow UI requirement and does not bundle timeout/default-port changes.
 
+#### Profile Extension Cards Removal
+
+Related commit:
+
+- `5d192a02` `refactor(profiles): remove global extensions cards`
+
+Evidence:
+
+- Removes `ProfileMore` import and the Merge/Script cards from `src/pages/profiles.tsx`.
+- Removes the `getRuntimeLogs` SWR hook and several `mutateLogs()` calls that were only used by those cards.
+
+Risk:
+
+- This is a feature removal, not a bug fix.
+- The removed cards are part of the profile editing surface; removing them can strand users who still need Merge/Script extension editing.
+- Later profile switch rewrites are built on top of this smaller profile page, so blindly replaying it increases conflict risk.
+
+Recommendation:
+
+- Do not replay into the recovery branch unless the product decision is to remove global profile extension editing.
+- If the cards cause a specific bug, reproduce that bug first and fix the cards directly instead of deleting the feature.
+
+#### Dependency and Win32 Surface Expansion
+
+Related commits:
+
+- `16357461` `chore(deps): bump meta-json-schema 1.18.6 -> 1.19.24`
+- `e2c46caa` adds the `windows-sys` dependency for direct Win32 window-style mutation.
+
+Evidence:
+
+- `meta-json-schema@1.19.24` adds an engine declaration requiring Node `>=18` and pnpm `>=9`.
+- `windows-sys` is only used by the warm-to-tray/taskbar bypass implementation.
+
+Risk:
+
+- Dependency bumps change the support matrix and can introduce build differences unrelated to the cleanup.
+- The `windows-sys` dependency has no purpose without the excluded Win32 window lifecycle changes.
+
+Recommendation:
+
+- Do not replay dependency bumps as part of cleanup.
+- Only update `meta-json-schema` in a separate dependency-maintenance branch with lockfile verification.
+- Keep `windows-sys` excluded while warm-to-tray and taskbar bypass remain excluded.
+
+#### Consolidated Hot-Path Hardening Commit
+
+Related commit:
+
+- `44ec26c8` `fix(legacy): harden post-.13 hot paths against silent degradations`
+
+Evidence:
+
+- Bundles seven areas in one commit: latency field clearing, PATCH timeout, selector restoration retry, profile import switching, async config validation warning, connection table background, and warning notices.
+- Some pieces depend on earlier high-risk changes such as async `check_config`, single `PUT /configs`, and profile optimistic switching.
+
+Risk:
+
+- The commit mixes unrelated frontend, backend, profile, and core behavior changes.
+- Some sub-fixes are valid candidates, but replaying the combined commit would also reintroduce excluded runtime behavior.
+
+Recommendation:
+
+- Do not replay this commit as-is.
+- Split into separate redo candidates only if each has a focused repro:
+  - clearing latency fields in Misc settings;
+  - shorter PATCH timeout for `stop_core`;
+  - selector restore retry window;
+  - connection table color alignment.
+- Keep async config validation and profile import switching in the high-risk redo bucket until profile/core flows have tests.
+
 ### Likely Keep
 
 These changes look low-risk or narrowly scoped, but still need normal build checks in the clean branch.
@@ -297,6 +368,48 @@ These changes look low-risk or narrowly scoped, but still need normal build chec
 - `fix(notice): unify info variant layout with success/error`.
 - Connection/proxy visual jitter fixes only if visual QA confirms they do not regress layout.
 - `fix: pin legacy service binaries`, but preferably as part of a smaller build-script commit.
+
+### Optional Small Redo Candidates
+
+These are not currently replayed. They look narrower than the runtime rewrites, but should still be reintroduced one at a time with a fresh check.
+
+#### Connection Sorting
+
+Related commit:
+
+- `88c789f3` `fix: improve connection speed sorting`
+
+Recommendation:
+
+- Safe redo candidate.
+- Reapply separately if needed; verify table/list sorting and that incoming WebSocket updates do not mutate the SWR snapshot in place.
+
+#### First-Paint Background and Connection Page White Flash
+
+Related commits:
+
+- `60168dd3` `fix(connections): cover DataGrid container bg to avoid white flash on remount`
+- `76015e3a` `fix(connections): restore white paper card by aligning DataGrid bg with outer Box`
+- `8bea609e` `revert(connections): restore rounded corners by reverting DataGrid bg overrides`
+- `c6a56c60` and `fdbb916d` first-paint background attempts.
+
+Recommendation:
+
+- Do not replay the connection DataGrid background sequence as-is because it already contains a fix and revert cycle.
+- If white flash remains important, redo with visual QA in dark and light mode, including rounded-corner checks.
+- The external CSS first-paint background can be considered separately because it avoids inline CSP nonce issues, but still needs a Tauri window smoke test.
+
+#### Proxy List Jitter
+
+Related commits:
+
+- `32edf90c` `fix(proxies): stabilize node list initial layout to prevent jitter`
+- `ae8dc76f` `fix(proxies): replace selected-row width shift with non-layout boxShadow`
+
+Recommendation:
+
+- Possible low-risk redo candidate.
+- Reapply only with browser/Tauri visual QA for collapsed/open groups, multi-column mode, selected rows, custom group icons, and tray restore.
 
 ## Clean Branch Replay Plan
 
