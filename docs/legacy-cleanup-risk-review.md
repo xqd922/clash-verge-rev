@@ -53,6 +53,11 @@ Before touching the repository for this cleanup, the following skills were check
   - `$env:LEGACY_SERVICE_TAG='v1.7.7'; pnpm check x86_64-pc-windows-msvc --force`: passed and extracted Windows service binaries from `v1.7.7` portable artifacts.
   - `$env:NODE_OPTIONS='--max_old_space_size=8192'; pnpm web:build`: passed, with existing Vite/Browserslist/chunk-size warnings.
   - `cargo test` in `src-tauri`: passed, 6 tests; existing Rust warnings remain.
+- Completed default-policy audit for the remaining messy runtime changes:
+  - Recovery branch has no diff from `v1.7.7` for `src-tauri/src/config/clash.rs`, `src-tauri/src/config/verge.rs`, `src/components/setting/mods/misc-viewer.tsx`, or `src/components/proxy/proxy-item.tsx`.
+  - Current recovery defaults remain `7895/7896/7897/7898/7899` with controller `127.0.0.1:9097`.
+  - Current recovery latency timeout fallback remains `10000`, and the latency-test placeholder remains `http://1.1.1.1`.
+  - Messy branch changes to classic Clash ports `7890/7891/7892/9090`, `gstatic` latency URL, and `2000ms` fallback are not replayed because they are product-policy changes, not proven bug fixes.
 
 ## Scope
 
@@ -271,8 +276,9 @@ Risk:
 
 Recommendation:
 
-- Keep only if classic Clash compatibility is a product requirement.
-- Otherwise revert ports to `v1.7.7` defaults and keep the latency placeholder cleanup separately.
+- Do not replay this group into the recovery branch unless classic Clash compatibility is explicitly chosen as product policy.
+- Current recovery branch intentionally keeps `v1.7.7` defaults: ports `7895/7896/7897/7898/7899`, controller `9097`, latency fallback `10000`, and placeholder `http://1.1.1.1`.
+- The latency placeholder cleanup can be reconsidered separately only if it has a narrow UI requirement and does not bundle timeout/default-port changes.
 
 ### Likely Keep
 
