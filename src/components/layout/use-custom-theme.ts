@@ -83,6 +83,10 @@ export const useCustomTheme = () => {
           warning: { main: dt.warning_color },
           success: { main: dt.success_color },
           text: { primary: dt.primary_text, secondary: dt.secondary_text },
+          background: {
+            paper: dt.background_color,
+            default: dt.background_color,
+          },
         },
         typography: { fontFamily: dt.font_family },
       });
