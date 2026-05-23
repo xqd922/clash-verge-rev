@@ -38,7 +38,11 @@ fn ensure_runtime_artifacts(manifest_dir: &Path, target: &str) {
         collect_missing(
             manifest_dir,
             "resources",
-            &["clash-verge-service", "install-service", "uninstall-service"],
+            &[
+                "clash-verge-service",
+                "install-service",
+                "uninstall-service",
+            ],
             &mut missing,
         );
     }
@@ -59,8 +63,7 @@ fn ensure_runtime_artifacts(manifest_dir: &Path, target: &str) {
             message.push_str(&path.display().to_string());
             message.push('\n');
         }
-        message.push_str(
-            "\nRun `pnpm check ");
+        message.push_str("\nRun `pnpm check ");
         message.push_str(target);
         message.push_str(
             "` before building, or use `pnpm build` to prepare the required files automatically.\n",
@@ -69,12 +72,7 @@ fn ensure_runtime_artifacts(manifest_dir: &Path, target: &str) {
     }
 }
 
-fn collect_missing(
-    manifest_dir: &Path,
-    dir: &str,
-    files: &[&str],
-    missing: &mut Vec<PathBuf>,
-) {
+fn collect_missing(manifest_dir: &Path, dir: &str, files: &[&str], missing: &mut Vec<PathBuf>) {
     for file in files {
         let path = manifest_dir.join(dir).join(file);
         if !path.is_file() {
