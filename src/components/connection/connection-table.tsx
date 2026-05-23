@@ -5,6 +5,7 @@ import { useThemeMode } from "@/services/states";
 import { truncateStr } from "@/utils/truncate-str";
 import parseTraffic from "@/utils/parse-traffic";
 import { t } from "i18next";
+import { NUMERIC_CONNECTION_SORTING_ORDER } from "./connection-data";
 
 interface Props {
   connections: IConnectionsItem[];
@@ -29,6 +30,7 @@ export const ConnectionTable = (props: Props) => {
       width: 88,
       align: "right",
       headerAlign: "right",
+      sortingOrder: NUMERIC_CONNECTION_SORTING_ORDER,
       valueFormatter: (value: number) => parseTraffic(value).join(" "),
     },
     {
@@ -37,6 +39,7 @@ export const ConnectionTable = (props: Props) => {
       width: 88,
       align: "right",
       headerAlign: "right",
+      sortingOrder: NUMERIC_CONNECTION_SORTING_ORDER,
       valueFormatter: (value: number) => parseTraffic(value).join(" "),
     },
     {
@@ -45,6 +48,7 @@ export const ConnectionTable = (props: Props) => {
       width: 88,
       align: "right",
       headerAlign: "right",
+      sortingOrder: NUMERIC_CONNECTION_SORTING_ORDER,
       valueFormatter: (value: number) => parseTraffic(value).join(" ") + "/s",
     },
     {
@@ -53,6 +57,7 @@ export const ConnectionTable = (props: Props) => {
       width: 88,
       align: "right",
       headerAlign: "right",
+      sortingOrder: NUMERIC_CONNECTION_SORTING_ORDER,
       valueFormatter: (value: number) => parseTraffic(value).join(" ") + "/s",
     },
     { field: "chains", headerName: t("Chains"), flex: 360, minWidth: 360 },

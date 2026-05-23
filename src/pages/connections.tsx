@@ -20,14 +20,16 @@ import { BaseSearchBox } from "@/components/base/base-search-box";
 import { BaseStyledSelect } from "@/components/base/base-styled-select";
 import useSWRSubscription from "swr/subscription";
 import { createSockette } from "@/utils/websocket";
+import {
+  CONNECTION_ORDER_LABELS,
+  selectConnections,
+} from "@/components/connection/connection-data";
 
 const initConn: IConnections = {
   uploadTotal: 0,
   downloadTotal: 0,
   connections: [],
 };
-
-type OrderFunc = (list: IConnectionsItem[]) => IConnectionsItem[];
 
 const ConnectionsPage = () => {
   const { t } = useTranslation();
@@ -40,18 +42,6 @@ const ConnectionsPage = () => {
   const [setting, setSetting] = useConnectionSetting();
 
   const isTableLayout = setting.layout === "table";
-
-  const orderOpts: Record<string, OrderFunc> = {
-    Default: (list) =>
-      list.sort(
-        (a, b) =>
-          new Date(b.start || "0").getTime()! -
-          new Date(a.start || "0").getTime()!
-      ),
-    "Upload Speed": (list) => list.sort((a, b) => b.curUpload! - a.curUpload!),
-    "Download Speed": (list) =>
-      list.sort((a, b) => b.curDownload! - a.curDownload!),
-  };
 
   const { data: connData = initConn } = useSWRSubscription<
     IConnections,
@@ -111,20 +101,12 @@ const ConnectionsPage = () => {
   });
 
   const [filterConn, download, upload] = useMemo(() => {
-    const orderFunc = orderOpts[curOrderOpt];
-    let connections = connData.connections.filter((conn) =>
-      match(conn.metadata.host || conn.metadata.destinationIP || "")
+    const selected = selectConnections(
+      connData.connections,
+      match,
+      curOrderOpt
     );
-
-    if (orderFunc) connections = orderFunc(connections);
-
-    let download = 0;
-    let upload = 0;
-    connections.forEach((x) => {
-      download += x.download;
-      upload += x.upload;
-    });
-    return [connections, download, upload];
+    return [selected.connections, selected.download, selected.upload];
   }, [connData, match, curOrderOpt]);
 
   const onCloseAll = useLockFn(closeAllConnections);
@@ -188,7 +170,7 @@ const ConnectionsPage = () => {
             value={curOrderOpt}
             onChange={(e) => setOrderOpt(e.target.value)}
           >
-            {Object.keys(orderOpts).map((opt) => (
+            {CONNECTION_ORDER_LABELS.map((opt) => (
               <MenuItem key={opt} value={opt}>
                 <span style={{ fontSize: 14 }}>{t(opt)}</span>
               </MenuItem>

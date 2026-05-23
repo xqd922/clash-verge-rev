@@ -381,8 +381,8 @@ Related commit:
 
 Recommendation:
 
-- Safe redo candidate.
-- Reapply separately if needed; verify table/list sorting and that incoming WebSocket updates do not mutate the SWR snapshot in place.
+- Replayed as a separate recovery commit instead of cherry-picking the original messy commit.
+- Verification now uses `pnpm test`, which covers default time sorting, upload/download speed sorting, totals, non-mutating selection, and descending-first DataGrid numeric column sorting.
 
 #### First-Paint Background and Connection Page White Flash
 
