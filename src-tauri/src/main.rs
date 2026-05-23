@@ -148,7 +148,11 @@ fn main() -> std::io::Result<()> {
                             #[cfg(target_os = "windows")]
                             {
                                 resolve::set_window_taskbar_skip(&window, true);
-                                let _ = window.set_position(tauri::PhysicalPosition::new(-32000, -32000));
+                                if window.is_maximized().unwrap_or(false) {
+                                    let _ = window.unmaximize();
+                                }
+                                let _ = window
+                                    .set_position(tauri::PhysicalPosition::new(-32000, -32000));
                             }
                             #[cfg(not(target_os = "windows"))]
                             {

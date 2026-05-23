@@ -92,7 +92,9 @@ const Layout = () => {
       // 合成器真正激活完成预热(屏幕外不可见,不抢焦点)。setFocus 会偷走用户
       // 当前活动窗口的焦点,所以 warm 模式下跳过。
       if (await isWarmToTray()) {
-        await appWindow.show();
+        if (OS === "windows") {
+          await appWindow.show();
+        }
         return;
       }
       await appWindow.unminimize();

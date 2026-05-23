@@ -177,7 +177,10 @@ pub fn create_window(app_handle: &AppHandle) {
         #[cfg(target_os = "windows")]
         set_window_taskbar_skip(&window, false);
         #[cfg(not(target_os = "windows"))]
-        trace_err!(window.set_skip_taskbar(false), "set win skip_taskbar(false)");
+        trace_err!(
+            window.set_skip_taskbar(false),
+            "set win skip_taskbar(false)"
+        );
         // Windows 还原:把屏幕外的窗口移回上次保存的可见位置(配对 CloseRequested 中的 offscreen)
         #[cfg(target_os = "windows")]
         if let Some(pos) = Config::verge().latest().window_size_position.clone() {
@@ -189,6 +192,10 @@ pub fn create_window(app_handle: &AppHandle) {
             }
         }
         #[cfg(not(target_os = "windows"))]
+        trace_err!(window.show(), "set win visible");
+        #[cfg(target_os = "windows")]
+        trace_err!(window.unminimize(), "set win unminimize");
+        #[cfg(target_os = "windows")]
         trace_err!(window.show(), "set win visible");
         trace_err!(window.set_focus(), "set win focus");
         return;
