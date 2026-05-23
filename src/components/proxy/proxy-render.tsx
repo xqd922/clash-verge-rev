@@ -77,6 +77,7 @@ export const ProxyRender = (props: RenderProps) => {
             <img
               src={iconCachePath === "" ? group.icon : iconCachePath}
               width="32px"
+              height="32px"
               style={{ marginRight: "12px", borderRadius: "6px" }}
             />
           )}
@@ -86,6 +87,7 @@ export const ProxyRender = (props: RenderProps) => {
             <img
               src={group.icon}
               width="32px"
+              height="32px"
               style={{ marginRight: "12px", borderRadius: "6px" }}
             />
           )}
@@ -95,6 +97,7 @@ export const ProxyRender = (props: RenderProps) => {
             <img
               src={`data:image/svg+xml;base64,${btoa(group.icon)}`}
               width="32px"
+              height="32px"
             />
           )}
         <ListItemText

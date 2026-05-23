@@ -26,8 +26,8 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
     enableBuiltinEnhanced: true,
     proxyLayoutColumn: 6,
     defaultLatencyTest: "",
-    autoLogClean: 0,
-    defaultLatencyTimeout: 10000,
+    autoLogClean: 1,
+    defaultLatencyTimeout: 0,
   });
 
   useImperativeHandle(ref, () => ({
@@ -39,9 +39,9 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
         autoCheckUpdate: verge?.auto_check_update ?? true,
         enableBuiltinEnhanced: verge?.enable_builtin_enhanced ?? true,
         proxyLayoutColumn: verge?.proxy_layout_column || 6,
-        defaultLatencyTest: verge?.default_latency_test || "",
-        autoLogClean: verge?.auto_log_clean || 0,
-        defaultLatencyTimeout: verge?.default_latency_timeout || 10000,
+        defaultLatencyTest: verge?.default_latency_test ?? "",
+        autoLogClean: verge?.auto_log_clean ?? 1,
+        defaultLatencyTimeout: verge?.default_latency_timeout ?? 0,
       });
     },
     close: () => setOpen(false),
@@ -55,6 +55,9 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
         auto_check_update: values.autoCheckUpdate,
         enable_builtin_enhanced: values.enableBuiltinEnhanced,
         proxy_layout_column: values.proxyLayoutColumn,
+        // 发空字符串/0 而不是 undefined：patch! 宏遇 None 会跳过赋值，
+        // 用户清空输入框就再也写不掉旧值。consumer 端已用 `|| 默认值` 兜底，
+        // 落盘 "" 或 0 等价于"用默认"。
         default_latency_test: values.defaultLatencyTest,
         default_latency_timeout: values.defaultLatencyTimeout,
         auto_log_clean: values.autoLogClean as any,
@@ -205,7 +208,7 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
             spellCheck="false"
             sx={{ width: 250, marginLeft: "auto" }}
             value={values.defaultLatencyTest}
-            placeholder="http://1.1.1.1"
+            placeholder="http://www.gstatic.com/generate_204"
             onChange={(e) =>
               setValues((v) => ({ ...v, defaultLatencyTest: e.target.value }))
             }
@@ -222,12 +225,12 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
             autoCapitalize="off"
             spellCheck="false"
             sx={{ width: 250 }}
-            value={values.defaultLatencyTimeout}
-            placeholder="10000"
+            value={values.defaultLatencyTimeout || ""}
+            placeholder="2000"
             onChange={(e) =>
               setValues((v) => ({
                 ...v,
-                defaultLatencyTimeout: parseInt(e.target.value),
+                defaultLatencyTimeout: parseInt(e.target.value) || 0,
               }))
             }
             InputProps={{

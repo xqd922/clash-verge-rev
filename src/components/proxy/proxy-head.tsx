@@ -48,7 +48,10 @@ export const ProxyHead = (props: Props) => {
   useEffect(() => {
     delayManager.setUrl(
       groupName,
-      testUrl || url || verge?.default_latency_test!
+      testUrl ||
+        url ||
+        verge?.default_latency_test ||
+        "http://www.gstatic.com/generate_204"
     );
   }, [groupName, testUrl, verge?.default_latency_test]);
 

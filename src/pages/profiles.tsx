@@ -1,7 +1,7 @@
-import useSWR, { mutate } from "swr";
+import { mutate } from "swr";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLockFn } from "ahooks";
-import { Box, Button, Grid, IconButton, Stack, Divider } from "@mui/material";
+import { Box, Button, Grid, IconButton, Stack } from "@mui/material";
 import {
   DndContext,
   closestCenter,
@@ -28,7 +28,6 @@ import {
   getProfiles,
   importProfile,
   enhanceProfiles,
-  getRuntimeLogs,
   deleteProfile,
   updateProfile,
   reorderProfile,
@@ -41,7 +40,6 @@ import {
   ProfileViewer,
   ProfileViewerRef,
 } from "@/components/profile/profile-viewer";
-import { ProfileMore } from "@/components/profile/profile-more";
 import { ProfileItem } from "@/components/profile/profile-item";
 import { useProfiles } from "@/hooks/use-profiles";
 import { ConfigViewer } from "@/components/setting/mods/config-viewer";
@@ -100,11 +98,6 @@ const ProfilePage = () => {
     mutateProfiles,
   } = useProfiles();
 
-  const { data: chainLogs = {}, mutate: mutateLogs } = useSWR(
-    "getRuntimeLogs",
-    getRuntimeLogs
-  );
-
   const viewerRef = useRef<ProfileViewerRef>(null);
   const configRef = useRef<DialogRef>(null);
 
@@ -123,7 +116,14 @@ const ProfilePage = () => {
     return [...new Set([profiles.current ?? ""])].filter(Boolean);
   };
 
-  const onImport = async () => {
+  const setProfilesCurrentOptimistic = (
+    current: IProfilesConfig["current"],
+    baseProfiles: IProfilesConfig = profiles
+  ) => {
+    mutate("getProfiles", { ...baseProfiles, current }, false);
+  };
+
+  const onImport = useLockFn(async () => {
     if (!url) return;
     setLoading(true);
 
@@ -131,27 +131,44 @@ const ProfilePage = () => {
       await importProfile(url);
       Notice.success(t("Profile Imported Successfully"));
       setUrl("");
-      setLoading(false);
 
-      getProfiles().then(async (newProfiles) => {
-        mutate("getProfiles", newProfiles);
+      const newProfiles = await getProfiles();
+      mutate("getProfiles", newProfiles);
 
-        const remoteItem = newProfiles.items?.find((e) => e.type === "remote");
-        if (newProfiles.current && remoteItem) {
-          const current = remoteItem.uid;
+      // 仅在还没有 current 时（首次导入）才自动选中刚导入的 remote；
+      // 已有订阅时不主动切换，保留用户当前选择。
+      const remoteItems =
+        newProfiles.items?.filter((e) => e?.type === "remote") ?? [];
+      const newRemote = remoteItems[remoteItems.length - 1];
+
+      if (!newProfiles.current && newRemote) {
+        const current = newRemote.uid!;
+        const previousCurrent = newProfiles.current;
+        setProfilesCurrentOptimistic(current, newProfiles);
+        setActivatings([current]);
+        try {
           await patchProfiles({ current });
-          mutateLogs();
-          setTimeout(() => activateSelected(), 2000);
+          closeAllConnections();
+          mutate("getProxies");
+          try {
+            await activateSelected();
+          } catch {
+            // selector 偏好恢复失败不影响切换本身
+          }
+        } catch (err: any) {
+          setProfilesCurrentOptimistic(previousCurrent);
+          Notice.error(err?.message || err.toString(), 4000);
+        } finally {
+          setActivatings([]);
         }
-      });
+      }
     } catch (err: any) {
       Notice.error(err.message || err.toString());
-      setLoading(false);
     } finally {
       setDisabled(false);
       setLoading(false);
     }
-  };
+  });
 
   const onDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -165,21 +182,26 @@ const ProfilePage = () => {
 
   const onSelect = useLockFn(async (current: string, force: boolean) => {
     if (!force && current === profiles.current) return;
-    // 避免大多数情况下loading态闪烁
-    const reset = setTimeout(() => {
-      setActivatings([...currentActivatings(), current]);
-    }, 100);
+    const previousCurrent = profiles.current;
+    // 立即乐观更新，卡片瞬间切换 + spinner 蒙层提示后台仍在工作
+    setProfilesCurrentOptimistic(current);
+    setActivatings([current]);
     try {
       await patchProfiles({ current });
-      await mutateLogs();
       closeAllConnections();
-      activateSelected().then(() => {
-        Notice.success(t("Profile Switched"), 1000);
-      });
+      // 主动触发代理页 revalidate，不依赖 layout 事件时序
+      mutate("getProxies");
+      // patch 已成功，立即给反馈；selector 偏好恢复纳入 lock，防止连点竞态
+      Notice.success(t("Profile Switched"), 1000);
+      try {
+        await activateSelected();
+      } catch {
+        // selector 偏好恢复失败不影响切换本身，静默处理
+      }
     } catch (err: any) {
+      setProfilesCurrentOptimistic(previousCurrent);
       Notice.error(err?.message || err.toString(), 4000);
     } finally {
-      clearTimeout(reset);
       setActivatings([]);
     }
   });
@@ -188,7 +210,6 @@ const ProfilePage = () => {
     setActivatings(currentActivatings());
     try {
       await enhanceProfiles();
-      mutateLogs();
       Notice.success(t("Profile Reactivated"), 1000);
     } catch (err: any) {
       Notice.error(err.message || err.toString(), 3000);
@@ -203,7 +224,6 @@ const ProfilePage = () => {
       setActivatings([...(current ? currentActivatings() : []), uid]);
       await deleteProfile(uid);
       mutateProfiles();
-      mutateLogs();
       current && (await onEnhance());
     } catch (err: any) {
       Notice.error(err?.message || err.toString());
@@ -391,36 +411,6 @@ const ProfilePage = () => {
             </Grid>
           </Box>
         </DndContext>
-        <Divider
-          variant="middle"
-          flexItem
-          sx={{ width: `calc(100% - 32px)`, borderColor: dividercolor }}
-        ></Divider>
-        <Box sx={{ mt: 1.5 }}>
-          <Grid container spacing={{ xs: 1, lg: 1 }}>
-            <Grid item xs={12} sm={6} md={6} lg={6}>
-              <ProfileMore
-                id="Merge"
-                onSave={async (prev, curr) => {
-                  if (prev !== curr) {
-                    await onEnhance();
-                  }
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={6} lg={6}>
-              <ProfileMore
-                id="Script"
-                logInfo={chainLogs["Script"]}
-                onSave={async (prev, curr) => {
-                  if (prev !== curr) {
-                    await onEnhance();
-                  }
-                }}
-              />
-            </Grid>
-          </Grid>
-        </Box>
       </Box>
 
       <ProfileViewer ref={viewerRef} onChange={() => mutateProfiles()} />

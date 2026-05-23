@@ -441,7 +441,7 @@ export const GroupsEditorViewer = (props: Props) => {
                       <ListItemText primary={t("Health Check Url")} />
                       <TextField
                         autoComplete="new-password"
-                        placeholder="https://www.gstatic.com/generate_204"
+                        placeholder="http://www.gstatic.com/generate_204"
                         size="small"
                         sx={{ width: "calc(100% - 150px)" }}
                         {...field}
