@@ -65,6 +65,8 @@ pnpm run check
 pnpm dev
 ```
 
+For release builds, `pnpm build` prepares sidecars and resources before Tauri packaging; direct `pnpm tauri build` usage requires running `pnpm check [target]` first.
+
 ## Contributions
 
 Issue and PR welcome!

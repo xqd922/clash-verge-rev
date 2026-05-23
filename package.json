@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "tauri dev",
     "dev:diff": "tauri dev -f verge-dev",
-    "build": "tauri build",
+    "build": "node scripts/build.mjs",
     "tauri": "tauri",
     "web:dev": "vite",
     "web:build": "tsc && vite build",
@@ -13,6 +13,11 @@
     "check": "node scripts/check.mjs",
     "updater": "node scripts/updater.mjs",
     "updater-fixed-webview2": "node scripts/updater-fixed-webview2.mjs",
+    "legacy:prepare-release": "node scripts/prepare-legacy-release.mjs",
+    "legacy:portable": "node scripts/portable-legacy.mjs",
+    "legacy:portable-fixed-webview2": "node scripts/portable-fixed-webview2-legacy.mjs",
+    "legacy:updater": "node scripts/updater-legacy.mjs",
+    "legacy:updater-fixed-webview2": "node scripts/updater-fixed-webview2-legacy.mjs",
     "portable": "node scripts/portable.mjs",
     "portable-fixed-webview2": "node scripts/portable-fixed-webview2.mjs",
     "prepare": "husky install"

@@ -55,6 +55,8 @@ If you want to build the project, use:
 pnpm build
 ```
 
+`pnpm build` prepares sidecars and resources before Tauri packaging; if you call `pnpm tauri build` directly, run `pnpm check [target]` first.
+
 ## Contributing Your Changes
 
 Once you have made your changes:

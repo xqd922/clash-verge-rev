@@ -1,3 +1,23 @@
+## v1.7.7-legacy.1
+
+### Notice
+
+- `release/1.x-legacy` 独立维护线首个发布版本
+- 基于原始 `Release 1.7.7` 代码状态重新打包
+- GitHub Actions 发版、安装包和 updater 资产切换到独立 legacy 流程
+
+### Features
+
+- 新增专用 `1.x-legacy` GitHub Release 工作流
+- Legacy 版本使用独立的 `updater-legacy` 更新通道
+- 默认保留已有 tag/release，只有手动选择覆盖时才会删除重建
+
+### Notes
+
+- 此版本目标是恢复并固定 `1.x` 维护线，不引入新的业务功能变更
+
+---
+
 ## v1.7.7
 
 ### Bugs Fixes

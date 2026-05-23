@@ -18,6 +18,9 @@ Before touching the repository for this cleanup, the following skills were check
 - `frontend-code-review`: used because the diff includes React/TypeScript UI changes.
 - `using-git-worktrees`: checked for isolation guidance and used to create an isolated recovery worktree from `v1.7.7`.
 - `verification-before-completion`: used for final status checks before claiming what was done.
+- `brainstorming`, `writing-plans`, and `executing-plans`: used for the approved conservative release-pipeline design and task-by-task execution.
+- `fix`: checked before formatting and CI-style verification.
+- `update-docs`: checked before updating this cleanup report.
 
 ## Progress Log
 
@@ -35,6 +38,21 @@ Before touching the repository for this cleanup, the following skills were check
   - `pnpm check x86_64-pc-windows-msvc`: passed and prepared required sidecar/resources.
   - `$env:NODE_OPTIONS='--max_old_space_size=8192'; pnpm web:build`: passed.
   - `cargo test` in `src-tauri`: passed, 6 tests.
+- Rebuilt the conservative legacy release pipeline on `recovery/legacy-clean-2026-05-24`:
+  - `pnpm build` now runs `scripts/build.mjs`, which prepares sidecars/resources before `tauri build`.
+  - `src-tauri/build.rs` now fails early when required runtime artifacts are missing.
+  - `scripts/check.mjs` now validates HTTP downloads, supports pinned core/rules/tool versions, and extracts Windows legacy service binaries from `v1.7.7` portable artifacts by default.
+  - Added legacy release helper scripts for metadata preparation, portable bundles, updater metadata, and release-note printing.
+  - Added `.github/workflows/release-1x-legacy.yml` with manual dispatch only, `permissions: contents: write`, `overwrite_existing` defaulting to `false`, and release/tag deletion only behind the explicit overwrite input.
+- Verification for the conservative release pipeline:
+  - `node --check` for changed Node scripts: passed.
+  - `pnpm exec prettier --check ...`: passed.
+  - `node scripts/prepare-legacy-release.mjs v1.7.7-legacy.99` in a disposable copy: passed and rewrote only expected legacy metadata.
+  - `Select-String` workflow inspection: found `contents: write`, `default: false`, gated `deleteRelease`/`deleteRef`, and pinned `LEGACY_SERVICE_TAG`; no `write-all` match.
+  - `pnpm install --frozen-lockfile --prefer-offline`: passed, with an existing Node `url.parse()` deprecation warning.
+  - `$env:LEGACY_SERVICE_TAG='v1.7.7'; pnpm check x86_64-pc-windows-msvc --force`: passed and extracted Windows service binaries from `v1.7.7` portable artifacts.
+  - `$env:NODE_OPTIONS='--max_old_space_size=8192'; pnpm web:build`: passed, with existing Vite/Browserslist/chunk-size warnings.
+  - `cargo test` in `src-tauri`: passed, 6 tests; existing Rust warnings remain.
 
 ## Scope
 
