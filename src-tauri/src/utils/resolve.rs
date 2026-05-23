@@ -127,7 +127,7 @@ pub fn create_window(app_handle: &AppHandle) {
         "main".to_string(),
         tauri::WindowUrl::App("index.html".into()),
     )
-    .title("Clash Verge")
+    .title("Clash Verge Legacy")
     .visible(false)
     .fullscreen(false)
     .min_inner_size(600.0, 520.0);
@@ -244,14 +244,14 @@ pub async fn resolve_scheme(param: String) -> Result<()> {
     match import_profile(url.to_string(), None).await {
         Ok(_) => {
             notification::Notification::new(crate::utils::dirs::APP_ID)
-                .title("Clash Verge")
+                .title("Clash Verge Legacy")
                 .body("Import profile success")
                 .show()
                 .unwrap();
         }
         Err(e) => {
             notification::Notification::new(crate::utils::dirs::APP_ID)
-                .title("Clash Verge")
+                .title("Clash Verge Legacy")
                 .body(format!("Import profile failed: {e}"))
                 .show()
                 .unwrap();

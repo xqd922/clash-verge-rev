@@ -1,14 +1,119 @@
 name: Release Build
 
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
-permissions: write-all
+    inputs:
+      tag:
+        description: "Existing tag to release (e.g. v1.7.7-legacy.r2). The tag must already be pushed."
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
 env:
   CARGO_INCREMENTAL: 0
   RUST_BACKTRACE: short
 
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      version: ${{ steps.resolve.outputs.version }}
+      release_id: ${{ steps.create.outputs.release_id }}
+    steps:
+      - name: Resolve tag
+        id: tag
+        env:
+          DISPATCH_TAG: ${{ github.event.inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            TAG="$DISPATCH_TAG"
+          else
+            TAG="$REF_NAME"
+          fi
+          if [[ ! "$TAG" =~ ^v ]]; then
+            echo "::error::tag must start with v, got: $TAG"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate version
+        id: resolve
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          VERSION="${TAG#v}"
+          PKG=$(jq -r .version package.json)
+          TAURI=$(jq -r .package.version src-tauri/tauri.conf.json)
+          if [ "$VERSION" != "$PKG" ] || [ "$VERSION" != "$TAURI" ]; then
+            echo "::error::version mismatch: tag=$VERSION package.json=$PKG tauri.conf.json=$TAURI"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build release notes
+        run: pnpm release-notes "${{ steps.tag.outputs.tag }}" --out release_notes.md
+
+      - name: Create or refresh draft release
+        id: create
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            PRERELEASE=""
+          else
+            PRERELEASE="--prerelease"
+          fi
+          TITLE="Clash Verge Legacy $TAG"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" \
+              --title "$TITLE" \
+              --notes-file release_notes.md \
+              --draft=true \
+              $PRERELEASE
+          else
+            gh release create "$TAG" \
+              --title "$TITLE" \
+              --notes-file release_notes.md \
+              --draft \
+              --target "$(git rev-parse HEAD)" \
+              $PRERELEASE
+          fi
+          ID=$(gh release view "$TAG" --json databaseId -q .databaseId)
+          echo "release_id=$ID" >> "$GITHUB_OUTPUT"
+
   release:
+    needs: preflight
     strategy:
       fail-fast: false
       matrix:
@@ -26,8 +131,10 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout Repository
+      - name: Checkout at tag
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.preflight.outputs.tag }}
 
       - name: Install Rust Stable
         uses: dtolnay/rust-toolchain@1.77.0
@@ -64,9 +171,7 @@ jobs:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
-          tagName: v__VERSION__
-          releaseName: "Clash Verge Rev v__VERSION__"
-          releaseBody: "Personal fork build based on upstream Clash Verge Rev v1.7.7."
+          releaseId: ${{ needs.preflight.outputs.release_id }}
           tauriScript: pnpm
           args: --target ${{ matrix.target }}
 
@@ -75,8 +180,10 @@ jobs:
         run: pnpm portable ${{ matrix.target }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ needs.preflight.outputs.tag }}
 
   release-for-linux:
+    needs: preflight
     strategy:
       fail-fast: false
       matrix:
@@ -91,8 +198,10 @@ jobs:
             target: armv7-unknown-linux-gnueabihf
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout Repository
+      - name: Checkout at tag
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.preflight.outputs.tag }}
 
       - name: Build for Linux
         uses: ./.github/build-for-linux
@@ -103,24 +212,17 @@ jobs:
         with:
           target: ${{ matrix.target }}
 
-      - name: Get Version
+      - name: Upload assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          sudo apt-get update
-          sudo apt-get install jq
-          echo "VERSION=$(cat package.json | jq '.version' | tr -d '"')" >> $GITHUB_ENV
-
-      - name: Upload Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{env.VERSION}}
-          name: "Clash Verge Rev v${{env.VERSION}}"
-          body: "More new features are now supported."
-          token: ${{ secrets.GITHUB_TOKEN }}
-          files: |
-            src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
-            src-tauri/target/${{ matrix.target }}/release/bundle/rpm/*.rpm
+          gh release upload "${{ needs.preflight.outputs.tag }}" \
+            src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb \
+            src-tauri/target/${{ matrix.target }}/release/bundle/rpm/*.rpm \
+            --clobber
 
   release-for-fixed-webview2:
+    needs: preflight
     strategy:
       fail-fast: false
       matrix:
@@ -136,8 +238,10 @@ jobs:
             arch: arm64
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout Repository
+      - name: Checkout at tag
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.preflight.outputs.tag }}
 
       - name: Add Rust Target
         run: rustup target add ${{ matrix.target }}
@@ -183,27 +287,38 @@ jobs:
 
       - name: Rename
         run: |
-          Rename-Item '.\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\Clash Verge_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}-setup.exe' 'Clash Verge_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}_fixed_webview2-setup.exe'
-          Rename-Item '.\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\Clash Verge_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}-setup.nsis.zip' 'Clash Verge_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}_fixed_webview2-setup.nsis.zip'
-          Rename-Item '.\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\Clash Verge_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}-setup.nsis.zip.sig' 'Clash Verge_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}_fixed_webview2-setup.nsis.zip.sig'
+          Rename-Item '.\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\Clash Verge Legacy_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}-setup.exe' 'Clash Verge Legacy_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}_fixed_webview2-setup.exe'
+          Rename-Item '.\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\Clash Verge Legacy_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}-setup.nsis.zip' 'Clash Verge Legacy_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}_fixed_webview2-setup.nsis.zip'
+          Rename-Item '.\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\Clash Verge Legacy_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}-setup.nsis.zip.sig' 'Clash Verge Legacy_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}_fixed_webview2-setup.nsis.zip.sig'
 
-      - name: Upload Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{steps.build.outputs.appVersion}}
-          name: "Clash Verge Rev v${{steps.build.outputs.appVersion}}"
-          body: "More new features are now supported."
-          token: ${{ secrets.GITHUB_TOKEN }}
-          files: src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*setup*
+      - name: Upload assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ needs.preflight.outputs.tag }}" \
+            src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*setup* \
+            --clobber
 
       - name: Portable Bundle
         run: pnpm portable-fixed-webview2 ${{ matrix.target }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ needs.preflight.outputs.tag }}
+
+  publish-release:
+    needs: [preflight, release, release-for-linux, release-for-fixed-webview2]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Flip draft to published
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release edit "${{ needs.preflight.outputs.tag }}" --draft=false
 
   release-update:
     runs-on: ubuntu-latest
-    needs: [release, release-for-linux]
+    needs: [publish-release]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -228,7 +343,7 @@ jobs:
 
   release-update-for-fixed-webview2:
     runs-on: ubuntu-latest
-    needs: [release-for-fixed-webview2]
+    needs: [publish-release]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

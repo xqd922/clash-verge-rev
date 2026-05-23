@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/schema.json",
   "package": {
-    "productName": "Clash Verge",
+    "productName": "Clash Verge Legacy",
     "version": "1.7.7-legacy.r1"
   },
   "build": {
@@ -13,7 +13,7 @@
   "tauri": {
     "bundle": {
       "active": true,
-      "identifier": "io.github.clash-verge-rev.clash-verge-rev",
+      "identifier": "io.github.clash-verge-rev.clash-verge-legacy",
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",

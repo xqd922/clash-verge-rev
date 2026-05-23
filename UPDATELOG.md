@@ -1,3 +1,19 @@
+## v1.7.7-legacy.r1
+
+### Notice
+
+- 首次以 **Clash Verge Legacy** 品牌发布,与上游 Clash Verge Rev 完全隔离,可双安装、不互相覆盖。
+- Bundle identifier 改为 `io.github.clash-verge-rev.clash-verge-legacy`,配置目录与上游分离。
+- 应用显示名、安装包文件名、Windows/macOS bundle 全部更名为 `Clash Verge Legacy`。
+
+### CI / Build
+
+- Linux 构建容器切换到 buster + archive sources,适配 libwebkit2gtk-4.0
+- 移除 Apple 签名步骤(fork 不签名)
+- pnpm 锁到 v9 与容器内 Node 20 对齐
+
+---
+
 ## v1.7.7
 
 ### Bugs Fixes

@@ -5,21 +5,17 @@
       "iconPath": "icons/tray-icon.ico"
     },
     "bundle": {
-      "identifier": "io.github.clash-verge-rev.clash-verge-rev",
+      "identifier": "io.github.clash-verge-rev.clash-verge-legacy",
       "targets": ["deb", "rpm"],
       "deb": {
         "depends": ["openssl"],
         "desktopTemplate": "./template/clash-verge.desktop",
-        "provides": ["clash-verge"],
-        "conflicts": ["clash-verge"],
-        "replaces": ["clash-verge"]
+        "provides": ["clash-verge-legacy"]
       },
       "rpm": {
         "depends": ["openssl"],
         "desktopTemplate": "./template/clash-verge.desktop",
-        "provides": ["clash-verge"],
-        "conflicts": ["clash-verge"],
-        "obsoletes": ["clash-verge"]
+        "provides": ["clash-verge-legacy"]
       }
     }
   }

@@ -73,3 +73,17 @@ The `verge-dev` cargo feature (declared in `Cargo.toml`) is what makes `pnpm dev
 - Mixed Chinese / English comments and identifiers are expected — match the surrounding style of the file you're editing.
 - Profile enhancement is the conceptual heart of the app: a user's raw subscription YAML is layered with their merge/script/tun overrides before being handed to mihomo. When changing config behavior, trace through `enhance::enhance()` to make sure the layering still composes correctly.
 - Release profile uses `lto = true`, `codegen-units = 1`, `opt-level = "s"`, `panic = "abort"` — release builds are slow; rely on `pnpm dev` for iteration.
+
+## Release process
+
+This is a fork. Releases follow a strict convention enforced by `.github/workflows/release.yml`:
+
+- **Versioning**: `<upstream-base>-legacy.r<N>`, e.g. `1.7.7-legacy.r1` → `1.7.7-legacy.r2`. The upstream base (`1.7.7`) only bumps when we pull a new upstream tag; `rN` increments on every fork build. Tags with no suffix (`v1.7.8`) are marked stable; anything with a `-legacy` / `-rc` / `-beta` / `-alpha` suffix is auto-marked prerelease.
+- **Three sources of truth must match**: `package.json` `version`, `src-tauri/tauri.conf.json` `package.version`, and the git tag (sans leading `v`). The workflow's `preflight` job fails the run if they disagree.
+- **UPDATELOG.md is required for every release**. The release-notes script tries the full tag first (e.g. `v1.7.7-legacy.r2`) and falls back to the upstream base section (`v1.7.7`) if there is no fork-specific entry. Add a fork-specific section only when the `rN` build has notes worth differentiating; otherwise the base section is reused automatically.
+- **Cutting a release**:
+  1. Bump version in `package.json` and `src-tauri/tauri.conf.json` (keep them identical).
+  2. Add or update the matching section in `UPDATELOG.md` if needed.
+  3. Commit, then `git tag v<version> && git push && git push --tags`.
+  4. The `Release Build` workflow triggers on `v*` tag push: `preflight` validates and creates a draft release with UPDATELOG body → matrix builds upload assets → `publish-release` flips draft to published → updater.json refresh.
+- **Manual dispatch**: the workflow also accepts `workflow_dispatch` with a `tag` input, but the tag must already be pushed (the checkout step fails otherwise). Use this only for re-runs.

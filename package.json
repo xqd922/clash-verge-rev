@@ -11,6 +11,7 @@
     "web:build": "tsc && vite build",
     "web:serve": "vite preview",
     "check": "node scripts/check.mjs",
+    "release-notes": "node scripts/release-notes.mjs",
     "updater": "node scripts/updater.mjs",
     "updater-fixed-webview2": "node scripts/updater-fixed-webview2.mjs",
     "portable": "node scripts/portable.mjs",

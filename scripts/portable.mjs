@@ -38,7 +38,7 @@ async function resolvePortable() {
 
   const zip = new AdmZip();
 
-  zip.addLocalFile(path.join(releaseDir, "Clash Verge.exe"));
+  zip.addLocalFile(path.join(releaseDir, "Clash Verge Legacy.exe"));
   zip.addLocalFile(path.join(releaseDir, "verge-mihomo.exe"));
   zip.addLocalFile(path.join(releaseDir, "verge-mihomo-alpha.exe"));
   zip.addLocalFolder(path.join(releaseDir, "resources"), "resources");
@@ -48,7 +48,7 @@ async function resolvePortable() {
   const packageJson = require("../package.json");
   const { version } = packageJson;
 
-  const zipFile = `Clash.Verge_${version}_${arch}_portable.zip`;
+  const zipFile = `Clash.Verge.Legacy_${version}_${arch}_portable.zip`;
   zip.writeZip(zipFile);
 
   console.log("[INFO]: create portable zip successfully");

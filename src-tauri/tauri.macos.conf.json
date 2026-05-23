@@ -6,7 +6,7 @@
       "iconAsTemplate": true
     },
     "bundle": {
-      "identifier": "io.github.clash-verge-rev.clash-verge-rev",
+      "identifier": "io.github.clash-verge-rev.clash-verge-legacy",
       "targets": ["app", "dmg", "updater"],
       "macOS": {
         "frameworks": [],
