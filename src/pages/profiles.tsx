@@ -128,7 +128,8 @@ const ProfilePage = () => {
     setLoading(true);
 
     try {
-      const hadCurrent = !!profiles.current;
+      const preImportProfiles = await getProfiles();
+      const hadCurrent = !!preImportProfiles.current;
       await importProfile(url);
       Notice.success(t("Profile Imported Successfully"));
       setUrl("");
