@@ -1,3 +1,29 @@
+## v1.7.7-legacy-rebuild
+
+### Notice
+
+- Rebuilds the 1.x legacy maintenance branch from the `v1.7.7` baseline with a cleaner, functional commit history.
+- Preserves the intended legacy release flow, app identity isolation, Windows tray behavior, and user-facing stability fixes from the previous `release/1.x-legacy` line.
+- The old `.legacy.1` through `.legacy.21` release notes are treated as implementation history, not as the structure of this rebuilt branch.
+
+### Build / Release
+
+- Adds the dedicated 1.x legacy release workflow and legacy portable/updater scripts.
+- `pnpm build` prepares required sidecar and resource files before Tauri packaging.
+- The release preparation script rewrites package metadata for legacy artifacts.
+
+### Runtime
+
+- Uses a legacy app identifier so the branch does not share configuration with the non-legacy app line.
+- Registers auto-launch with `--silent`, so silent startup only applies to boot auto-launch.
+- Keeps Windows close-to-tray and warm-to-tray paths alive offscreen to avoid WebView2 cold starts when reopening from the tray.
+
+### Frontend
+
+- Stabilizes profile switching, selector restoration, proxy list layout, connection sorting, log level persistence, notices, and first-paint theme background.
+
+---
+
 ## v1.7.7
 
 ### Bugs Fixes
