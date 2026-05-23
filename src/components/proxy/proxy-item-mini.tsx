@@ -6,6 +6,7 @@ import { BaseLoading } from "@/components/base";
 import delayManager from "@/services/delay";
 import { useVerge } from "@/hooks/use-verge";
 import { useTranslation } from "react-i18next";
+import { getSelectedProxyItemSx } from "./proxy-selected-style";
 
 interface Props {
   group: IProxyGroupItem;
@@ -78,15 +79,12 @@ export const ProxyItemMini = (props: Props) => {
               right: "-5px",
             },
             "& .the-unpin": { filter: "grayscale(1)" },
-            "&.Mui-selected": {
-              width: `calc(100% + 3px)`,
-              marginLeft: `-3px`,
-              borderLeft: `3px solid ${selectColor}`,
-              bgcolor:
-                mode === "light"
-                  ? alpha(primary.main, 0.15)
-                  : alpha(primary.main, 0.35),
-            },
+            "&.Mui-selected": getSelectedProxyItemSx(
+              selectColor,
+              mode === "light"
+                ? alpha(primary.main, 0.15)
+                : alpha(primary.main, 0.35)
+            ),
             backgroundColor: bgcolor,
           };
         },

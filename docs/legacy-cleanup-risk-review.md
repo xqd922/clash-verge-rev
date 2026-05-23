@@ -64,6 +64,11 @@ Before touching the repository for this cleanup, the following skills were check
   - Global `revalidateOnFocus: false` remains excluded because it suppresses refresh behavior for every SWR consumer instead of fixing a specific IPC storm path.
   - Profile switching rewrites remain excluded because they expose draft backend state, use optimistic UI mutation during a multi-step core reload, and silently swallow selector restoration failures.
   - Async config validation and single-`PUT /configs` behavior remain excluded as a redo candidate because request timeout changes, validation ordering, and retry removal should be split and tested separately.
+- Replayed the narrow proxy selected-row jitter fix instead of cherry-picking the full proxy jitter sequence:
+  - Added `src/components/proxy/proxy-selected-style.ts` so `ProxyItem` and `ProxyItemMini` share the same non-layout selected-state style.
+  - Replaced selected-state `width`, `marginLeft`, and `borderLeft` changes with an inset `boxShadow`, preserving the visual left bar without changing row width or horizontal position.
+  - Added `tests/proxy-selected-style.test.ts` and widened `pnpm test` to run all `tests/*.test.ts`.
+  - Verification: `pnpm test` first failed because the helper did not exist, then passed with 4 tests after implementation.
 
 ## Scope
 
@@ -408,8 +413,13 @@ Related commits:
 
 Recommendation:
 
-- Possible low-risk redo candidate.
-- Reapply only with browser/Tauri visual QA for collapsed/open groups, multi-column mode, selected rows, custom group icons, and tray restore.
+- Replayed only the selected-row width-shift portion from `ae8dc76f`, rebuilt as a shared helper with a regression test.
+- The selected-row fix is accepted because the old style changed layout metrics (`width`, `marginLeft`, `borderLeft`) whenever `selected` toggled, while the new inset `boxShadow` does not change row geometry.
+- Do not replay the rest of `32edf90c` yet:
+  - `useLayoutEffect` hydration for stored group state still needs UI-level evidence that it does not introduce blocking work before paint.
+  - `ResizeObserver(document.body)` still needs browser/Tauri checks for tray restore, window resize, and cleanup behavior.
+  - fixed `img height=32` for group icons still needs visual QA for remote, data, and inline SVG icons.
+- Remaining proxy list layout work should be verified with collapsed/open groups, multi-column mode, selected rows, custom group icons, and tray restore before any additional replay.
 
 ## Clean Branch Replay Plan
 

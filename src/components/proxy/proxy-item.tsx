@@ -15,6 +15,7 @@ import {
 import { BaseLoading } from "@/components/base";
 import delayManager from "@/services/delay";
 import { useVerge } from "@/hooks/use-verge";
+import { getSelectedProxyItemSx } from "./proxy-selected-style";
 
 interface Props {
   group: IProxyGroupItem;
@@ -89,15 +90,12 @@ export const ProxyItem = (props: Props) => {
               "&:hover .the-check": { display: !showDelay ? "block" : "none" },
               "&:hover .the-delay": { display: showDelay ? "block" : "none" },
               "&:hover .the-icon": { display: "none" },
-              "&.Mui-selected": {
-                width: `calc(100% + 3px)`,
-                marginLeft: `-3px`,
-                borderLeft: `3px solid ${selectColor}`,
-                bgcolor:
-                  mode === "light"
-                    ? alpha(primary.main, 0.15)
-                    : alpha(primary.main, 0.35),
-              },
+              "&.Mui-selected": getSelectedProxyItemSx(
+                selectColor,
+                mode === "light"
+                  ? alpha(primary.main, 0.15)
+                  : alpha(primary.main, 0.35)
+              ),
               backgroundColor: bgcolor,
               marginBottom: "8px",
               height: "40px",

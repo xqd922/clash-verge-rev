@@ -7,7 +7,7 @@
     "dev:diff": "tauri dev -f verge-dev",
     "build": "node scripts/build.mjs",
     "tauri": "tauri",
-    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --experimental-strip-types tests/connection-data.test.ts",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --experimental-strip-types tests/*.test.ts",
     "web:dev": "vite",
     "web:build": "tsc && vite build",
     "web:serve": "vite preview",
