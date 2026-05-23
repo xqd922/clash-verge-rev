@@ -197,7 +197,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_ID: ${{ needs.preflight.outputs.release_id }}
         run: |
-          pnpm upload-release-assets \
+          retry_upload() {
+            for attempt in 1 2 3; do
+              "$@" && return 0
+              code=$?
+              if [ "$attempt" -eq 3 ]; then
+                return "$code"
+              fi
+              echo "::warning::asset upload attempt $attempt failed with exit code $code; retrying"
+              sleep $((attempt * 20))
+            done
+          }
+          retry_upload pnpm upload-release-assets \
             src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg \
             src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz \
             src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
@@ -209,12 +220,42 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_ID: ${{ needs.preflight.outputs.release_id }}
         run: |
-          pnpm upload-release-assets \
+          retry_upload() {
+            for attempt in 1 2 3; do
+              "$@" && return 0
+              code=$?
+              if [ "$attempt" -eq 3 ]; then
+                return "$code"
+              fi
+              echo "::warning::asset upload attempt $attempt failed with exit code $code; retrying"
+              sleep $((attempt * 20))
+            done
+          }
+          retry_upload pnpm upload-release-assets \
             src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*setup*
 
       - name: Portable Bundle
         if: matrix.os == 'windows-latest'
-        run: pnpm portable ${{ matrix.target }}
+        run: |
+          pnpm portable ${{ matrix.target }}
+          $archByTarget = @{
+            "x86_64-pc-windows-msvc" = "x64"
+            "i686-pc-windows-msvc" = "x86"
+            "aarch64-pc-windows-msvc" = "arm64"
+          }
+          $arch = $archByTarget["${{ matrix.target }}"]
+          $zip = "Clash.Verge.Legacy_${{ needs.preflight.outputs.version }}_${arch}_portable.zip"
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            pnpm upload-release-assets $zip
+            if ($LASTEXITCODE -eq 0) {
+              break
+            }
+            if ($attempt -eq 3) {
+              exit $LASTEXITCODE
+            }
+            Write-Warning "portable upload attempt $attempt failed with exit code $LASTEXITCODE; retrying"
+            Start-Sleep -Seconds (20 * $attempt)
+          }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ needs.preflight.outputs.tag }}
@@ -265,7 +306,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_ID: ${{ needs.preflight.outputs.release_id }}
         run: |
-          pnpm upload-release-assets \
+          retry_upload() {
+            for attempt in 1 2 3; do
+              "$@" && return 0
+              code=$?
+              if [ "$attempt" -eq 3 ]; then
+                return "$code"
+              fi
+              echo "::warning::asset upload attempt $attempt failed with exit code $code; retrying"
+              sleep $((attempt * 20))
+            done
+          }
+          retry_upload pnpm upload-release-assets \
             src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb \
             src-tauri/target/${{ matrix.target }}/release/bundle/rpm/*.rpm
 
@@ -345,11 +397,35 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_ID: ${{ needs.preflight.outputs.release_id }}
         run: |
-          pnpm upload-release-assets \
+          retry_upload() {
+            for attempt in 1 2 3; do
+              "$@" && return 0
+              code=$?
+              if [ "$attempt" -eq 3 ]; then
+                return "$code"
+              fi
+              echo "::warning::asset upload attempt $attempt failed with exit code $code; retrying"
+              sleep $((attempt * 20))
+            done
+          }
+          retry_upload pnpm upload-release-assets \
             src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*setup*
 
       - name: Portable Bundle
-        run: pnpm portable-fixed-webview2 ${{ matrix.target }}
+        run: |
+          pnpm portable-fixed-webview2 ${{ matrix.target }}
+          $zip = "Clash.Verge.Legacy_${{ needs.preflight.outputs.version }}_${{ matrix.arch }}_fixed_webview2_portable.zip"
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            pnpm upload-release-assets $zip
+            if ($LASTEXITCODE -eq 0) {
+              break
+            }
+            if ($attempt -eq 3) {
+              exit $LASTEXITCODE
+            }
+            Write-Warning "fixed webview2 portable upload attempt $attempt failed with exit code $LASTEXITCODE; retrying"
+            Start-Sleep -Seconds (20 * $attempt)
+          }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ needs.preflight.outputs.tag }}
