@@ -2,6 +2,23 @@ import fs from "fs-extra";
 import path from "path";
 
 const UPDATE_LOG = "UPDATELOG.md";
+const LEGACY_RELEASE_RE = /^(v[0-9A-Za-z._-]+)-legacy\.[0-9]+$/;
+
+function resolveUpdateLogTag(tag, map) {
+  if (map[tag]) {
+    return tag;
+  }
+
+  const match = tag.match(LEGACY_RELEASE_RE);
+  if (match) {
+    const rebuildTag = `${match[1]}-legacy-rebuild`;
+    if (map[rebuildTag]) {
+      return rebuildTag;
+    }
+  }
+
+  throw new Error(`could not found "${tag}" in UPDATELOG.md`);
+}
 
 // parse the UPDATELOG.md
 export async function resolveUpdateLog(tag) {
@@ -36,9 +53,7 @@ export async function resolveUpdateLog(tag) {
     }
   });
 
-  if (!map[tag]) {
-    throw new Error(`could not found "${tag}" in UPDATELOG.md`);
-  }
+  const resolvedTag = resolveUpdateLogTag(tag, map);
 
-  return map[tag].join("\n").trim();
+  return map[resolvedTag].join("\n").trim();
 }

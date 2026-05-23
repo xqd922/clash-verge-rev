@@ -33,6 +33,38 @@ async function getOrCreateRelease(github, options, tagName, name) {
   return data;
 }
 
+function isLegacyReleaseTag(tagName) {
+  return (
+    tagName.startsWith(RELEASE_TAG_PREFIX) &&
+    tagName.includes(LEGACY_TAG_MARKER)
+  );
+}
+
+async function resolveReleaseTag(github, options) {
+  const requestedTag = process.argv[2] || process.env.RELEASE_TAG;
+
+  if (requestedTag) {
+    if (!isLegacyReleaseTag(requestedTag)) {
+      throw new Error(`legacy release tag expected, got "${requestedTag}"`);
+    }
+    return requestedTag;
+  }
+
+  const { data: tags } = await github.rest.repos.listTags({
+    ...options,
+    per_page: 20,
+    page: 1,
+  });
+
+  const tag = tags.find((item) => isLegacyReleaseTag(item.name));
+
+  if (!tag) {
+    throw new Error("could not find a legacy release tag");
+  }
+
+  return tag.name;
+}
+
 async function resolveUpdater() {
   if (process.env.GITHUB_TOKEN === undefined) {
     throw new Error("GITHUB_TOKEN is required");
@@ -41,30 +73,16 @@ async function resolveUpdater() {
   const options = { owner: context.repo.owner, repo: context.repo.repo };
   const github = getOctokit(process.env.GITHUB_TOKEN);
 
-  const { data: tags } = await github.rest.repos.listTags({
-    ...options,
-    per_page: 20,
-    page: 1,
-  });
-
-  const tag = tags.find(
-    (item) =>
-      item.name.startsWith(RELEASE_TAG_PREFIX) &&
-      item.name.includes(LEGACY_TAG_MARKER)
-  );
-
-  if (!tag) {
-    throw new Error("could not find a legacy release tag");
-  }
+  const releaseTag = await resolveReleaseTag(github, options);
 
   const { data: latestRelease } = await github.rest.repos.getReleaseByTag({
     ...options,
-    tag: tag.name,
+    tag: releaseTag,
   });
 
   const updateData = {
-    name: tag.name,
-    notes: await resolveUpdateLog(tag.name),
+    name: releaseTag,
+    notes: await resolveUpdateLog(releaseTag),
     pub_date: new Date().toISOString(),
     platforms: {
       "windows-x86_64": { signature: "", url: "" },

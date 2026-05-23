@@ -74,6 +74,17 @@ async function main() {
     },
   }));
 
+  await updateJson("src-tauri/tauri.windows.conf.json", (current) => ({
+    ...current,
+    tauri: {
+      ...current.tauri,
+      bundle: {
+        ...current.tauri.bundle,
+        identifier: LEGACY_IDENTIFIER,
+      },
+    },
+  }));
+
   for (const file of [
     "src-tauri/webview2.x64.json",
     "src-tauri/webview2.x86.json",

@@ -273,7 +273,7 @@ jobs:
         run: pnpm i
 
       - name: Release updater file
-        run: pnpm legacy:updater
+        run: pnpm legacy:updater ${{ needs.prepare-release.outputs.release_tag }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -298,6 +298,6 @@ jobs:
         run: pnpm i
 
       - name: Release updater file
-        run: pnpm legacy:updater-fixed-webview2
+        run: pnpm legacy:updater-fixed-webview2 ${{ needs.prepare-release.outputs.release_tag }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
