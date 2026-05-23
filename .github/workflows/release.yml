@@ -29,6 +29,7 @@ jobs:
       tag: ${{ steps.resolve.outputs.tag }}
       version: ${{ steps.resolve.outputs.version }}
       release_id: ${{ steps.create.outputs.release_id }}
+      is_prerelease: ${{ steps.create.outputs.is_prerelease }}
     steps:
       - name: Resolve tag
         id: tag
@@ -90,32 +91,41 @@ jobs:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
           if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-legacy\.r[0-9]+)?$ ]]; then
-            PRERELEASE_FLAG=""
             IS_PRERELEASE=false
           else
-            PRERELEASE_FLAG="--prerelease"
             IS_PRERELEASE=true
           fi
           TITLE="Clash Verge Legacy $TAG"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" \
-              --title "$TITLE" \
-              --notes-file release_notes.md \
-              --draft=true
-          else
-            gh release create "$TAG" \
-              --title "$TITLE" \
-              --notes-file release_notes.md \
-              --draft \
-              --target "$(git rev-parse HEAD)" \
-              $PRERELEASE_FLAG
+          BODY="$(cat release_notes.md)"
+          TARGET="$(git rev-parse HEAD)"
+          ID=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/$TAG" --jq .id 2>/dev/null || true)
+          if [ -z "$ID" ]; then
+            ID=$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+              --jq ".[] | select(.draft == true and .name == \"$TITLE\") | .id" \
+              | head -n 1)
           fi
-          ID=$(gh release view "$TAG" --json databaseId -q .databaseId)
-          gh api "repos/${GITHUB_REPOSITORY}/releases/$ID" \
-            -X PATCH \
-            -F draft=true \
-            -F prerelease="$IS_PRERELEASE" >/dev/null
+          if [ -n "$ID" ]; then
+            gh api "repos/${GITHUB_REPOSITORY}/releases/$ID" \
+              -X PATCH \
+              -f tag_name="$TAG" \
+              -f target_commitish="$TARGET" \
+              -f name="$TITLE" \
+              -f body="$BODY" \
+              -F draft=true \
+              -F prerelease="$IS_PRERELEASE" >/dev/null
+          else
+            ID=$(gh api "repos/${GITHUB_REPOSITORY}/releases" \
+              -X POST \
+              -f tag_name="$TAG" \
+              -f target_commitish="$TARGET" \
+              -f name="$TITLE" \
+              -f body="$BODY" \
+              -F draft=true \
+              -F prerelease="$IS_PRERELEASE" \
+              --jq .id)
+          fi
           echo "release_id=$ID" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=$IS_PRERELEASE" >> "$GITHUB_OUTPUT"
 
   release:
     needs: preflight
@@ -182,23 +192,23 @@ jobs:
       - name: Upload macOS assets
         if: matrix.os == 'macos-latest'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.preflight.outputs.release_id }}
         run: |
-          gh release upload "${{ needs.preflight.outputs.tag }}" \
+          pnpm upload-release-assets \
             src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg \
             src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz \
-            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig \
-            --clobber
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
 
       - name: Upload Windows assets
         if: matrix.os == 'windows-latest'
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.preflight.outputs.release_id }}
         run: |
-          gh release upload "${{ needs.preflight.outputs.tag }}" \
-            src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*setup* \
-            --clobber
+          pnpm upload-release-assets \
+            src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*setup*
 
       - name: Portable Bundle
         if: matrix.os == 'windows-latest'
@@ -206,6 +216,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ needs.preflight.outputs.tag }}
+          RELEASE_ID: ${{ needs.preflight.outputs.release_id }}
 
   release-for-linux:
     needs: preflight
@@ -239,12 +250,12 @@ jobs:
 
       - name: Upload assets
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.preflight.outputs.release_id }}
         run: |
-          gh release upload "${{ needs.preflight.outputs.tag }}" \
+          pnpm upload-release-assets \
             src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb \
-            src-tauri/target/${{ matrix.target }}/release/bundle/rpm/*.rpm \
-            --clobber
+            src-tauri/target/${{ matrix.target }}/release/bundle/rpm/*.rpm
 
   release-for-fixed-webview2:
     needs: preflight
@@ -319,17 +330,18 @@ jobs:
       - name: Upload assets
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.preflight.outputs.release_id }}
         run: |
-          gh release upload "${{ needs.preflight.outputs.tag }}" \
-            src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*setup* \
-            --clobber
+          pnpm upload-release-assets \
+            src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*setup*
 
       - name: Portable Bundle
         run: pnpm portable-fixed-webview2 ${{ matrix.target }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ needs.preflight.outputs.tag }}
+          RELEASE_ID: ${{ needs.preflight.outputs.release_id }}
 
   publish-release:
     needs: [preflight, release, release-for-linux, release-for-fixed-webview2]
@@ -339,7 +351,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-        run: gh release edit "${{ needs.preflight.outputs.tag }}" --draft=false
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/releases/${{ needs.preflight.outputs.release_id }}" \
+            -X PATCH \
+            -f tag_name="${{ needs.preflight.outputs.tag }}" \
+            -F draft=false \
+            -F prerelease="${{ needs.preflight.outputs.is_prerelease }}" >/dev/null
 
   release-update:
     runs-on: ubuntu-latest
