@@ -33,7 +33,7 @@ import {
   reorderProfile,
   createProfile,
 } from "@/services/cmds";
-import { useSetLoadingCache, useThemeMode } from "@/services/states";
+import { useSetLoadingCache } from "@/services/states";
 import { closeAllConnections } from "@/services/api";
 import { BasePage, DialogRef, Notice } from "@/components/base";
 import {
@@ -128,6 +128,7 @@ const ProfilePage = () => {
     setLoading(true);
 
     try {
+      const hadCurrent = !!profiles.current;
       await importProfile(url);
       Notice.success(t("Profile Imported Successfully"));
       setUrl("");
@@ -141,7 +142,7 @@ const ProfilePage = () => {
         newProfiles.items?.filter((e) => e?.type === "remote") ?? [];
       const newRemote = remoteItems[remoteItems.length - 1];
 
-      if (!newProfiles.current && newRemote) {
+      if (!hadCurrent && newRemote) {
         const current = newRemote.uid!;
         const previousCurrent = newProfiles.current;
         setProfilesCurrentOptimistic(current, newProfiles);
@@ -265,12 +266,6 @@ const ProfilePage = () => {
     const text = await readText();
     if (text) setUrl(text);
   };
-
-  const mode = useThemeMode();
-  const islight = mode === "light" ? true : false;
-  const dividercolor = islight
-    ? "rgba(0, 0, 0, 0.06)"
-    : "rgba(255, 255, 255, 0.06)";
 
   return (
     <BasePage
