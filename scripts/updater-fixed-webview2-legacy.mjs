@@ -1,12 +1,11 @@
 import fetch from "node-fetch";
 import { getOctokit, context } from "@actions/github";
+import { resolveLegacyReleaseTag } from "./legacy-release-utils.mjs";
 import { resolveUpdateLog } from "./updatelog.mjs";
 
 const UPDATE_TAG_NAME = "updater-legacy";
 const UPDATE_JSON_FILE = "update-fixed-webview2.json";
 const UPDATE_JSON_PROXY = "update-fixed-webview2-proxy.json";
-const RELEASE_TAG_PREFIX = "v";
-const LEGACY_TAG_MARKER = "-legacy.";
 
 async function getOrCreateRelease(github, options, tagName, name) {
   try {
@@ -47,15 +46,7 @@ async function resolveUpdater() {
     page: 1,
   });
 
-  const tag = tags.find(
-    (item) =>
-      item.name.startsWith(RELEASE_TAG_PREFIX) &&
-      item.name.includes(LEGACY_TAG_MARKER)
-  );
-
-  if (!tag) {
-    throw new Error("could not find a legacy release tag");
-  }
+  const tag = resolveLegacyReleaseTag(tags);
 
   const { data: latestRelease } = await github.rest.repos.getReleaseByTag({
     ...options,

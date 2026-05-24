@@ -1,4 +1,5 @@
 import { spawnSync } from "child_process";
+import { shouldRunPreTauriCheck } from "./build-options.mjs";
 
 const rawArgs = process.argv.slice(2);
 const PNPM_BIN = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
@@ -72,5 +73,7 @@ if (target) {
   checkArgs.push(target);
 }
 
-run(checkArgs);
+if (shouldRunPreTauriCheck()) {
+  run(checkArgs);
+}
 run(["tauri", "build", ...rawArgs]);
