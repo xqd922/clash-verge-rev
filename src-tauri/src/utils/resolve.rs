@@ -152,10 +152,16 @@ pub fn set_window_taskbar_skip(window: &tauri::Window, skip: bool) {
     if let Ok(hwnd) = window.hwnd() {
         unsafe {
             let cur = GetWindowLongPtrW(hwnd.0, GWL_EXSTYLE);
+            #[cfg(target_pointer_width = "32")]
+            let (toolwindow, appwindow) =
+                (WS_EX_TOOLWINDOW as i32, WS_EX_APPWINDOW as i32);
+            #[cfg(target_pointer_width = "64")]
+            let (toolwindow, appwindow) =
+                (WS_EX_TOOLWINDOW as isize, WS_EX_APPWINDOW as isize);
             let new = if skip {
-                (cur | WS_EX_TOOLWINDOW as isize) & !(WS_EX_APPWINDOW as isize)
+                (cur | toolwindow) & !appwindow
             } else {
-                (cur & !(WS_EX_TOOLWINDOW as isize)) | WS_EX_APPWINDOW as isize
+                (cur & !toolwindow) | appwindow
             };
             SetWindowLongPtrW(hwnd.0, GWL_EXSTYLE, new);
             SetWindowPos(
