@@ -1,16 +1,21 @@
-name: Release 1.x Legacy Upgraded
+name: Release 1.x Legacy
 
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: "App version written into package/Cargo/Tauri config (e.g., 1.0.1)"
-        required: true
-        default: "1.0.1"
       tag:
-        description: "Release tag (e.g., v1.0.1)"
+        description: "Legacy release tag (e.g., v7.0.24-legacy.1)"
         required: true
-        default: "v1.0.1"
+        default: "v7.0.24-legacy.1"
+      release_name:
+        description: "GitHub release title"
+        required: true
+        default: "Release 7.0.24 Legacy 1"
+      overwrite_existing:
+        description: "Delete the existing tag/release before publishing"
+        required: true
+        type: boolean
+        default: true
 
 permissions: write-all
 
@@ -18,6 +23,11 @@ env:
   CARGO_INCREMENTAL: 0
   RUST_BACKTRACE: short
   HUSKY: 0
+  RELEASE_TAG: ${{ github.event.inputs.tag }}
+  RELEASE_NAME: ${{ github.event.inputs.release_name }}
+  LEGACY_PRODUCT_NAME: "Clash Verge Rev Legacy"
+  LEGACY_IDENTIFIER: "io.github.xqd922.clash-verge-rev-legacy"
+  LEGACY_UPDATER_TAG: "updater-legacy"
 
 jobs:
   release:
@@ -28,6 +38,7 @@ jobs:
         include:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+            arch: x64
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -35,6 +46,23 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: release/1.x-legacy
+
+      - name: Validate legacy release tag
+        shell: bash
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-legacy\.[0-9]+$ ]]; then
+            echo "Legacy release tag expected, got: $RELEASE_TAG" >&2
+            exit 1
+          fi
+
+      - name: Delete existing release and tag
+        if: ${{ github.event.inputs.overwrite_existing == 'true' }}
+        shell: bash
+        run: |
+          gh release delete "$RELEASE_TAG" --cleanup-tag -y || true
+          git push origin ":refs/tags/$RELEASE_TAG" || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Rust Stable
         uses: dtolnay/rust-toolchain@master
@@ -45,7 +73,7 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "release-1x-upgraded-rust-v3"
+          prefix-key: "release-1x-legacy-upgraded-rust-v4"
           key: "${{ matrix.os }}-${{ matrix.target }}"
 
       - name: Install Node
@@ -63,19 +91,85 @@ jobs:
           pnpm i
           pnpm run prebuild ${{ matrix.target }}
 
-      - name: Set app version
+      - name: Prepare legacy release metadata
+        shell: bash
         run: |
-          pnpm run release-version v${{ github.event.inputs.version }}
+          node <<'NODE'
+          const fs = require('fs')
+
+          const releaseTag = process.env.RELEASE_TAG
+          const version = releaseTag.replace(/^v/, '')
+          const productName = process.env.LEGACY_PRODUCT_NAME
+          const identifier = process.env.LEGACY_IDENTIFIER
+          const updaterTag = process.env.LEGACY_UPDATER_TAG
+          const repo = `${process.env.GITHUB_REPOSITORY}`
+
+          const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'))
+          const writeJson = (file, data) => {
+            fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`)
+          }
+
+          const packageJson = readJson('package.json')
+          packageJson.name = 'clash-verge-legacy'
+          packageJson.version = version
+          writeJson('package.json', packageJson)
+
+          let cargoToml = fs.readFileSync('src-tauri/Cargo.toml', 'utf8')
+          cargoToml = cargoToml.replace(/^version = ".*"$/m, `version = "${version}"`)
+          cargoToml = cargoToml.replace(/^repository = ".*"$/m, `repository = "https://github.com/${repo}.git"`)
+          cargoToml = cargoToml.replace(/^identifier = ".*"$/m, `identifier = "${identifier}"`)
+          fs.writeFileSync('src-tauri/Cargo.toml', cargoToml)
+
+          let cargoLock = fs.readFileSync('Cargo.lock', 'utf8')
+          cargoLock = cargoLock.replace(
+            /(name = "clash-verge"\r?\nversion = ")[^"]+(")/,
+            `$1${version}$2`,
+          )
+          fs.writeFileSync('Cargo.lock', cargoLock)
+
+          const tauriConfig = readJson('src-tauri/tauri.conf.json')
+          tauriConfig.version = version
+          tauriConfig.productName = productName
+          tauriConfig.identifier = identifier
+          tauriConfig.bundle = {
+            ...tauriConfig.bundle,
+            publisher: 'xqd922',
+          }
+          tauriConfig.plugins = {
+            ...tauriConfig.plugins,
+            updater: {
+              ...tauriConfig.plugins.updater,
+              endpoints: [
+                `https://github.com/${repo}/releases/download/${updaterTag}/update.json`,
+              ],
+            },
+          }
+          writeJson('src-tauri/tauri.conf.json', tauriConfig)
+
+          for (const file of [
+            'src-tauri/tauri.windows.conf.json',
+            'src-tauri/webview2.x64.json',
+            'src-tauri/webview2.x86.json',
+            'src-tauri/webview2.arm64.json',
+          ]) {
+            const config = readJson(file)
+            config.identifier = identifier
+            if (config.plugins?.updater) {
+              config.plugins.updater.endpoints = [
+                `https://github.com/${repo}/releases/download/${updaterTag}/update-fixed-webview2.json`,
+              ]
+            }
+            writeJson(file, config)
+          }
+
+          console.log(JSON.stringify({ releaseTag, version, productName, identifier, updaterTag }, null, 2))
+          NODE
 
       - name: Extract release notes from Changelog
         id: changelog
         shell: bash
         run: |
-          # Extract content from first "## v(" to the next "## v(" (exclusive)
           awk '/^## v\(/{if(found) exit; found=1} found{print}' Changelog.md > release_notes.md
-          echo "Extracted release notes:"
-          cat release_notes.md
-          # Store as output for tauri-action (multiline)
           {
             echo "notes<<EOF"
             cat release_notes.md
@@ -90,8 +184,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.event.inputs.tag }}
-          releaseName: "Release ${{ github.event.inputs.tag }}"
+          tagName: ${{ env.RELEASE_TAG }}
+          releaseName: ${{ env.RELEASE_NAME }}
           releaseBody: ${{ steps.changelog.outputs.notes }}
           releaseDraft: false
           prerelease: false
@@ -100,17 +194,22 @@ jobs:
           updaterJsonKeepUniversal: true
 
       - name: Portable Bundle
+        shell: pwsh
         run: |
           $releaseDir = "target/${{ matrix.target }}/release"
           $configDir = Join-Path $releaseDir ".config"
           New-Item -ItemType Directory -Force -Path $configDir | Out-Null
           Set-Content -Path (Join-Path $configDir "PORTABLE") -Value ""
 
-          $version = "${{ github.event.inputs.version }}"
-          $zipFile = "Clash.Verge_${version}_x64_portable.zip"
+          $sourceExe = Join-Path $releaseDir "clash-verge.exe"
+          $legacyExe = Join-Path $releaseDir "${{ env.LEGACY_PRODUCT_NAME }}.exe"
+          Copy-Item $sourceExe $legacyExe -Force
+
+          $version = "${{ env.RELEASE_TAG }}".TrimStart("v")
+          $zipFile = "Clash.Verge.Rev.Legacy_${version}_${{ matrix.arch }}_portable.zip"
 
           Compress-Archive -Path @(
-            (Join-Path $releaseDir "clash-verge.exe"),
+            $legacyExe,
             (Join-Path $releaseDir "verge-mihomo.exe"),
             (Join-Path $releaseDir "verge-mihomo-alpha.exe"),
             (Join-Path $releaseDir "verge-mihomo-smart.exe"),
@@ -118,36 +217,42 @@ jobs:
             $configDir
           ) -DestinationPath $zipFile -Force
 
-          Write-Host "Created portable zip: $zipFile"
+          Write-Host "Created legacy portable zip: $zipFile"
 
-      - name: Use tauri-generated latest.json as update.json
+      - name: Prepare legacy updater files
         shell: bash
         run: |
-          # Download the latest.json that tauri-action uploaded (has correct asset URLs)
-          gh release download "${{ github.event.inputs.tag }}" --pattern "latest.json" --output "update.json" --clobber
-          # Inject release notes into update.json (tauri build generates empty notes)
-          node -e "
-            const fs = require('fs');
-            const data = JSON.parse(fs.readFileSync('update.json', 'utf8'));
-            data.notes = fs.readFileSync('release_notes.md', 'utf8');
-            fs.writeFileSync('update.json', JSON.stringify(data, null, 2));
-          "
-          echo "Final update.json:"
-          cat update.json
+          gh release download "$RELEASE_TAG" --pattern "latest.json" --output "update.json" --clobber
+          node <<'NODE'
+          const fs = require('fs')
+          const data = JSON.parse(fs.readFileSync('update.json', 'utf8'))
+          data.notes = fs.readFileSync('release_notes.md', 'utf8')
+          fs.writeFileSync('update.json', `${JSON.stringify(data, null, 2)}\n`)
+
+          const proxy = JSON.parse(JSON.stringify(data))
+          for (const platform of Object.values(proxy.platforms || {})) {
+            if (platform.url) {
+              platform.url = `https://update.hwdns.net/${platform.url}`
+            }
+          }
+          fs.writeFileSync('update-proxy.json', `${JSON.stringify(proxy, null, 2)}\n`)
+          NODE
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload portable to release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event.inputs.tag }}
-          files: |
-            Clash.Verge_${{ github.event.inputs.version }}_x64_portable.zip
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload portable to legacy release
+        shell: bash
+        run: |
+          version="${RELEASE_TAG#v}"
+          gh release upload "$RELEASE_TAG" "Clash.Verge.Rev.Legacy_${version}_${{ matrix.arch }}_portable.zip" --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload update.json to updater release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: updater
-          files: update.json
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload updater files to legacy updater release
+        shell: bash
+        run: |
+          gh release view "$LEGACY_UPDATER_TAG" >/dev/null 2>&1 || \
+            gh release create "$LEGACY_UPDATER_TAG" --title "Legacy updater assets" --notes "Legacy updater assets"
+          gh release upload "$LEGACY_UPDATER_TAG" update.json update-proxy.json --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
