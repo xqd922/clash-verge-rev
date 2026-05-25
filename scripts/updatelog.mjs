@@ -1,59 +1,84 @@
-import fs from "fs-extra";
-import path from "path";
+import fs from 'fs'
+import fsp from 'fs/promises'
+import path from 'path'
 
-const UPDATE_LOG = "UPDATELOG.md";
-const LEGACY_RELEASE_RE = /^(v[0-9A-Za-z._-]+)-legacy\.[0-9]+$/;
+const UPDATE_LOG = 'Changelog.md'
 
-function resolveUpdateLogTag(tag, map) {
-  if (map[tag]) {
-    return tag;
-  }
-
-  const match = tag.match(LEGACY_RELEASE_RE);
-  if (match) {
-    const rebuildTag = `${match[1]}-legacy-rebuild`;
-    if (map[rebuildTag]) {
-      return rebuildTag;
-    }
-  }
-
-  throw new Error(`could not found "${tag}" in UPDATELOG.md`);
-}
-
-// parse the UPDATELOG.md
+// parse the Changelog.md
 export async function resolveUpdateLog(tag) {
-  const cwd = process.cwd();
+  const cwd = process.cwd()
 
-  const reTitle = /^##\s+v[0-9A-Za-z._-]+/;
-  const reEnd = /^---/;
+  const reTitle = /^## v[\d.]+/
+  const reEnd = /^---/
 
-  const file = path.join(cwd, UPDATE_LOG);
+  const file = path.join(cwd, UPDATE_LOG)
 
-  if (!(await fs.pathExists(file))) {
-    throw new Error("could not found UPDATELOG.md");
+  if (!fs.existsSync(file)) {
+    throw new Error('could not found Changelog.md')
   }
 
-  const data = await fs.readFile(file).then((d) => d.toString("utf8"));
+  const data = await fsp.readFile(file, 'utf-8')
 
-  const map = {};
-  let p = "";
+  const map = {}
+  let p = ''
 
-  data.split("\n").forEach((line) => {
+  data.split('\n').forEach((line) => {
     if (reTitle.test(line)) {
-      p = line.slice(3).trim();
+      p = line.slice(3).trim()
       if (!map[p]) {
-        map[p] = [];
+        map[p] = []
       } else {
-        throw new Error(`Tag ${p} dup`);
+        throw new Error(`Tag ${p} dup`)
       }
     } else if (reEnd.test(line)) {
-      p = "";
+      p = ''
     } else if (p) {
-      map[p].push(line);
+      map[p].push(line)
     }
-  });
+  })
 
-  const resolvedTag = resolveUpdateLogTag(tag, map);
+  if (!map[tag]) {
+    throw new Error(`could not found "${tag}" in Changelog.md`)
+  }
 
-  return map[resolvedTag].join("\n").trim();
+  return map[tag].join('\n').trim()
+}
+
+export async function resolveUpdateLogDefault() {
+  const cwd = process.cwd()
+  const file = path.join(cwd, UPDATE_LOG)
+
+  if (!fs.existsSync(file)) {
+    throw new Error('could not found Changelog.md')
+  }
+
+  const data = await fsp.readFile(file, 'utf-8')
+
+  const reTitle = /^## v[\d.]+/
+  const reEnd = /^---/
+
+  let isCapturing = false
+  const content = []
+  let firstTag = ''
+
+  for (const line of data.split('\n')) {
+    if (reTitle.test(line) && !isCapturing) {
+      isCapturing = true
+      firstTag = line.slice(3).trim()
+      continue
+    }
+
+    if (isCapturing) {
+      if (reEnd.test(line)) {
+        break
+      }
+      content.push(line)
+    }
+  }
+
+  if (!firstTag) {
+    throw new Error('could not found any version tag in Changelog.md')
+  }
+
+  return content.join('\n').trim()
 }

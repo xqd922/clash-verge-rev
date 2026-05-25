@@ -1,175 +1,29 @@
-#![cfg_attr(
-    all(not(debug_assertions), target_os = "windows"),
-    windows_subsystem = "windows"
-)]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod cmds;
-mod config;
-mod core;
-mod enhance;
-mod feat;
-mod utils;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::utils::{init, resolve, server};
-use tauri::{api, Manager, SystemTray};
+fn main() {
+    let default_parallelism = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+    let worker_limit = std::cmp::min(default_parallelism, 16);
+    let blocking_limit = 4 * worker_limit;
 
-fn main() -> std::io::Result<()> {
-    // 单例检测
-    let app_exists: bool = tauri::async_runtime::block_on(async move {
-        if server::check_singleton().await.is_err() {
-            println!("app exists");
-            true
-        } else {
-            false
-        }
-    });
-    if app_exists {
-        return Ok(());
-    }
-
-    #[cfg(target_os = "linux")]
-    std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
-
-    crate::log_err!(init::init_config());
-
-    #[allow(unused_mut)]
-    let mut builder = tauri::Builder::default()
-        .system_tray(SystemTray::new())
-        .setup(|app| {
-            tauri::async_runtime::block_on(async move {
-                resolve::resolve_setup(app).await;
-            });
-            Ok(())
+    #[allow(clippy::unwrap_used)]
+    let tokio_runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(worker_limit)
+        .max_blocking_threads(blocking_limit)
+        .enable_all()
+        .thread_name_fn(|| {
+            static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
+            let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
+            format!("clash-verge-runtime-{id}")
         })
-        .on_system_tray_event(core::tray::Tray::on_system_tray_event)
-        .invoke_handler(tauri::generate_handler![
-            // common
-            cmds::get_sys_proxy,
-            cmds::get_auto_proxy,
-            cmds::open_app_dir,
-            cmds::open_logs_dir,
-            cmds::open_web_url,
-            cmds::open_core_dir,
-            cmds::get_portable_flag,
-            cmds::get_network_interfaces,
-            // cmds::kill_sidecar,
-            cmds::restart_sidecar,
-            // clash
-            cmds::get_clash_info,
-            cmds::get_clash_logs,
-            cmds::patch_clash_config,
-            cmds::change_clash_core,
-            cmds::get_runtime_config,
-            cmds::get_runtime_yaml,
-            cmds::get_runtime_exists,
-            cmds::get_runtime_logs,
-            cmds::uwp::invoke_uwp_tool,
-            cmds::copy_clash_env,
-            // verge
-            cmds::get_verge_config,
-            cmds::patch_verge_config,
-            cmds::test_delay,
-            cmds::get_app_dir,
-            cmds::copy_icon_file,
-            cmds::download_icon_cache,
-            cmds::open_devtools,
-            cmds::exit_app,
-            cmds::is_warm_to_tray,
-            cmds::get_network_interfaces_info,
-            // cmds::update_hotkeys,
-            // profile
-            cmds::get_profiles,
-            cmds::enhance_profiles,
-            cmds::patch_profiles_config,
-            cmds::view_profile,
-            cmds::patch_profile,
-            cmds::create_profile,
-            cmds::import_profile,
-            cmds::reorder_profile,
-            cmds::update_profile,
-            cmds::delete_profile,
-            cmds::read_profile_file,
-            cmds::save_profile_file,
-            // service mode
-            cmds::service::check_service,
-            cmds::service::install_service,
-            cmds::service::uninstall_service,
-            // clash api
-            cmds::clash_api_get_proxy_delay
-        ]);
+        .build()
+        .unwrap();
+    let tokio_handle = tokio_runtime.handle();
+    tauri::async_runtime::set(tokio_handle.clone());
 
-    #[cfg(target_os = "macos")]
-    {
-        use tauri::{Menu, MenuItem, Submenu};
+    #[cfg(feature = "tokio-trace")]
+    console_subscriber::init();
 
-        builder = builder.menu(
-            Menu::new().add_submenu(Submenu::new(
-                "Edit",
-                Menu::new()
-                    .add_native_item(MenuItem::Undo)
-                    .add_native_item(MenuItem::Redo)
-                    .add_native_item(MenuItem::Copy)
-                    .add_native_item(MenuItem::Paste)
-                    .add_native_item(MenuItem::Cut)
-                    .add_native_item(MenuItem::SelectAll)
-                    .add_native_item(MenuItem::CloseWindow)
-                    .add_native_item(MenuItem::Quit),
-            )),
-        );
-    }
-
-    let app = builder
-        .build(tauri::generate_context!())
-        .expect("error while running tauri application");
-
-    app.run(|app_handle, e| match e {
-        tauri::RunEvent::ExitRequested { api, .. } => {
-            api.prevent_exit();
-        }
-        tauri::RunEvent::Updater(tauri::UpdaterEvent::Downloaded) => {
-            resolve::resolve_reset();
-            api::process::kill_children();
-        }
-        tauri::RunEvent::WindowEvent { label, event, .. } => {
-            if label == "main" {
-                match event {
-                    tauri::WindowEvent::Destroyed => {
-                        let _ = resolve::save_window_size_position(app_handle, true);
-                    }
-                    tauri::WindowEvent::CloseRequested { api, .. } => {
-                        api.prevent_close();
-                        let _ = resolve::save_window_size_position(app_handle, true);
-                        if let Some(window) = app_handle.get_window("main") {
-                            // Windows 透明 + 无边框窗口:不能 hide/minimize —— hide 会让 DWM
-                            // 合成层产生黑线、minimize 会让 WebView2 GPU 合成器挂起导致还原延迟。
-                            // 改为移到屏幕外保活:DWM 与 WebView2 合成器都保持运行,还原瞬间显示。
-                            // 注意:tauri set_skip_taskbar 在 Windows 上内部 SW_HIDE 应用 ex_style,
-                            // 会拆合成器,所以 Windows 走 set_window_taskbar_skip 直接改风格。
-                            #[cfg(target_os = "windows")]
-                            {
-                                resolve::set_window_taskbar_skip(&window, true);
-                                if window.is_maximized().unwrap_or(false) {
-                                    let _ = window.unmaximize();
-                                }
-                                let _ = window
-                                    .set_position(tauri::PhysicalPosition::new(-32000, -32000));
-                            }
-                            #[cfg(not(target_os = "windows"))]
-                            {
-                                let _ = window.set_skip_taskbar(true);
-                                let _ = window.hide();
-                            }
-                        }
-                    }
-                    tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_) => {
-                        let _ = resolve::save_window_size_position(app_handle, false);
-                    }
-                    _ => {}
-                }
-            }
-        }
-        _ => {}
-    });
-
-    Ok(())
+    app_lib::run();
 }

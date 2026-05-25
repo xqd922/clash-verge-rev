@@ -1,303 +1,153 @@
-name: Release 1.x Legacy
+name: Release 1.x Legacy Upgraded
 
 on:
   workflow_dispatch:
     inputs:
+      version:
+        description: "App version written into package/Cargo/Tauri config (e.g., 1.0.1)"
+        required: true
+        default: "1.0.1"
       tag:
-        description: "Release tag to publish"
+        description: "Release tag (e.g., v1.0.1)"
         required: true
-        default: "v1.7.7-legacy.22"
-      release_name:
-        description: "GitHub release title"
-        required: true
-        default: "Release 1.7.7-legacy.22"
-      overwrite_existing:
-        description: "Delete the existing tag/release before publishing"
-        required: true
-        type: boolean
-        default: true
+        default: "v1.0.1"
 
 permissions: write-all
 
 env:
   CARGO_INCREMENTAL: 0
   RUST_BACKTRACE: short
-  RELEASE_TAG: ${{ github.event.inputs.tag }}
-  RELEASE_NAME: ${{ github.event.inputs.release_name }}
+  HUSKY: 0
 
 jobs:
-  prepare-release:
-    runs-on: ubuntu-latest
-    outputs:
-      release_tag: ${{ steps.meta.outputs.release_tag }}
-      release_name: ${{ steps.meta.outputs.release_name }}
-      version: ${{ steps.meta.outputs.version }}
-      release_body: ${{ steps.notes.outputs.release_body }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - uses: pnpm/action-setup@v4
-        name: Install pnpm
-        with:
-          run_install: false
-
-      - name: Pnpm install
-        run: pnpm i
-
-      - name: Resolve release metadata
-        id: meta
-        shell: bash
-        run: |
-          VERSION="${RELEASE_TAG#v}"
-          echo "release_tag=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
-          echo "release_name=${RELEASE_NAME}" >> "$GITHUB_OUTPUT"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-
-      - name: Load release notes
-        id: notes
-        shell: bash
-        run: |
-          {
-            echo 'release_body<<EOF'
-            node scripts/print-updatelog.mjs "${RELEASE_TAG}"
-            echo
-            echo 'EOF'
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Delete existing release and tag
-        if: ${{ github.event.inputs.overwrite_existing == 'true' }}
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const tag = process.env.RELEASE_TAG;
-            const { owner, repo } = context.repo;
-
-            try {
-              const release = await github.rest.repos.getReleaseByTag({ owner, repo, tag });
-              await github.rest.repos.deleteRelease({ owner, repo, release_id: release.data.id });
-              core.info(`Deleted existing release for ${tag}`);
-            } catch (error) {
-              if (error.status !== 404) throw error;
-              core.info(`No existing release found for ${tag}`);
-            }
-
-            try {
-              await github.rest.git.deleteRef({ owner, repo, ref: `tags/${tag}` });
-              core.info(`Deleted existing tag ${tag}`);
-            } catch (error) {
-              if (error.status !== 404 && error.status !== 422) throw error;
-              core.info(`No existing tag found for ${tag}`);
-            }
-
   release:
-    needs: prepare-release
+    name: Build and Release
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-          - os: windows-latest
-            target: i686-pc-windows-msvc
-          - os: windows-latest
-            target: aarch64-pc-windows-msvc
+
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+        with:
+          ref: release/1.x-legacy
 
       - name: Install Rust Stable
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Add Rust Target
-        run: rustup target add ${{ matrix.target }}
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.91.0"
+          targets: ${{ matrix.target }}
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
-          cache-all-crates: true
+          prefix-key: "release-1x-upgraded-rust-v3"
+          key: "${{ matrix.os }}-${{ matrix.target }}"
 
       - name: Install Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "24.14.1"
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         name: Install pnpm
         with:
           run_install: false
 
-      - name: Pnpm install and check
-        env:
-          LEGACY_SERVICE_TAG: v1.7.7
+      - name: Pnpm install and prebuild
         run: |
           pnpm i
-          pnpm check ${{ matrix.target }}
+          pnpm run prebuild ${{ matrix.target }}
 
-      - name: Prepare legacy release metadata
-        run: pnpm legacy:prepare-release ${{ needs.prepare-release.outputs.release_tag }}
+      - name: Set app version
+        run: |
+          pnpm run release-version v${{ github.event.inputs.version }}
+
+      - name: Extract release notes from Changelog
+        id: changelog
+        shell: bash
+        run: |
+          # Extract content from first "## v(" to the next "## v(" (exclusive)
+          awk '/^## v\(/{if(found) exit; found=1} found{print}' Changelog.md > release_notes.md
+          echo "Extracted release notes:"
+          cat release_notes.md
+          # Store as output for tauri-action (multiline)
+          {
+            echo "notes<<EOF"
+            cat release_notes.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Tauri build
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v0.6.2
         env:
-          NODE_OPTIONS: "--max_old_space_size=8192"
+          NODE_OPTIONS: "--max_old_space_size=4096"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ needs.prepare-release.outputs.release_tag }}
-          releaseName: ${{ needs.prepare-release.outputs.release_name }}
-          releaseBody: ${{ needs.prepare-release.outputs.release_body }}
+          tagName: ${{ github.event.inputs.tag }}
+          releaseName: "Release ${{ github.event.inputs.tag }}"
+          releaseBody: ${{ steps.changelog.outputs.notes }}
+          releaseDraft: false
+          prerelease: false
           tauriScript: pnpm
           args: --target ${{ matrix.target }}
+          updaterJsonKeepUniversal: true
 
       - name: Portable Bundle
-        run: pnpm legacy:portable ${{ matrix.target }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG_NAME: ${{ needs.prepare-release.outputs.release_tag }}
-
-  release-for-fixed-webview2:
-    needs: prepare-release
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            arch: x64
-          - os: windows-latest
-            target: i686-pc-windows-msvc
-            arch: x86
-          - os: windows-latest
-            target: aarch64-pc-windows-msvc
-            arch: arm64
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Add Rust Target
-        run: rustup target add ${{ matrix.target }}
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
-
-      - name: Install Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - uses: pnpm/action-setup@v4
-        name: Install pnpm
-        with:
-          run_install: false
-
-      - name: Pnpm install and check
-        env:
-          LEGACY_SERVICE_TAG: v1.7.7
         run: |
-          pnpm i
-          pnpm check ${{ matrix.target }}
+          $releaseDir = "target/${{ matrix.target }}/release"
+          $configDir = Join-Path $releaseDir ".config"
+          New-Item -ItemType Directory -Force -Path $configDir | Out-Null
+          Set-Content -Path (Join-Path $configDir "PORTABLE") -Value ""
 
-      - name: Prepare legacy release metadata
-        run: pnpm legacy:prepare-release ${{ needs.prepare-release.outputs.release_tag }}
+          $version = "${{ github.event.inputs.version }}"
+          $zipFile = "Clash.Verge_${version}_x64_portable.zip"
 
-      - name: Download WebView2 Runtime
+          Compress-Archive -Path @(
+            (Join-Path $releaseDir "clash-verge.exe"),
+            (Join-Path $releaseDir "verge-mihomo.exe"),
+            (Join-Path $releaseDir "verge-mihomo-alpha.exe"),
+            (Join-Path $releaseDir "verge-mihomo-smart.exe"),
+            (Join-Path $releaseDir "resources"),
+            $configDir
+          ) -DestinationPath $zipFile -Force
+
+          Write-Host "Created portable zip: $zipFile"
+
+      - name: Use tauri-generated latest.json as update.json
+        shell: bash
         run: |
-          invoke-webrequest -uri https://github.com/westinyang/WebView2RuntimeArchive/releases/download/109.0.1518.78/Microsoft.WebView2.FixedVersionRuntime.109.0.1518.78.${{ matrix.arch }}.cab -outfile Microsoft.WebView2.FixedVersionRuntime.109.0.1518.78.${{ matrix.arch }}.cab
-          Expand .\Microsoft.WebView2.FixedVersionRuntime.109.0.1518.78.${{ matrix.arch }}.cab -F:* ./src-tauri
-          Remove-Item .\src-tauri\tauri.windows.conf.json
-          Rename-Item .\src-tauri\webview2.${{ matrix.arch }}.json tauri.windows.conf.json
-
-      - name: Tauri build
-        id: build
-        uses: tauri-apps/tauri-action@v0
+          # Download the latest.json that tauri-action uploaded (has correct asset URLs)
+          gh release download "${{ github.event.inputs.tag }}" --pattern "latest.json" --output "update.json" --clobber
+          # Inject release notes into update.json (tauri build generates empty notes)
+          node -e "
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('update.json', 'utf8'));
+            data.notes = fs.readFileSync('release_notes.md', 'utf8');
+            fs.writeFileSync('update.json', JSON.stringify(data, null, 2));
+          "
+          echo "Final update.json:"
+          cat update.json
         env:
-          NODE_OPTIONS: "--max_old_space_size=8192"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-        with:
-          tauriScript: pnpm
-          args: --target ${{ matrix.target }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Rename
-        run: |
-          Rename-Item '.\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\Clash Verge Rev Legacy_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}-setup.exe' 'Clash Verge Rev Legacy_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}_fixed_webview2-setup.exe'
-          Rename-Item '.\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\Clash Verge Rev Legacy_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}-setup.nsis.zip' 'Clash Verge Rev Legacy_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}_fixed_webview2-setup.nsis.zip'
-          Rename-Item '.\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\Clash Verge Rev Legacy_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}-setup.nsis.zip.sig' 'Clash Verge Rev Legacy_${{steps.build.outputs.appVersion}}_${{ matrix.arch }}_fixed_webview2-setup.nsis.zip.sig'
-
-      - name: Upload Release
+      - name: Upload portable to release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.prepare-release.outputs.release_tag }}
-          name: ${{ needs.prepare-release.outputs.release_name }}
-          body: ${{ needs.prepare-release.outputs.release_body }}
+          tag_name: ${{ github.event.inputs.tag }}
+          files: |
+            Clash.Verge_${{ github.event.inputs.version }}_x64_portable.zip
           token: ${{ secrets.GITHUB_TOKEN }}
-          files: src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*setup*
 
-      - name: Portable Bundle
-        run: pnpm legacy:portable-fixed-webview2 ${{ matrix.target }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG_NAME: ${{ needs.prepare-release.outputs.release_tag }}
-
-  release-update:
-    runs-on: ubuntu-latest
-    needs: [prepare-release, release]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Node
-        uses: actions/setup-node@v4
+      - name: Upload update.json to updater release
+        uses: softprops/action-gh-release@v2
         with:
-          node-version: "20"
-
-      - uses: pnpm/action-setup@v4
-        name: Install pnpm
-        with:
-          run_install: false
-
-      - name: Pnpm install
-        run: pnpm i
-
-      - name: Release updater file
-        run: pnpm legacy:updater ${{ needs.prepare-release.outputs.release_tag }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  release-update-for-fixed-webview2:
-    runs-on: ubuntu-latest
-    needs: [prepare-release, release-for-fixed-webview2]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - uses: pnpm/action-setup@v4
-        name: Install pnpm
-        with:
-          run_install: false
-
-      - name: Pnpm install
-        run: pnpm i
-
-      - name: Release updater file
-        run: pnpm legacy:updater-fixed-webview2 ${{ needs.prepare-release.outputs.release_tag }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: updater
+          files: update.json
+          token: ${{ secrets.GITHUB_TOKEN }}

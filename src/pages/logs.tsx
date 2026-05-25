@@ -1,49 +1,113 @@
-import { useMemo, useState } from "react";
-import { Box, Button, IconButton, MenuItem } from "@mui/material";
-import { Virtuoso } from "react-virtuoso";
-import { useTranslation } from "react-i18next";
 import {
   PlayCircleOutlineRounded,
   PauseCircleOutlineRounded,
-} from "@mui/icons-material";
-import { useLogData } from "@/hooks/use-log-data";
-import { useEnableLog, useLogLevel } from "@/services/states";
-import { BaseEmpty, BasePage } from "@/components/base";
-import LogItem from "@/components/log/log-item";
-import { useCustomTheme } from "@/components/layout/use-custom-theme";
-import { BaseSearchBox } from "@/components/base/base-search-box";
-import { BaseStyledSelect } from "@/components/base/base-styled-select";
-import { mutate } from "swr";
+  SwapVertRounded,
+} from '@mui/icons-material'
+import { Box, Button, IconButton, MenuItem } from '@mui/material'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import {
+  BaseEmpty,
+  BasePage,
+  BaseSearchBox,
+  BaseStyledSelect,
+  type SearchState,
+  VirtualList,
+  type VirtualListHandle,
+} from '@/components/base'
+import LogItem from '@/components/log/log-item'
+import { useClashLog } from '@/hooks/use-clash-log'
+import { useLogData } from '@/hooks/use-log-data'
 
 const LogPage = () => {
-  const { t } = useTranslation();
-  const { data: logData = [] } = useLogData();
-  const [enableLog, setEnableLog] = useEnableLog();
-  const { theme } = useCustomTheme();
-  const isDark = theme.palette.mode === "dark";
-  const [logState, setLogState] = useLogLevel();
-  const [match, setMatch] = useState(() => (_: string) => true);
+  const { t } = useTranslation()
+  const [clashLog, setClashLog] = useClashLog()
+  const enableLog = clashLog.enable
+  const logState = clashLog.logFilter
+  const logOrder = clashLog.logOrder ?? 'asc'
+  const isDescending = logOrder === 'desc'
+
+  const [match, setMatch] = useState(() => (_: string) => true)
+  const [searchState, setSearchState] = useState<SearchState>()
+  const {
+    response: { data: logData },
+    refreshGetClashLog,
+  } = useLogData()
 
   const filterLogs = useMemo(() => {
-    return logData.filter(
-      (data) =>
-        (logState === "all" ? true : data.type.includes(logState)) &&
-        match(data.payload)
-    );
-  }, [logData, logState, match]);
+    if (!logData || logData.length === 0) {
+      return []
+    }
+
+    // Server-side filtering handles level filtering via query parameters
+    // We only need to apply search filtering here
+    return logData.filter((data) => {
+      // 构建完整的搜索文本，包含时间、类型和内容
+      const searchText =
+        `${data.time || ''} ${data.type} ${data.payload}`.toLowerCase()
+
+      const matchesSearch = match(searchText)
+
+      return (
+        (logState == 'all' ? true : data.type.includes(logState)) &&
+        matchesSearch
+      )
+    })
+  }, [logData, logState, match])
+
+  const filteredLogs = useMemo(
+    () => (isDescending ? [...filterLogs].reverse() : filterLogs),
+    [filterLogs, isDescending],
+  )
+
+  const virtuosoRef = useRef<VirtualListHandle>(null)
+
+  useEffect(() => {
+    if (!isDescending && filteredLogs.length > 0) {
+      virtuosoRef.current?.scrollToIndex(filteredLogs.length - 1, {
+        behavior: 'smooth',
+      })
+    }
+  }, [filteredLogs.length, isDescending])
+
+  const handleLogLevelChange = (newLevel: string) => {
+    setClashLog((pre: any) => ({ ...pre, logFilter: newLevel }))
+  }
+
+  const handleToggleLog = async () => {
+    setClashLog((pre: any) => ({ ...pre, enable: !enableLog }))
+  }
+
+  const handleToggleOrder = () => {
+    setClashLog((pre: any) => ({
+      ...pre,
+      logOrder: pre.logOrder === 'desc' ? 'asc' : 'desc',
+    }))
+  }
 
   return (
     <BasePage
       full
-      title={t("Logs")}
-      contentStyle={{ height: "100%" }}
+      title={t('logs.page.title')}
+      contentStyle={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'auto',
+      }}
       header={
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <IconButton
-            title={t("Pause")}
+            title={t(
+              enableLog ? 'shared.actions.pause' : 'shared.actions.resume',
+            )}
+            aria-label={t(
+              enableLog ? 'shared.actions.pause' : 'shared.actions.resume',
+            )}
             size="small"
             color="inherit"
-            onClick={() => setEnableLog((e) => !e)}
+            onClick={handleToggleLog}
           >
             {enableLog ? (
               <PauseCircleOutlineRounded />
@@ -51,15 +115,37 @@ const LogPage = () => {
               <PlayCircleOutlineRounded />
             )}
           </IconButton>
+          <IconButton
+            title={t(
+              isDescending
+                ? 'logs.actions.showAscending'
+                : 'logs.actions.showDescending',
+            )}
+            aria-label={t(
+              isDescending
+                ? 'logs.actions.showAscending'
+                : 'logs.actions.showDescending',
+            )}
+            size="small"
+            color="inherit"
+            onClick={handleToggleOrder}
+          >
+            <SwapVertRounded
+              sx={{
+                transform: isDescending ? 'scaleY(-1)' : 'none',
+                transition: 'transform 0.2s ease',
+              }}
+            />
+          </IconButton>
 
           <Button
             size="small"
             variant="contained"
-            // useSWRSubscription adds a prefix "$sub$" to the cache key
-            // https://github.com/vercel/swr/blob/1585a3e37d90ad0df8097b099db38f1afb43c95d/src/subscription/index.ts#L37
-            onClick={() => mutate("$sub$getClashLog", [])}
+            onClick={() => {
+              refreshGetClashLog(true)
+            }}
           >
-            {t("Clear")}
+            {t('shared.actions.clear')}
           </Button>
         </Box>
       }
@@ -68,45 +154,47 @@ const LogPage = () => {
         sx={{
           pt: 1,
           mb: 0.5,
-          mx: "10px",
-          height: "36px",
-          display: "flex",
-          alignItems: "center",
+          mx: '10px',
+          height: '39px',
+          display: 'flex',
+          alignItems: 'center',
         }}
       >
         <BaseStyledSelect
           value={logState}
-          onChange={(e) => setLogState(e.target.value)}
+          onChange={(e) => handleLogLevelChange(e.target.value as LogFilter)}
         >
-          <MenuItem value="all">ALL</MenuItem>
-          <MenuItem value="inf">INFO</MenuItem>
-          <MenuItem value="warn">WARN</MenuItem>
-          <MenuItem value="err">ERROR</MenuItem>
+          <MenuItem value="all">{t('shared.filters.logLevels.all')}</MenuItem>
+          <MenuItem value="debug">
+            {t('shared.filters.logLevels.debug')}
+          </MenuItem>
+          <MenuItem value="info">{t('shared.filters.logLevels.info')}</MenuItem>
+          <MenuItem value="warn">{t('shared.filters.logLevels.warn')}</MenuItem>
+          <MenuItem value="err">{t('shared.filters.logLevels.error')}</MenuItem>
         </BaseStyledSelect>
-        <BaseSearchBox onSearch={(match) => setMatch(() => match)} />
+        <BaseSearchBox
+          onSearch={(matcher, state) => {
+            setMatch(() => matcher)
+            setSearchState(state)
+          }}
+        />
       </Box>
 
-      <Box
-        height="calc(100% - 65px)"
-        sx={{
-          margin: "10px",
-          borderRadius: "8px",
-          bgcolor: isDark ? "#282a36" : "#ffffff",
-        }}
-      >
-        {filterLogs.length > 0 ? (
-          <Virtuoso
-            initialTopMostItemIndex={999}
-            data={filterLogs}
-            itemContent={(index, item) => <LogItem value={item} />}
-            followOutput={"smooth"}
-          />
-        ) : (
-          <BaseEmpty />
-        )}
-      </Box>
+      {filteredLogs.length > 0 ? (
+        <VirtualList
+          ref={virtuosoRef}
+          count={filteredLogs.length}
+          estimateSize={50}
+          renderItem={(i) => (
+            <LogItem value={filteredLogs[i]} searchState={searchState} />
+          )}
+          style={{ flex: 1 }}
+        />
+      ) : (
+        <BaseEmpty />
+      )}
     </BasePage>
-  );
-};
+  )
+}
 
-export default LogPage;
+export default LogPage

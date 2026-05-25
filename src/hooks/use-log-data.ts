@@ -1,57 +1,147 @@
-import useSWRSubscription from "swr/subscription";
-import { useEnableLog } from "../services/states";
-import { createSockette } from "../utils/websocket";
-import { useClashInfo } from "./use-clash";
-import dayjs from "dayjs";
-import { getClashLogs } from "../services/cmds";
+import { useQueryClient } from '@tanstack/react-query'
+import dayjs from 'dayjs'
+import { useEffect, useRef } from 'react'
+import { MihomoWebSocket, type LogLevel } from 'tauri-plugin-mihomo-api'
 
-const MAX_LOG_NUM = 1000;
+import { getClashLogs } from '@/services/cmds'
+
+import { useClashLog } from './use-clash-log'
+import { useMihomoWsSubscription } from './use-mihomo-ws-subscription'
+
+const MAX_LOG_NUM = 1000
+const FLUSH_DELAY_MS = 50
+type LogType = ILogItem['type']
+
+const DEFAULT_LOG_TYPES: LogType[] = ['debug', 'info', 'warning', 'error']
+const LOG_LEVEL_FILTERS: Record<LogLevel, LogType[]> = {
+  debug: DEFAULT_LOG_TYPES,
+  info: ['info', 'warning', 'error'],
+  warning: ['warning', 'error'],
+  error: ['error'],
+  silent: [],
+}
+
+const clampLogs = (logs: ILogItem[]): ILogItem[] =>
+  logs.length > MAX_LOG_NUM ? logs.slice(-MAX_LOG_NUM) : logs
+
+const filterLogsByLevel = (
+  logs: ILogItem[],
+  allowedTypes: LogType[],
+): ILogItem[] => {
+  if (allowedTypes.length === 0) return []
+  if (allowedTypes.length === DEFAULT_LOG_TYPES.length) return logs
+  return logs.filter((log) => allowedTypes.includes(log.type))
+}
+
+const appendLogs = (
+  current: ILogItem[] | undefined,
+  incoming: ILogItem[],
+): ILogItem[] => clampLogs([...(current ?? []), ...incoming])
 
 export const useLogData = () => {
-  const { clashInfo } = useClashInfo();
+  const queryClient = useQueryClient()
+  const [clashLog] = useClashLog()
+  const enableLog = clashLog.enable
+  const logLevel = clashLog.logLevel
+  const allowedTypes = LOG_LEVEL_FILTERS[logLevel] ?? DEFAULT_LOG_TYPES
 
-  const [enableLog] = useEnableLog();
-  !enableLog || !clashInfo;
+  const { response, refresh, subscriptionCacheKey } = useMihomoWsSubscription<
+    ILogItem[]
+  >({
+    storageKey: 'mihomo_logs_date',
+    buildSubscriptKey: (date) => (enableLog ? `getClashLog-${date}` : null),
+    fallbackData: [],
+    connect: () => MihomoWebSocket.connect_logs(logLevel),
+    setupHandlers: ({ next, scheduleReconnect, isMounted }) => {
+      let flushTimer: ReturnType<typeof setTimeout> | null = null
+      const buffer: ILogItem[] = []
 
-  return useSWRSubscription<ILogItem[], any, "getClashLog" | null>(
-    enableLog && clashInfo ? "getClashLog" : null,
-    (_key, { next }) => {
-      const { server = "", secret = "" } = clashInfo!;
-
-      // populate the initial logs
-      getClashLogs().then(
-        (logs) => next(null, logs),
-        (err) => next(err)
-      );
-
-      const s = createSockette(
-        `ws://${server}/logs?token=${encodeURIComponent(secret)}`,
-        {
-          onmessage(event) {
-            const data = JSON.parse(event.data) as ILogItem;
-
-            // append new log item on socket message
-            next(null, (l = []) => {
-              const time = dayjs().format("MM-DD HH:mm:ss");
-
-              if (l.length >= MAX_LOG_NUM) l.shift();
-              return [...l, { ...data, time }];
-            });
-          },
-          onerror(event) {
-            this.close();
-            next(event);
-          },
+      const clearFlushTimer = () => {
+        if (flushTimer) {
+          clearTimeout(flushTimer)
+          flushTimer = null
         }
-      );
+      }
 
-      return () => {
-        s.close();
-      };
+      const flush = () => {
+        if (!buffer.length || !isMounted()) {
+          flushTimer = null
+          return
+        }
+        const pendingLogs = buffer.splice(0, buffer.length)
+        next(null, (current) => appendLogs(current, pendingLogs))
+        flushTimer = null
+      }
+
+      return {
+        handleMessage: (data) => {
+          if (data.startsWith('Websocket error')) {
+            next(data)
+            void scheduleReconnect()
+            return
+          }
+
+          try {
+            const parsed = JSON.parse(data) as ILogItem
+            if (
+              allowedTypes.length > 0 &&
+              !allowedTypes.includes(parsed.type)
+            ) {
+              return
+            }
+            parsed.time = dayjs().format('MM-DD HH:mm:ss')
+            buffer.push(parsed)
+            if (buffer.length > MAX_LOG_NUM) {
+              buffer.splice(0, buffer.length - MAX_LOG_NUM)
+            }
+            if (!flushTimer) {
+              flushTimer = setTimeout(flush, FLUSH_DELAY_MS)
+            }
+          } catch (error) {
+            next(error)
+          }
+        },
+        async onConnected() {
+          const logs = await getClashLogs()
+          if (isMounted()) {
+            next(null, (current) => {
+              if (!current || current.length === 0) {
+                return clampLogs(filterLogsByLevel(logs, allowedTypes))
+              }
+              return current
+            })
+          }
+        },
+        cleanup: clearFlushTimer,
+      }
     },
-    {
-      fallbackData: [],
-      keepPreviousData: true,
+  })
+
+  const previousLogLevelRef = useRef<string | undefined>(undefined)
+
+  useEffect(() => {
+    if (!logLevel) {
+      previousLogLevelRef.current = logLevel ?? undefined
+      return
     }
-  );
-};
+
+    if (previousLogLevelRef.current === logLevel) {
+      return
+    }
+
+    previousLogLevelRef.current = logLevel
+    refresh()
+  }, [logLevel, refresh])
+
+  const refreshGetClashLog = (clear = false) => {
+    if (clear) {
+      if (subscriptionCacheKey) {
+        queryClient.setQueryData<ILogItem[]>([subscriptionCacheKey], [])
+      }
+    } else {
+      refresh()
+    }
+  }
+
+  return { response, refreshGetClashLog }
+}

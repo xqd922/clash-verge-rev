@@ -1,26 +1,40 @@
-use super::use_lowercase;
-use serde_yaml::{self, Mapping, Value};
+use clash_verge_logging::{Type, logging};
 
-fn deep_merge(a: &mut Value, b: &Value) {
-    match (a, b) {
-        (&mut Value::Mapping(ref mut a), Value::Mapping(b)) => {
-            for (k, v) in b {
-                deep_merge(a.entry(k.clone()).or_insert(Value::Null), v);
+use super::use_lowercase;
+use serde_yaml_ng::{self, Mapping, Value};
+
+fn deep_merge(a: &mut Value, b: Value) {
+    let mut stack: Vec<(*mut Value, Value)> = vec![(a as *mut Value, b)];
+
+    while let Some((a_ptr, b)) = stack.pop() {
+        let a = unsafe { &mut *a_ptr };
+
+        match (a, b) {
+            (Value::Mapping(a_map), Value::Mapping(b_map)) => {
+                for (k, v) in b_map {
+                    let child = a_map.entry(k).or_insert(Value::Null);
+                    stack.push((child as *mut Value, v));
+                }
             }
+            (a, b) => *a = b,
         }
-        (a, b) => *a = b.clone(),
     }
 }
 
-pub fn use_merge(merge: Mapping, config: Mapping) -> Mapping {
+pub fn use_merge(merge: &Mapping, config: Mapping) -> Mapping {
     let mut config = Value::from(config);
-    let merge = use_lowercase(merge.clone());
+    let merge = use_lowercase(merge);
 
-    deep_merge(&mut config, &Value::from(merge));
+    deep_merge(&mut config, Value::from(merge));
 
-    let config = config.as_mapping().unwrap().clone();
-
-    config
+    config.as_mapping().cloned().unwrap_or_else(|| {
+        logging!(
+            error,
+            Type::Core,
+            "Failed to convert merged config to mapping, using empty mapping"
+        );
+        Mapping::new()
+    })
 }
 
 #[test]
@@ -51,12 +65,10 @@ fn test_merge() -> anyhow::Result<()> {
     script1: test
   ";
 
-    let merge = serde_yaml::from_str::<Mapping>(merge)?;
-    let config = serde_yaml::from_str::<Mapping>(config)?;
+    let merge = serde_yaml_ng::from_str::<Mapping>(merge)?;
+    let config = serde_yaml_ng::from_str::<Mapping>(config)?;
 
-    let result = serde_yaml::to_string(&use_merge(merge, config))?;
-
-    println!("{result}");
+    let _ = serde_yaml_ng::to_string(&use_merge(&merge, config))?;
 
     Ok(())
 }

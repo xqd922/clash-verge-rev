@@ -1,77 +1,108 @@
-use super::tray::Tray;
-use crate::log_err;
-use anyhow::{bail, Result};
-use once_cell::sync::OnceCell;
-use parking_lot::Mutex;
-use std::sync::Arc;
-use tauri::{AppHandle, Manager, Window};
+use crate::{APP_HANDLE, singleton};
+use smartstring::alias::String;
+use std::sync::atomic::{AtomicBool, Ordering};
+use tauri::AppHandle;
+use tauri_plugin_mihomo::{Mihomo, MihomoExt as _};
+use tokio::sync::RwLockReadGuard;
 
-#[derive(Debug, Default, Clone)]
+use super::notification::{FrontendEvent, NotificationSystem};
+
+#[derive(Debug)]
 pub struct Handle {
-    pub app_handle: Arc<Mutex<Option<AppHandle>>>,
+    is_exiting: AtomicBool,
 }
 
+impl Default for Handle {
+    fn default() -> Self {
+        Self {
+            is_exiting: AtomicBool::new(false),
+        }
+    }
+}
+
+singleton!(Handle, HANDLE);
+
 impl Handle {
-    pub fn global() -> &'static Handle {
-        static HANDLE: OnceCell<Handle> = OnceCell::new();
-
-        HANDLE.get_or_init(|| Handle {
-            app_handle: Arc::new(Mutex::new(None)),
-        })
+    pub fn new() -> Self {
+        Self::default()
     }
 
-    pub fn init(&self, app_handle: AppHandle) {
-        *self.app_handle.lock() = Some(app_handle);
+    pub fn app_handle() -> &'static AppHandle {
+        #[allow(clippy::expect_used)]
+        APP_HANDLE.get().expect("App handle not initialized")
     }
 
-    pub fn get_window(&self) -> Option<Window> {
-        self.app_handle
-            .lock()
-            .as_ref()
-            .and_then(|a| a.get_window("main"))
+    pub async fn mihomo() -> RwLockReadGuard<'static, Mihomo> {
+        Self::app_handle().mihomo().read().await
     }
 
     pub fn refresh_clash() {
-        if let Some(window) = Self::global().get_window() {
-            log_err!(window.emit("verge://refresh-clash-config", "yes"));
-        }
+        Self::send_event(FrontendEvent::RefreshClash);
     }
 
     pub fn refresh_verge() {
-        if let Some(window) = Self::global().get_window() {
-            log_err!(window.emit("verge://refresh-verge-config", "yes"));
-        }
+        Self::send_event(FrontendEvent::RefreshVerge);
     }
 
-    #[allow(unused)]
-    pub fn refresh_profiles() {
-        if let Some(window) = Self::global().get_window() {
-            log_err!(window.emit("verge://refresh-profiles-config", "yes"));
-        }
+    pub fn notify_profile_changed(profile_id: &String) {
+        Self::send_event(FrontendEvent::ProfileChanged {
+            current_profile_id: profile_id,
+        });
     }
 
-    pub fn notice_message<S: Into<String>, M: Into<String>>(status: S, msg: M) {
-        if let Some(window) = Self::global().get_window() {
-            log_err!(window.emit("verge://notice-message", (status.into(), msg.into())));
-        }
+    pub fn notify_timer_updated(profile_index: &String) {
+        Self::send_event(FrontendEvent::TimerUpdated { profile_index });
     }
 
-    pub fn update_systray() -> Result<()> {
-        let app_handle = Self::global().app_handle.lock();
-        if app_handle.is_none() {
-            bail!("update_systray unhandled error");
-        }
-        Tray::update_systray(app_handle.as_ref().unwrap())?;
-        Ok(())
+    pub fn notify_profile_update_started(uid: &String) {
+        Self::send_event(FrontendEvent::ProfileUpdateStarted { uid });
     }
 
-    /// update the system tray state
-    pub fn update_systray_part() -> Result<()> {
-        let app_handle = Self::global().app_handle.lock();
-        if app_handle.is_none() {
-            bail!("update_systray unhandled error");
+    pub fn notify_profile_update_completed(uid: &String) {
+        Self::send_event(FrontendEvent::ProfileUpdateCompleted { uid });
+    }
+
+    pub fn notice_message<S: AsRef<str>, M: Into<String>>(status: S, msg: M) {
+        let status_str = status.as_ref();
+        let msg_str = msg.into();
+
+        Self::send_event(FrontendEvent::NoticeMessage {
+            status: status_str,
+            message: msg_str,
+        });
+    }
+
+    pub fn set_is_exiting(&self) {
+        self.is_exiting.store(true, Ordering::Release);
+    }
+
+    pub fn is_exiting(&self) -> bool {
+        self.is_exiting.load(Ordering::Acquire)
+    }
+
+    fn send_event(event: FrontendEvent) {
+        let handle = Self::global();
+        if handle.is_exiting() {
+            return;
         }
-        Tray::update_part(app_handle.as_ref().unwrap())?;
-        Ok(())
+
+        NotificationSystem::send_event(event);
+    }
+}
+
+#[cfg(target_os = "macos")]
+impl Handle {
+    pub fn set_activation_policy(&self, policy: tauri::ActivationPolicy) -> Result<(), String> {
+        Self::app_handle()
+            .set_activation_policy(policy)
+            .map_err(|e| e.to_string().into())
+    }
+
+    pub fn set_activation_policy_regular(&self) {
+        let _ = self.set_activation_policy(tauri::ActivationPolicy::Regular);
+    }
+
+    pub fn set_activation_policy_accessory(&self) {
+        let _ = self.set_activation_policy(tauri::ActivationPolicy::Accessory);
     }
 }
