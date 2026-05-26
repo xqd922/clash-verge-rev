@@ -10,6 +10,7 @@ mod feat;
 mod module;
 mod process;
 pub mod utils;
+
 use crate::constants::files;
 use crate::{
     core::handle,
@@ -149,8 +150,6 @@ mod app_init {
             cmd::start_core,
             cmd::stop_core,
             cmd::restart_core,
-            cmd::notify_ui_ready,
-            cmd::update_ui_stage,
             cmd::get_running_mode,
             cmd::get_auto_launch_status,
             cmd::entry_lightweight_mode,
@@ -227,6 +226,8 @@ pub fn run() {
 
     #[cfg(target_os = "linux")]
     utils::linux::workarounds::apply_nvidia_dmabuf_renderer_workaround();
+    #[cfg(target_os = "linux")]
+    utils::linux::workarounds::apply_wayland_webkit_fix();
 
     let _ = utils::dirs::init_portable_flag();
 
@@ -253,7 +254,6 @@ pub fn run() {
             resolve::resolve_setup_async();
             resolve::resolve_setup_sync();
             resolve::init_signal();
-            resolve::resolve_done();
 
             logging!(info, Type::Setup, "初始化已启动");
             Ok(())
@@ -397,22 +397,20 @@ pub fn run() {
                 event_handlers::handle_reopen(has_visible_windows).await;
             });
         }
-        tauri::RunEvent::Exit => AsyncHandler::block_on(async {
-            if !handle::Handle::global().is_exiting() {
-                feat::quit().await;
-            }
-        }),
+        tauri::RunEvent::Exit => {
+            logging!(info, Type::System, "Application exited");
+        }
+        #[allow(unused_variables)]
         tauri::RunEvent::ExitRequested { api, code, .. } => {
-            if core::handle::Handle::global().is_exiting() {
-                return;
-            }
-
-            AsyncHandler::block_on(async {
-                let _ = handle::Handle::mihomo().await.clear_all_ws_connections().await;
-            });
-
-            if code.is_none() {
+            if module::lightweight::is_in_lightweight_mode() && !handle::Handle::global().is_exiting() {
                 api.prevent_exit();
+            } else if code.is_none() {
+                api.prevent_exit();
+                if !handle::Handle::global().is_exiting() {
+                    AsyncHandler::spawn(|| async {
+                        feat::quit().await;
+                    });
+                }
             }
         }
         tauri::RunEvent::WindowEvent { label, event, .. } if label == "main" => match event {

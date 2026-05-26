@@ -1,4 +1,4 @@
-import { mutate } from 'swr'
+import { useQueryClient } from '@tanstack/react-query'
 import { MihomoWebSocket } from 'tauri-plugin-mihomo-api'
 
 import { useMihomoWsSubscription } from './use-mihomo-ws-subscription'
@@ -19,52 +19,65 @@ export interface ConnectionMonitorData {
   closedConnections: IConnectionsItem[]
 }
 
-const trimClosedConnections = (
-  closedConnections: IConnectionsItem[],
-): IConnectionsItem[] =>
-  closedConnections.length > MAX_CLOSED_CONNS_NUM
-    ? closedConnections.slice(-MAX_CLOSED_CONNS_NUM)
-    : closedConnections
-
 const mergeConnectionSnapshot = (
   payload: IConnections,
   previous: ConnectionMonitorData = initConnData,
 ): ConnectionMonitorData => {
   const nextConnections = payload.connections ?? []
   const previousActive = previous.activeConnections ?? []
-  const nextById = new Map(nextConnections.map((conn) => [conn.id, conn]))
-  const newIds = new Set(nextConnections.map((conn) => conn.id))
+  const previousClosed = previous.closedConnections ?? []
 
-  // Keep surviving connections in their previous relative order to reduce row reshuffle,
-  // but constrain the array to the incoming snapshot length.
-  const carried = previousActive
-    .map((prev) => {
-      const next = nextById.get(prev.id)
-      if (!next) return null
+  const nextById = new Map<string, IConnectionsItem>()
+  for (let i = 0; i < nextConnections.length; i++) {
+    nextById.set(nextConnections[i].id, nextConnections[i])
+  }
 
+  const carried: IConnectionsItem[] = []
+  const dropped: IConnectionsItem[] = []
+
+  for (let i = 0; i < previousActive.length; i++) {
+    const prev = previousActive[i]
+    const next = nextById.get(prev.id)
+    if (next !== undefined) {
       nextById.delete(prev.id)
-      return {
-        ...next,
-        curUpload: next.upload - prev.upload,
-        curDownload: next.download - prev.download,
-      } as IConnectionsItem
-    })
-    .filter(Boolean) as IConnectionsItem[]
+      if (prev.upload === next.upload && prev.download === next.download) {
+        // Reuse prev reference: row identity stability is the contract Stage 2 memo relies on.
+        carried.push(prev)
+      } else {
+        carried.push({
+          ...next,
+          curUpload: next.upload - prev.upload,
+          curDownload: next.download - prev.download,
+        })
+      }
+    } else {
+      dropped.push(prev)
+    }
+  }
 
-  const newcomers = nextConnections
-    .filter((conn) => nextById.has(conn.id))
-    .map((conn) => ({
-      ...conn,
-      curUpload: 0,
-      curDownload: 0,
-    }))
+  const activeConnections: IConnectionsItem[] = carried
+  for (let i = 0; i < nextConnections.length; i++) {
+    const conn = nextConnections[i]
+    if (nextById.has(conn.id)) {
+      activeConnections.push({
+        ...conn,
+        curUpload: 0,
+        curDownload: 0,
+      })
+    }
+  }
 
-  const activeConnections = [...carried, ...newcomers]
-
-  const closedConnections = trimClosedConnections([
-    ...(previous.closedConnections ?? []),
-    ...previousActive.filter((conn) => !newIds.has(conn.id)),
-  ])
+  const rawClosedLen = previousClosed.length + dropped.length
+  let closedConnections: IConnectionsItem[]
+  if (rawClosedLen <= MAX_CLOSED_CONNS_NUM) {
+    closedConnections = previousClosed.concat(dropped)
+  } else {
+    const skipPrev = rawClosedLen - MAX_CLOSED_CONNS_NUM
+    closedConnections =
+      skipPrev >= previousClosed.length
+        ? dropped.slice(skipPrev - previousClosed.length)
+        : previousClosed.slice(skipPrev).concat(dropped)
+  }
 
   return {
     uploadTotal: payload.uploadTotal ?? 0,
@@ -75,12 +88,14 @@ const mergeConnectionSnapshot = (
 }
 
 export const useConnectionData = () => {
+  const queryClient = useQueryClient()
   const { response, refresh, subscriptionCacheKey } =
     useMihomoWsSubscription<ConnectionMonitorData>({
       storageKey: 'mihomo_connection_date',
       buildSubscriptKey: (date) => `getClashConnection-${date}`,
       fallbackData: initConnData,
       connect: () => MihomoWebSocket.connect_connections(),
+      throttleMs: 16,
       setupHandlers: ({ next, scheduleReconnect }) => ({
         handleMessage: (data) => {
           if (data.startsWith('Websocket error')) {
@@ -89,21 +104,16 @@ export const useConnectionData = () => {
             return
           }
 
-          try {
-            const parsed = JSON.parse(data) as IConnections
-            next(null, (old = initConnData) =>
-              mergeConnectionSnapshot(parsed, old),
-            )
-          } catch (error) {
-            next(error)
-          }
+          next(null, (old = initConnData) =>
+            mergeConnectionSnapshot(JSON.parse(data) as IConnections, old),
+          )
         },
       }),
     })
 
   const clearClosedConnections = () => {
     if (!subscriptionCacheKey) return
-    mutate(subscriptionCacheKey, {
+    queryClient.setQueryData<ConnectionMonitorData>([subscriptionCacheKey], {
       uploadTotal: response.data?.uploadTotal ?? 0,
       downloadTotal: response.data?.downloadTotal ?? 0,
       activeConnections: response.data?.activeConnections ?? [],

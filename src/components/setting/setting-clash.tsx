@@ -78,7 +78,6 @@ const SettingClash = ({ onError }: Props) => {
   const handleDnsToggle = useLockFn(async (enable: boolean) => {
     try {
       setDnsSettingsEnabled(enable)
-      localStorage.setItem('dns_settings_enabled', String(enable))
       await patchVerge({ enable_dns_settings: enable })
       await invoke('apply_dns_config', { apply: enable })
       setTimeout(() => {
@@ -86,7 +85,6 @@ const SettingClash = ({ onError }: Props) => {
       }, 500)
     } catch (err: any) {
       setDnsSettingsEnabled(!enable)
-      localStorage.setItem('dns_settings_enabled', String(!enable))
       showNotice.error(err)
       await patchVerge({ enable_dns_settings: !enable }).catch(() => {})
       throw err
@@ -193,7 +191,7 @@ const SettingClash = ({ onError }: Props) => {
           onFormat={(e: any) => e.target.value}
           onChange={(e) => onChangeData({ 'log-level': e })}
           onGuard={(e) => {
-            setClashLog((pre: any) => ({ ...pre, logLevel: e }))
+            setClashLog((pre) => ({ ...pre!, logLevel: e }))
             return patchClash({ 'log-level': e })
           }}
         >

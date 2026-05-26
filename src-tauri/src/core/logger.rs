@@ -100,6 +100,22 @@ impl Logger {
         let sidecar_file_writer = self.generate_sidecar_writer()?;
         *self.sidecar_file_writer.write() = Some(sidecar_file_writer);
 
+        std::panic::set_hook(Box::new(move |info| {
+            let payload = info
+                .payload()
+                .downcast_ref::<&str>()
+                .unwrap_or(&"Unknown panic payload");
+            let location = info
+                .location()
+                .map(|loc| format!("{}:{}", loc.file(), loc.line()))
+                .unwrap_or_else(|| "Unknown location".to_string());
+            logging!(error, Type::System, "Panic occurred at {}: {}", location, payload);
+            if let Some(h) = Self::global().handle.lock().as_ref() {
+                h.flush();
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+        }));
+
         Ok(())
     }
 

@@ -16,6 +16,11 @@ type Platform =
  */
 declare const OS_PLATFORM: Platform
 
+type ValidationOutcome =
+  | { status: 'valid' | 'busy' }
+  | { status: 'invalid'; kind: string; message: string }
+  | { status: 'skipped'; reason: string }
+
 /**
  * Some interface for clash api
  */
@@ -851,8 +856,7 @@ interface IProxySnellConfig extends IProxyBaseConfig {
   version?: number
 }
 interface IProxyConfig
-  extends
-    IProxyBaseConfig,
+  extends IProxyBaseConfig,
     IProxyDirectConfig,
     IProxyDnsConfig,
     IProxyHttpConfig,
@@ -922,7 +926,7 @@ interface IVergeConfig {
   common_tray_icon?: boolean
   sysproxy_tray_icon?: boolean
   tun_tray_icon?: boolean
-  // enable_tray_speed?: boolean;
+  enable_tray_speed?: boolean
   // enable_tray_icon?: boolean;
   tray_proxy_groups_display_mode?: 'default' | 'inline' | 'disable'
   tray_inline_outbound_modes?: boolean

@@ -17,7 +17,6 @@ import UnlockSvg from '@/assets/image/itemicon/unlock.svg?react'
 
 import Layout from './_layout'
 import ConnectionsPage from './connections'
-import LogsPage from './logs'
 import ProfilesPage from './profiles'
 import ProxiesPage from './proxies'
 import RulesPage from './rules'
@@ -53,7 +52,7 @@ export const navItems = [
     label: 'layout.components.navigation.tabs.logs',
     path: '/logs',
     icon: [<SubjectRoundedIcon key="mui" />, <LogsSvg key="svg" />],
-    Component: LogsPage,
+    Component: () => null /* KeepAlive: real LogsPage rendered in Layout */,
   },
   {
     label: 'layout.components.navigation.tabs.unlock',

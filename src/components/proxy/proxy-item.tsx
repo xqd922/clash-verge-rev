@@ -10,18 +10,16 @@ import {
   SxProps,
   Theme,
 } from '@mui/material'
-import { useCallback, useEffect, useReducer, useRef } from 'react'
-import { unfixedProxy } from 'tauri-plugin-mihomo-api'
 
 import { BaseLoading } from '@/components/base'
-import delayManager, { DelayUpdate } from '@/services/delay'
+import { useProxyDelayState } from '@/hooks/use-proxy-delay-state'
+import delayManager from '@/services/delay'
 
 interface Props {
   group: IProxyGroupItem
   proxy: IProxyItem
   selected: boolean
   showType?: boolean
-  timeout?: number
   sx?: SxProps<Theme>
   onClick?: (name: string) => void
 }
@@ -45,89 +43,13 @@ const TypeBox = styled('span')(({ theme }) => ({
 }))
 
 export const ProxyItem = (props: Props) => {
-  const {
-    group,
+  const { group, proxy, selected, showType = true, sx, onClick } = props
+
+  const { delayValue, isPreset, timeout, onDelay } = useProxyDelayState(
     proxy,
-    selected,
-    showType = true,
-    timeout = 10000,
-    sx,
-    onClick,
-  } = props
-
-  const presetList = ['DIRECT', 'REJECT', 'REJECT-DROP', 'PASS', 'COMPATIBLE']
-  const isPreset = presetList.includes(proxy.name)
-  // -1/<=0 为不显示，-2 为 loading
-  const [delayState, setDelayState] = useReducer(
-    (_: DelayUpdate, next: DelayUpdate) => next,
-    { delay: -1, updatedAt: 0 },
+    group.name,
+    group.type,
   )
-
-  useEffect(() => {
-    if (isPreset) return
-    delayManager.setListener(proxy.name, group.name, setDelayState)
-
-    return () => {
-      delayManager.removeListener(proxy.name, group.name)
-    }
-  }, [proxy.name, group.name, isPreset])
-
-  const updateDelay = useCallback(() => {
-    if (!proxy) return
-    const cachedUpdate = delayManager.getDelayUpdate(proxy.name, group.name)
-    if (cachedUpdate) {
-      setDelayState({ ...cachedUpdate })
-      return
-    }
-
-    const fallbackDelay = delayManager.getDelayFix(proxy, group.name)
-    if (fallbackDelay === -1) {
-      setDelayState({ delay: -1, updatedAt: 0 })
-      return
-    }
-
-    let updatedAt = 0
-    const history = proxy.history
-    if (history && history.length > 0) {
-      const lastRecord = history[history.length - 1]
-      const parsed = Date.parse(lastRecord.time)
-      if (!Number.isNaN(parsed)) {
-        updatedAt = parsed
-      }
-    }
-
-    setDelayState({
-      delay: fallbackDelay,
-      updatedAt,
-    })
-  }, [proxy, group.name])
-
-  useEffect(() => {
-    updateDelay()
-  }, [updateDelay])
-
-  const delayLockRef = useRef(false)
-  const onDelay = useCallback(async () => {
-    if (delayLockRef.current) return
-    delayLockRef.current = true
-    try {
-      setDelayState({ delay: -2, updatedAt: Date.now() })
-      const nextState = await delayManager.checkDelay(
-        proxy.name,
-        group.name,
-        timeout,
-      )
-      // Align with the original URLTest behavior: delay checks should clear fixed pinning.
-      if (group.type === 'URLTest') {
-        await unfixedProxy(group.name).catch(() => {})
-      }
-      setDelayState(nextState)
-    } finally {
-      delayLockRef.current = false
-    }
-  }, [proxy.name, group.name, group.type, timeout])
-
-  const delayValue = delayState.delay
 
   return (
     <ListItem sx={sx}>
@@ -229,12 +151,12 @@ export const ProxyItem = (props: Props) => {
                 e.stopPropagation()
                 onDelay()
               }}
-              color={delayManager.formatDelayColor(delayValue, timeout)}
-              sx={({ palette }) =>
-                !proxy.provider
+              sx={({ palette }) => ({
+                color: delayManager.formatDelayColor(delayValue, timeout),
+                ...(!proxy.provider
                   ? { ':hover': { bgcolor: alpha(palette.primary.main, 0.15) } }
-                  : {}
-              }
+                  : {}),
+              })}
             >
               {delayManager.formatDelay(delayValue, timeout)}
             </Widget>

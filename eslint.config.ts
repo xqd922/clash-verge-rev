@@ -1,10 +1,8 @@
 import eslintJS from '@eslint/js'
 import eslintReact from '@eslint-react/eslint-plugin'
 import { defineConfig } from 'eslint/config'
-import configPrettier from 'eslint-config-prettier'
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript'
 import pluginImportX from 'eslint-plugin-import-x'
-import pluginPrettier from 'eslint-plugin-prettier'
 import pluginReactCompiler from 'eslint-plugin-react-compiler'
 import pluginReactHooks from 'eslint-plugin-react-hooks'
 import pluginReactRefresh from 'eslint-plugin-react-refresh'
@@ -28,21 +26,24 @@ export default defineConfig([
       'import-x': pluginImportX,
       'react-refresh': pluginReactRefresh,
       'unused-imports': pluginUnusedImports,
-      prettier: pluginPrettier,
     },
 
     extends: [
       eslintJS.configs.recommended,
       tseslint.configs.recommended,
       eslintReact.configs['recommended-typescript'],
-      configPrettier,
     ],
 
     languageOptions: {
       globals: globals.browser,
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['src/polyfills/*.js', 'eslint.config.ts'],
+          allowDefaultProject: [
+            'eslint.config.ts',
+            `vite.config.mts`,
+            'scripts/*.mjs',
+            'src/polyfills/*.js',
+          ],
         },
       },
     },
@@ -76,7 +77,7 @@ export default defineConfig([
       '@eslint-react/no-children-for-each': 'error',
       '@eslint-react/no-children-map': 'error',
       '@eslint-react/no-children-only': 'error',
-      '@eslint-react/no-children-prop': 'error',
+      '@eslint-react/jsx-no-children-prop': 'error',
       '@eslint-react/no-children-to-array': 'error',
       '@eslint-react/no-class-component': 'error',
       '@eslint-react/no-clone-element': 'error',
@@ -90,7 +91,7 @@ export default defineConfig([
       '@eslint-react/no-unstable-default-props': 'warn',
       '@eslint-react/no-unused-class-component-members': 'error',
       '@eslint-react/no-unused-state': 'error',
-      '@eslint-react/no-useless-fragment': 'warn',
+      '@eslint-react/jsx-no-useless-fragment': 'warn',
       '@eslint-react/prefer-destructuring-assignment': 'warn',
 
       // TypeScript
@@ -136,9 +137,6 @@ export default defineConfig([
       'no-case-declarations': 'error',
       'no-fallthrough': 'error',
       'no-empty': ['warn', { allowEmptyCatch: true }],
-
-      // Prettier 格式化问题
-      'prettier/prettier': 'warn',
     },
   },
   {
