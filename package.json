@@ -128,10 +128,10 @@
   "lint-staged": {
     "!(crates/**)*.{ts,tsx,js,jsx,mjs}": [
       "eslint --fix --max-warnings=0",
-      "biome format --write"
+      "biome format --write --no-errors-on-unmatched"
     ],
     "!(crates/**)*.{css,scss,json,md,toml,yaml,yml}": [
-      "biome format --write"
+      "biome format --write --no-errors-on-unmatched"
     ]
   },
   "type": "module",
