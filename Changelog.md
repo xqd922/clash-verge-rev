@@ -1,3 +1,59 @@
+## v(7.0.18)
+
+### 同步上游
+
+- 合并 `upstream/main` 在 2.5.0-rc 至 2.5.1 之间的全部修复与优化（共 174 个提交），下文列出与个人版用户可感知的关键变化
+
+### 性能
+
+- 首页流量图渲染优化：`mousemove` 节流到单帧 RAF、tooltip 仅在形状变化时再触发更新，大幅降低高频鼠标交互下的重绘开销
+- 减少流量与内存数据更新的内存分配：移除中间数组拷贝，相同载荷在 50ms 窗口内做签名去重，避免后端高频 push 重复刷新
+- WebSocket 订阅引入引用计数与活跃 owner 切换机制，多个组件订阅同一通道时复用同一连接，最后一个组件卸载才真正关闭
+- 收窄 app data 全局订阅范围，按消费维度（proxies / rules / clash config / system / uptime / refreshers / 加载状态）拆分 Context，避免无关组件被波及重渲染
+- Monaco 编辑器及其 worker / schema / pac 类型改为懒加载，明显缩短冷启动时间
+
+### 修复
+
+- 修复 Windows 上切换节点缓慢的问题
+- 修复 Windows 全局代理与 PAC 同时启用时，由于 Sysproxy/Autoproxy 设置顺序导致全局代理被自身清掉的问题（按 sys/auto 启用状态组合决定调用顺序，附带回归测试）
+- 修复按住快捷键时连续重复触发的问题（用原子位消抖，按下仅响应首次，松开才复位）
+- 修复暂停日志时已有日志被清空的问题（取消订阅但保留视图缓存）
+- 修复 TLS 握手失败时无法回退到内置 webpki 根证书的问题，保留 reqwest 完整错误链做关键字判断；订阅下载在系统证书失败时会自动用 webpki 静态根重试一次
+- 修复 Wayland (<1.23) 上 webkit dmabuf 渲染异常（在受影响版本上自动禁用 dmabuf）
+- 修复 Linux 上窗口在页面加载前出现导致的闪烁
+- 修复 macOS 系统托盘网速文字不在点击命中区内的问题
+- 修复 hotkey 中 `OS` 键名被原样保留而非解析为 `CMD`
+- 修复标题栏拖拽区与窗口控制按钮、其他 hover 区域冲突的问题（拖拽属性挪到内部独立子元素）
+- 修复轻量模式退出时误触发清理流程
+- 修复禁用系统代理时的守卫逻辑
+- 修复订阅 URL 在后端日志中被原文记录的问题（改为脱敏输出）
+- 修复 YouTube Premium 解锁检测的判定逻辑
+- 修复连接列表列宽控制位置不当的问题
+- 修复更新提示弹窗中 GitHub Alert 语法无法渲染、排版不易阅读的问题
+
+### 调整
+
+- 代理组列表新增 sticky scroll：滚动时当前组标题钉在视口顶部，离开范围才下沉
+- 代理链路新增告警 tooltip，提示可能的循环引用
+- 备份相关对话框统一为应用内 modal 行为，与其他对话框交互一致
+- 中间发布产物在上传期间保持为 draft，按 release id 发布以避免冲突
+
+### 重构
+
+- 配置校验结果由 `(bool, String)` 升级为带 kind 的结构化枚举 `ValidationOutcome`（`Valid` / `Invalid { kind, message }` / `Skipped { reason }` / `Busy`），前端可据此做差异化提示与文案分流
+- 退出清理逻辑迁移到 `ExitRequested` 事件并通过 `prevent_exit` 异步执行，避免在不可阻止的 `Exit` 阶段被截断
+- 简化媒体解锁结果的构造样板代码（新增 `UnlockItem::checked()` 工厂方法）
+
+### 构建
+
+- 对齐 `@tauri-apps/api` / `@tauri-apps/cli` 与 Rust `tauri` crate 至 2.11.0，修复 personal-release 工作流的版本不匹配构建失败
+- pre-commit hook 中的 biome 步骤添加 `--no-errors-on-unmatched`，避免暂存被 biome 忽略的文件（如 `Changelog.md`）时 hook 因找不到可处理文件而失败
+
+### 说明
+
+- 本次发布以同步上游为主，未在个人分支引入新的功能定制
+- Smart 核心、Personal 发布工作流、SWR 数据层等个人版自有调整保持不变
+
 ## v(7.0.17)
 
 ### 修复
