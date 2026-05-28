@@ -209,7 +209,7 @@ const Layout = () => {
 
   const customTitlebar = useMemo(
     () =>
-      !decorated ? (
+      decorated === false ? (
         <div className="the_titlebar">
           <div
             className="the_titlebar-drag-region"
