@@ -71,6 +71,7 @@ bitflags! {
 fn determine_update_flags(patch: &IVerge) -> UpdateFlags {
     let tun_mode = patch.enable_tun_mode;
     let auto_launch = patch.enable_auto_launch;
+    let silent_start = patch.enable_silent_start;
     let system_proxy = patch.enable_system_proxy;
     let pac = patch.proxy_auto_config;
     let pac_content = &patch.pac_file_content;
@@ -151,7 +152,7 @@ fn determine_update_flags(patch: &IVerge) -> UpdateFlags {
     if enable_global_hotkey.is_some() || home_cards.is_some() {
         update_flags.insert(UpdateFlags::VERGE_CONFIG);
     }
-    if auto_launch.is_some() {
+    if auto_launch.is_some() || silent_start.is_some() {
         update_flags.insert(UpdateFlags::LAUNCH);
     }
     if system_proxy.is_some() {

@@ -16,7 +16,7 @@ use crate::{
     feat,
     module::{auto_backup::AutoBackupManager, lightweight::auto_lightweight_boot},
     process::AsyncHandler,
-    utils::{init, server, window_manager::WindowManager},
+    utils::{init, server, startup, window_manager::WindowManager},
 };
 use clash_verge_logging::{Type, logging, logging_error};
 use clash_verge_signal;
@@ -202,7 +202,10 @@ pub(super) async fn refresh_tray_menu() {
 }
 
 pub(super) async fn init_window() {
-    let is_silent_start = Config::verge().await.data_arc().enable_silent_start.unwrap_or(false);
+    let is_silent_start = startup::should_silent_start(
+        Config::verge().await.data_arc().enable_silent_start.unwrap_or(false),
+        std::env::args().skip(1),
+    );
     #[cfg(target_os = "macos")]
     if is_silent_start {
         use crate::core::handle::Handle;

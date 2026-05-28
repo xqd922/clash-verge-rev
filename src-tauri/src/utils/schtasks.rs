@@ -1,4 +1,7 @@
-use crate::utils::dirs::{self, PathBufExec as _};
+use crate::utils::{
+    dirs::{self, PathBufExec as _},
+    startup,
+};
 use anyhow::{Result, anyhow};
 use clash_verge_logging::{Type, logging};
 use std::fs;
@@ -168,6 +171,7 @@ fn build_task_xml(mode: TaskMode) -> Result<String> {
   <Actions Context="Author">
     <Exec>
       <Command>{}</Command>
+      <Arguments>{}</Arguments>
     </Exec>
   </Actions>
 </Task>
@@ -175,7 +179,8 @@ fn build_task_xml(mode: TaskMode) -> Result<String> {
         user_id,
         user_id,
         mode.xml_run_level(),
-        exe_path
+        exe_path,
+        startup::AUTOSTART_ARG
     ))
 }
 

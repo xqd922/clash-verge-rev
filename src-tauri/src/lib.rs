@@ -102,10 +102,9 @@ mod app_init {
 
     /// Setup autostart plugin
     pub fn setup_autostart(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-        #[cfg(target_os = "macos")]
-        let mut auto_start_plugin_builder = tauri_plugin_autostart::Builder::new();
-        #[cfg(not(target_os = "macos"))]
-        let auto_start_plugin_builder = tauri_plugin_autostart::Builder::new();
+        #[allow(unused_mut)]
+        let mut auto_start_plugin_builder =
+            tauri_plugin_autostart::Builder::new().arg(crate::utils::startup::AUTOSTART_ARG);
 
         #[cfg(target_os = "macos")]
         {

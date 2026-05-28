@@ -6,7 +6,7 @@ use crate::{
 
 use clash_verge_logging::{Type, logging, logging_error};
 
-use crate::utils::window_manager::WindowManager;
+use crate::utils::{startup, window_manager::WindowManager};
 use anyhow::{Context as _, Result};
 use delay_timer::prelude::TaskBuilder;
 use std::sync::atomic::{AtomicU8, AtomicU32, Ordering};
@@ -79,7 +79,10 @@ async fn refresh_lightweight_tray_state() {
 pub async fn auto_lightweight_boot() -> Result<()> {
     let verge_config = Config::verge().await;
     let is_enable_auto = verge_config.data_arc().enable_auto_light_weight_mode.unwrap_or(false);
-    let is_silent_start = verge_config.data_arc().enable_silent_start.unwrap_or(false);
+    let is_silent_start = startup::should_silent_start(
+        verge_config.data_arc().enable_silent_start.unwrap_or(false),
+        std::env::args().skip(1),
+    );
     if is_enable_auto {
         enable_auto_light_weight_mode().await;
     }
