@@ -11,6 +11,7 @@ use clash_verge_logging::Type;
 use compact_str::CompactString;
 use log::Level;
 use scopeguard::defer;
+use std::time::{Duration, Instant};
 use tauri_plugin_shell::ShellExt as _;
 
 impl CoreManager {
@@ -88,7 +89,7 @@ impl CoreManager {
         Ok(())
     }
 
-    pub(super) fn stop_core_by_sidecar(&self) {
+    pub(super) async fn stop_core_by_sidecar(&self) {
         logging!(info, Type::Core, "Stopping sidecar");
         defer! {
             self.set_running_mode(RunningMode::NotRunning);
@@ -103,6 +104,53 @@ impl CoreManager {
                 pid,
                 result
             );
+            self.wait_for_sidecar_ipc_release(pid).await;
+        }
+    }
+
+    async fn wait_for_sidecar_ipc_release(&self, pid: u32) {
+        let ipc = match dirs::ipc_path() {
+            Ok(p) => p,
+            Err(_) => return,
+        };
+        let path_str = match dirs::path_to_str(&ipc) {
+            Ok(s) => s.to_owned(),
+            Err(_) => return,
+        };
+
+        let max_wait = Duration::from_millis(800);
+        let interval = Duration::from_millis(40);
+        let start = Instant::now();
+
+        loop {
+            let p = path_str.clone();
+            let still_open = tokio::task::spawn_blocking(move || std::fs::File::open(p).is_ok())
+                .await
+                .unwrap_or(false);
+
+            if !still_open {
+                logging!(
+                    trace,
+                    Type::Core,
+                    "Sidecar IPC released after {}ms (PID: {})",
+                    start.elapsed().as_millis(),
+                    pid
+                );
+                return;
+            }
+
+            if start.elapsed() >= max_wait {
+                logging!(
+                    warn,
+                    Type::Core,
+                    "Sidecar IPC still open after {}ms (PID: {}), continuing startup",
+                    start.elapsed().as_millis(),
+                    pid
+                );
+                return;
+            }
+
+            tokio::time::sleep(interval).await;
         }
     }
 

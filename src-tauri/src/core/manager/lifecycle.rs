@@ -23,8 +23,7 @@ impl CoreManager {
             RunningMode::NotRunning | RunningMode::Sidecar => self.start_core_by_sidecar().await?,
         }
 
-        self.wait_for_core_ready().await;
-        Ok(())
+        self.wait_for_core_ready().await
     }
 
     pub async fn stop_core(&self) -> Result<()> {
@@ -36,7 +35,7 @@ impl CoreManager {
         match *self.get_running_mode() {
             RunningMode::Service => self.stop_core_by_service().await,
             RunningMode::Sidecar => {
-                self.stop_core_by_sidecar();
+                self.stop_core_by_sidecar().await;
                 Ok(())
             }
             RunningMode::NotRunning => Ok(()),
@@ -54,20 +53,69 @@ impl CoreManager {
             return Err(format!("Invalid clash core: {}", clash_core).into());
         }
 
-        Config::verge().await.edit_draft(|d| {
+        let verge = Config::verge().await;
+        let runtime = Config::runtime().await;
+        let current_core = verge.data_arc().get_valid_clash_core();
+
+        if current_core.as_str() == clash_core.as_str() {
+            return Ok(());
+        }
+
+        verge.edit_draft(|d| {
             d.clash_core = Some(clash_core.to_owned());
         });
-        Config::verge().await.apply();
 
-        let verge_data = Config::verge().await.latest_arc();
-        verge_data.save_file().await.map_err(|e| e.to_string())?;
+        // Generate against the target core while it is still only a draft.
+        // The generated runtime and verge.yaml are committed only after the
+        // new core starts successfully, so failed switches leave disk state on
+        // the previous working core.
+        if let Err(err) = Config::generate().await {
+            verge.discard();
+            runtime.discard();
+            return Err(err.to_string().into());
+        }
 
-        // Only generate config for the new core, don't try to reload on the
-        // currently running (old) core — it may reject config types that only
-        // the new core supports. The caller will restart_core() afterwards.
-        Config::generate().await.map_err(|e| e.to_string())?;
-        Config::runtime().await.apply();
-        Ok(())
+        match self.restart_core().await {
+            Ok(()) => {
+                if let Err(err) = verge.latest_arc().save_file().await {
+                    let switch_error = err.to_string();
+                    runtime.discard();
+                    verge.discard();
+
+                    let rollback_result = self.restart_core().await;
+                    if let Err(rollback_err) = rollback_result {
+                        return Err(format!(
+                            "Core switch config save failed: {switch_error}; rollback to {current_core} also failed: {rollback_err}"
+                        )
+                        .into());
+                    }
+
+                    return Err(format!(
+                        "Core switch config save failed and rolled back to {current_core}: {switch_error}"
+                    )
+                    .into());
+                }
+
+                runtime.apply();
+                verge.apply();
+                Ok(())
+            }
+            Err(err) => {
+                let switch_error = err.to_string();
+                runtime.discard();
+                verge.discard();
+
+                let rollback_result = self.restart_core().await;
+                if let Err(rollback_err) = rollback_result {
+                    return Err(format!(
+                        "Core switch failed: {switch_error}; rollback to {current_core} also failed: {rollback_err}"
+                    )
+                    .into());
+                }
+
+                Err(format!("Core switch failed and rolled back to {current_core}: {switch_error}").into())
+            }
+        }
     }
 
     async fn prepare_startup(&self) -> Result<()> {
@@ -102,14 +150,14 @@ impl CoreManager {
     /// This prevents race conditions where the frontend tries to connect
     /// before the core process has finished initializing (especially for
     /// Smart core which needs extra time for LightGBM model loading).
-    async fn wait_for_core_ready(&self) {
+    async fn wait_for_core_ready(&self) -> Result<()> {
         let ipc = match dirs::ipc_path() {
             Ok(p) => p,
-            Err(_) => return,
+            Err(err) => return Err(err),
         };
         let path_str = match dirs::path_to_str(&ipc) {
             Ok(s) => s.to_owned(),
-            Err(_) => return,
+            Err(err) => return Err(err),
         };
 
         let max_wait = Duration::from_secs(10);
@@ -129,17 +177,20 @@ impl CoreManager {
                     "Core IPC ready after {}ms",
                     start.elapsed().as_millis()
                 );
-                return;
+                return Ok(());
             }
 
             if start.elapsed() >= max_wait {
                 logging!(
                     warn,
                     Type::Core,
-                    "Core IPC not ready after {}ms, proceeding anyway",
+                    "Core IPC not ready after {}ms, treating startup as failed",
                     start.elapsed().as_millis()
                 );
-                return;
+                return Err(anyhow::anyhow!(
+                    "Core IPC not ready after {}ms",
+                    start.elapsed().as_millis()
+                ));
             }
 
             tokio::time::sleep(interval).await;

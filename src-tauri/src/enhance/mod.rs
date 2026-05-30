@@ -30,6 +30,7 @@ struct ConfigValues {
     clash_core: Option<String>,
     enable_tun: bool,
     enable_builtin: bool,
+    enable_smart_convert: bool,
     socks_enabled: bool,
     http_enabled: bool,
     enable_dns_settings: bool,
@@ -103,6 +104,7 @@ async fn get_config_values() -> ConfigValues {
     let IVerge {
         ref enable_tun_mode,
         ref enable_builtin_enhanced,
+        ref enable_smart_convert,
         ref verge_socks_enabled,
         ref verge_http_enabled,
         ref enable_dns_settings,
@@ -113,6 +115,7 @@ async fn get_config_values() -> ConfigValues {
         clash_core,
         enable_tun,
         enable_builtin,
+        enable_smart_convert,
         socks_enabled,
         http_enabled,
         enable_dns_settings,
@@ -121,6 +124,7 @@ async fn get_config_values() -> ConfigValues {
         Some(verge_arc.get_valid_clash_core()),
         enable_tun_mode.unwrap_or(false),
         enable_builtin_enhanced.unwrap_or(true),
+        enable_smart_convert.unwrap_or(false),
         verge_socks_enabled.unwrap_or(false),
         verge_http_enabled.unwrap_or(false),
         enable_dns_settings.unwrap_or(false),
@@ -141,6 +145,7 @@ async fn get_config_values() -> ConfigValues {
         clash_core,
         enable_tun,
         enable_builtin,
+        enable_smart_convert,
         socks_enabled,
         http_enabled,
         enable_dns_settings,
@@ -443,13 +448,32 @@ fn merge_default_config(
     config
 }
 
-async fn apply_builtin_scripts(mut config: Mapping, clash_core: Option<String>, enable_builtin: bool) -> Mapping {
+fn builtin_items_for_core(clash_core: Option<&str>, enable_smart_convert: bool) -> Vec<ChainItem> {
+    let clash_core = clash_core.map(String::from);
+    ChainItem::builtin()
+        .into_iter()
+        .filter(|(s, _)| s.is_support(clash_core.as_ref()))
+        .map(|(_, c)| c)
+        .filter(|item| enable_smart_convert || item.uid != "verge_smart_convert")
+        .collect()
+}
+
+#[cfg(test)]
+fn builtin_script_uids_for_core(clash_core: Option<&str>, enable_smart_convert: bool) -> Vec<String> {
+    builtin_items_for_core(clash_core, enable_smart_convert)
+        .into_iter()
+        .map(|item| item.uid)
+        .collect()
+}
+
+async fn apply_builtin_scripts(
+    mut config: Mapping,
+    clash_core: Option<String>,
+    enable_builtin: bool,
+    enable_smart_convert: bool,
+) -> Mapping {
     if enable_builtin {
-        let items: Vec<_> = ChainItem::builtin()
-            .into_iter()
-            .filter(|(s, _)| s.is_support(clash_core.as_ref()))
-            .map(|(_, c)| c)
-            .collect();
+        let items = builtin_items_for_core(clash_core.as_deref(), enable_smart_convert);
         for item in items {
             logging!(debug, Type::Core, "run builtin script {}", item.uid);
             if let ChainType::Script(script) = item.data {
@@ -633,6 +657,7 @@ pub async fn enhance() -> Result<(Mapping, HashSet<String>, HashMap<String, Resu
         clash_core,
         enable_tun,
         enable_builtin,
+        enable_smart_convert,
         socks_enabled,
         http_enabled,
         enable_dns_settings,
@@ -687,7 +712,7 @@ pub async fn enhance() -> Result<(Mapping, HashSet<String>, HashMap<String, Resu
     );
 
     // builtin scripts
-    let mut config = apply_builtin_scripts(config, clash_core.clone(), enable_builtin).await;
+    let mut config = apply_builtin_scripts(config, clash_core.clone(), enable_builtin, enable_smart_convert).await;
 
     // Revert smart groups to url-test when not using Smart core
     config = revert_smart_groups(config, &clash_core);
@@ -709,7 +734,22 @@ pub async fn enhance() -> Result<(Mapping, HashSet<String>, HashMap<String, Resu
 #[allow(clippy::expect_used)]
 #[cfg(test)]
 mod tests {
-    use super::cleanup_proxy_groups;
+    use super::{builtin_script_uids_for_core, cleanup_proxy_groups};
+
+    #[test]
+    fn smart_convert_builtin_respects_disabled_setting() {
+        let uids = builtin_script_uids_for_core(Some("verge-mihomo-smart"), false);
+
+        assert!(uids.iter().any(|uid| uid == "verge_meta_guard"));
+        assert!(!uids.iter().any(|uid| uid == "verge_smart_convert"));
+    }
+
+    #[test]
+    fn smart_convert_builtin_runs_when_enabled() {
+        let uids = builtin_script_uids_for_core(Some("verge-mihomo-smart"), true);
+
+        assert!(uids.iter().any(|uid| uid == "verge_smart_convert"));
+    }
 
     #[test]
     fn remove_missing_proxies_from_groups() {

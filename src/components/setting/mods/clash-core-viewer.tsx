@@ -49,6 +49,17 @@ const VALID_CORE = [
   },
 ]
 
+async function resetSmartGroups() {
+  try {
+    const proxiesData = await getProxies()
+    const groups = Object.values(proxiesData.proxies).filter(
+      (p) => p?.type === 'Smart' && p?.all,
+    )
+    await Promise.allSettled(groups.map((g) => unfixedProxy(g!.name)))
+    queryClient.invalidateQueries({ queryKey: ['getProxies'] })
+  } catch {}
+}
+
 export function ClashCoreViewer({ ref }: { ref?: Ref<DialogRef> }) {
   const { t } = useTranslation()
 
@@ -74,28 +85,19 @@ export function ClashCoreViewer({ ref }: { ref?: Ref<DialogRef> }) {
 
     try {
       setChangingCore(core)
-      closeAllConnections()
+      void closeAllConnections().catch(() => {})
       const errorMsg = await changeClashCore(core)
 
       if (errorMsg) {
         showNotice.error(errorMsg)
-        setChangingCore(null)
         return
       }
 
       mutateVerge()
-      await new Promise((resolve) => setTimeout(resolve, 500))
       invalidateClashConfig()
       mutateVersion()
       if (core === 'verge-mihomo-smart') {
-        try {
-          const proxiesData = await getProxies()
-          const groups = Object.values(proxiesData.proxies).filter(
-            (p) => p?.type === 'Smart' && p?.all,
-          )
-          await Promise.allSettled(groups.map((g) => unfixedProxy(g!.name)))
-          queryClient.invalidateQueries({ queryKey: ['getProxies'] })
-        } catch {}
+        void resetSmartGroups()
       }
     } catch (err) {
       showNotice.error(err)
