@@ -66,7 +66,8 @@ const LogPage = () => {
   useEffect(() => {
     if (!isDescending && filteredLogs.length > 0) {
       virtuosoRef.current?.scrollToIndex(filteredLogs.length - 1, {
-        behavior: 'smooth',
+        align: 'end',
+        behavior: 'auto',
       })
     }
   }, [filteredLogs.length, isDescending])

@@ -3,7 +3,7 @@ import { useLocalStorage } from 'foxact/use-local-storage'
 import { type MutableRefObject, useCallback, useEffect, useRef } from 'react'
 import { type Message, type MihomoWebSocket } from 'tauri-plugin-mihomo-api'
 
-export const RECONNECT_DELAY_MS = 1000
+export const RECONNECT_DELAY_MS = 100
 
 interface SharedSubscriptionOwner {
   handleMessage: (data: string) => void

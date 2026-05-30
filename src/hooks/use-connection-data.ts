@@ -40,16 +40,11 @@ const mergeConnectionSnapshot = (
     const next = nextById.get(prev.id)
     if (next !== undefined) {
       nextById.delete(prev.id)
-      if (prev.upload === next.upload && prev.download === next.download) {
-        // Reuse prev reference: row identity stability is the contract Stage 2 memo relies on.
-        carried.push(prev)
-      } else {
-        carried.push({
-          ...next,
-          curUpload: next.upload - prev.upload,
-          curDownload: next.download - prev.download,
-        })
-      }
+      carried.push({
+        ...next,
+        curUpload: next.upload - prev.upload,
+        curDownload: next.download - prev.download,
+      })
     } else {
       dropped.push(prev)
     }
