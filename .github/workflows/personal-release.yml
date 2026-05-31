@@ -11,6 +11,14 @@ on:
         description: "Release tag (e.g., v1.0.1)"
         required: true
         default: "v1.0.1"
+      source_ref:
+        description: "Git ref to build from (branch, tag, or SHA). Use personal for normal releases."
+        required: false
+        default: "personal"
+      update_updater:
+        description: "Upload update.json to updater release (true only for latest release)"
+        required: false
+        default: "true"
 
 permissions: write-all
 
@@ -34,7 +42,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.tag || 'personal' }}
+          ref: ${{ github.event.inputs.source_ref || 'personal' }}
 
       - name: Install Rust Stable
         uses: dtolnay/rust-toolchain@stable
@@ -145,6 +153,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload update.json to updater release
+        if: ${{ github.event.inputs.update_updater == 'true' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: updater
