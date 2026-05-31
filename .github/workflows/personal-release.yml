@@ -34,7 +34,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          ref: personal
+          ref: ${{ github.event.inputs.tag || 'personal' }}
 
       - name: Install Rust Stable
         uses: dtolnay/rust-toolchain@stable
