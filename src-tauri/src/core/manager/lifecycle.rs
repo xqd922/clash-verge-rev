@@ -11,9 +11,14 @@ use smartstring::alias::String;
 use std::time::{Duration, Instant};
 use tauri_plugin_clash_verge_sysinfo;
 
+const CORE_READY_MAX_WAIT: Duration = Duration::from_secs(20);
+const SMART_CORE_READY_MAX_WAIT: Duration = Duration::from_secs(60);
+const CORE_READY_POLL_INTERVAL: Duration = Duration::from_millis(100);
+
 impl CoreManager {
     pub async fn start_core(&self) -> Result<()> {
         self.prepare_startup().await?;
+        self.clear_core_ipc_pool().await;
         defer! {
             self.after_core_process();
         }
@@ -23,23 +28,27 @@ impl CoreManager {
             RunningMode::NotRunning | RunningMode::Sidecar => self.start_core_by_sidecar().await?,
         }
 
+        self.clear_core_ipc_pool().await;
         self.wait_for_core_ready().await
     }
 
     pub async fn stop_core(&self) -> Result<()> {
         CLASH_LOGGER.clear_logs().await;
+        self.clear_core_ipc_pool().await;
         defer! {
             self.after_core_process();
         }
 
-        match *self.get_running_mode() {
+        let result = match *self.get_running_mode() {
             RunningMode::Service => self.stop_core_by_service().await,
             RunningMode::Sidecar => {
                 self.stop_core_by_sidecar().await;
                 Ok(())
             }
             RunningMode::NotRunning => Ok(()),
-        }
+        };
+        self.clear_core_ipc_pool().await;
+        result
     }
 
     pub async fn restart_core(&self) -> Result<()> {
@@ -151,49 +160,51 @@ impl CoreManager {
     /// before the core process has finished initializing (especially for
     /// Smart core which needs extra time for LightGBM model loading).
     async fn wait_for_core_ready(&self) -> Result<()> {
-        let ipc = match dirs::ipc_path() {
-            Ok(p) => p,
-            Err(err) => return Err(err),
+        let clash_core = Config::verge().await.latest_arc().get_valid_clash_core();
+        let max_wait = if clash_core == "verge-mihomo-smart" {
+            SMART_CORE_READY_MAX_WAIT
+        } else {
+            CORE_READY_MAX_WAIT
         };
-        let path_str = match dirs::path_to_str(&ipc) {
-            Ok(s) => s.to_owned(),
-            Err(err) => return Err(err),
-        };
-
-        let max_wait = Duration::from_secs(10);
-        let interval = Duration::from_millis(100);
         let start = Instant::now();
+        let mut last_error = None;
 
         loop {
-            let p = path_str.clone();
-            let connected = tokio::task::spawn_blocking(move || std::fs::File::open(p).is_ok())
-                .await
-                .unwrap_or(false);
-
-            if connected {
-                logging!(
-                    info,
-                    Type::Core,
-                    "Core IPC ready after {}ms",
-                    start.elapsed().as_millis()
-                );
-                return Ok(());
-            }
-
             if start.elapsed() >= max_wait {
+                let elapsed_ms = start.elapsed().as_millis();
+                let reason = last_error.unwrap_or_else(|| "unknown error".to_string());
                 logging!(
                     warn,
                     Type::Core,
-                    "Core IPC not ready after {}ms, treating startup as failed",
-                    start.elapsed().as_millis()
+                    "Core IPC not ready after {}ms, treating startup as failed: {}",
+                    elapsed_ms,
+                    reason
                 );
-                return Err(anyhow::anyhow!(
-                    "Core IPC not ready after {}ms",
-                    start.elapsed().as_millis()
-                ));
+                return Err(anyhow::anyhow!("Core IPC not ready after {}ms: {}", elapsed_ms, reason));
             }
 
-            tokio::time::sleep(interval).await;
+            match Handle::mihomo().await.get_version().await {
+                Ok(_) => {
+                    logging!(
+                        info,
+                        Type::Core,
+                        "Core IPC ready after {}ms",
+                        start.elapsed().as_millis()
+                    );
+                    return Ok(());
+                }
+                Err(err) => {
+                    last_error = Some(err.to_string());
+                }
+            }
+
+            tokio::time::sleep(CORE_READY_POLL_INTERVAL).await;
+        }
+    }
+
+    async fn clear_core_ipc_pool(&self) {
+        if let Ok(pool) = tauri_plugin_mihomo::IpcConnectionPool::global() {
+            pool.clear_pool().await;
         }
     }
 
@@ -249,6 +260,7 @@ fn apply_core_change_to_draft(d: &mut IVerge, clash_core: &str) {
 mod tests {
     use super::apply_core_change_to_draft;
     use crate::config::IVerge;
+    use std::time::Duration;
 
     #[test]
     fn switching_to_smart_core_enables_smart_conversion() {
@@ -276,5 +288,11 @@ mod tests {
 
         assert_eq!(verge.clash_core.as_deref(), Some("verge-mihomo"));
         assert_eq!(verge.enable_smart_convert, Some(false));
+    }
+
+    #[test]
+    fn core_ready_wait_budget_allows_smart_core_startup() {
+        assert!(super::CORE_READY_MAX_WAIT >= Duration::from_secs(20));
+        assert!(super::SMART_CORE_READY_MAX_WAIT >= Duration::from_secs(60));
     }
 }

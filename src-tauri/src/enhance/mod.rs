@@ -791,6 +791,7 @@ proxy-groups:
             assert_eq!(group.get("type").and_then(Value::as_str), Some("smart"));
             assert_eq!(group.get("collectdata").and_then(Value::as_bool), Some(true));
             assert_eq!(group.get("uselightgbm").and_then(Value::as_bool), Some(true));
+            assert!(group.get("prefer-asn").is_none());
         }
 
         let manual = groups
