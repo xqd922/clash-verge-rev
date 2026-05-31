@@ -1,3 +1,9 @@
+## v(7.0.22)
+
+### 修复
+
+- 修复切换到 Smart 内核后未自动启用 Smart 策略组转换的问题；现在切到 `verge-mihomo-smart` 会在生成运行时配置前启用转换，`url-test` / `fallback` / `load-balance` 组会自动转为 `smart`
+
 ## v(7.0.21)
 
 ### 修复
