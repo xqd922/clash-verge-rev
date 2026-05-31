@@ -1,3 +1,12 @@
+## v(7.0.23)
+
+### 修复
+
+- 修复切换 Smart 内核时可能因首次下载 `ASN.mmdb` 或 Smart 资源初始化超过 10 秒而被提前判失败的问题
+- 内核启动就绪检测改为通过 Mihomo IPC `/version` 实际请求确认，避免 Windows named pipe 文件打开探针误判
+- 重启内核前后清空 Mihomo IPC 连接池，降低旧连接影响新内核检测和 API 请求的概率
+- Smart 自动转换不再默认启用 `prefer-asn`，避免缺少 `ASN.mmdb` 时切换过程被额外下载阻塞
+
 ## v(7.0.22)
 
 ### 修复
