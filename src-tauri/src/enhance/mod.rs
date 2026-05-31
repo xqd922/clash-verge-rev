@@ -734,7 +734,8 @@ pub async fn enhance() -> Result<(Mapping, HashSet<String>, HashMap<String, Resu
 #[allow(clippy::expect_used)]
 #[cfg(test)]
 mod tests {
-    use super::{builtin_script_uids_for_core, cleanup_proxy_groups};
+    use super::{apply_builtin_scripts, builtin_script_uids_for_core, cleanup_proxy_groups};
+    use serde_yaml_ng::Value;
 
     #[test]
     fn smart_convert_builtin_respects_disabled_setting() {
@@ -749,6 +750,55 @@ mod tests {
         let uids = builtin_script_uids_for_core(Some("verge-mihomo-smart"), true);
 
         assert!(uids.iter().any(|uid| uid == "verge_smart_convert"));
+    }
+
+    #[tokio::test]
+    async fn smart_convert_builtin_converts_supported_groups_when_enabled() {
+        let config_str = r#"
+proxy-groups:
+  - name: "auto"
+    type: url-test
+    proxies:
+      - DIRECT
+  - name: "fallback"
+    type: fallback
+    proxies:
+      - DIRECT
+  - name: "balance"
+    type: load-balance
+    proxies:
+      - DIRECT
+  - name: "manual"
+    type: select
+    proxies:
+      - DIRECT
+"#;
+
+        let config: serde_yaml_ng::Mapping = serde_yaml_ng::from_str(config_str).expect("Failed to parse test yaml");
+        let config = apply_builtin_scripts(config, Some("verge-mihomo-smart".into()), true, true).await;
+        let groups = config
+            .get("proxy-groups")
+            .and_then(Value::as_sequence)
+            .expect("proxy-groups should be a sequence");
+
+        for name in ["auto", "fallback", "balance"] {
+            let group = groups
+                .iter()
+                .find(|group| group.get("name").and_then(Value::as_str) == Some(name))
+                .and_then(Value::as_mapping)
+                .expect("converted group should exist");
+
+            assert_eq!(group.get("type").and_then(Value::as_str), Some("smart"));
+            assert_eq!(group.get("collectdata").and_then(Value::as_bool), Some(true));
+            assert_eq!(group.get("uselightgbm").and_then(Value::as_bool), Some(true));
+        }
+
+        let manual = groups
+            .iter()
+            .find(|group| group.get("name").and_then(Value::as_str) == Some("manual"))
+            .and_then(Value::as_mapping)
+            .expect("manual group should exist");
+        assert_eq!(manual.get("type").and_then(Value::as_str), Some("select"));
     }
 
     #[test]

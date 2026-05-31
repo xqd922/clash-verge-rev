@@ -62,7 +62,7 @@ impl CoreManager {
         }
 
         verge.edit_draft(|d| {
-            d.clash_core = Some(clash_core.to_owned());
+            apply_core_change_to_draft(d, clash_core.as_str());
         });
 
         // Generate against the target core while it is still only a draft.
@@ -237,5 +237,44 @@ impl CoreManager {
         })
         .retry(backoff)
         .await;
+    }
+}
+
+fn apply_core_change_to_draft(d: &mut IVerge, clash_core: &str) {
+    d.clash_core = Some(clash_core.into());
+    d.enable_smart_convert = Some(clash_core == "verge-mihomo-smart");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::apply_core_change_to_draft;
+    use crate::config::IVerge;
+
+    #[test]
+    fn switching_to_smart_core_enables_smart_conversion() {
+        let mut verge = IVerge {
+            clash_core: Some("verge-mihomo".into()),
+            enable_smart_convert: Some(false),
+            ..IVerge::default()
+        };
+
+        apply_core_change_to_draft(&mut verge, "verge-mihomo-smart");
+
+        assert_eq!(verge.clash_core.as_deref(), Some("verge-mihomo-smart"));
+        assert_eq!(verge.enable_smart_convert, Some(true));
+    }
+
+    #[test]
+    fn switching_to_standard_core_disables_smart_conversion() {
+        let mut verge = IVerge {
+            clash_core: Some("verge-mihomo-smart".into()),
+            enable_smart_convert: Some(true),
+            ..IVerge::default()
+        };
+
+        apply_core_change_to_draft(&mut verge, "verge-mihomo");
+
+        assert_eq!(verge.clash_core.as_deref(), Some("verge-mihomo"));
+        assert_eq!(verge.enable_smart_convert, Some(false));
     }
 }
