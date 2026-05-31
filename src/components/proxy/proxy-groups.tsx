@@ -25,7 +25,11 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router'
-import { healthcheckProxyProvider, unfixedProxy } from 'tauri-plugin-mihomo-api'
+import {
+  delayGroup,
+  healthcheckProxyProvider,
+  unfixedProxy,
+} from 'tauri-plugin-mihomo-api'
 
 import { BaseEmpty } from '@/components/base'
 import { useProxySelection } from '@/hooks/use-proxy-selection'
@@ -390,6 +394,7 @@ export const ProxyGroups = (props: Props) => {
     checkAllAbortRef.current?.abort()
     const abortController = new AbortController()
     checkAllAbortRef.current = abortController
+    let completed = false
 
     const proxies = renderList
       .filter(
@@ -429,15 +434,38 @@ export const ProxyGroups = (props: Props) => {
     }
 
     try {
-      await delayManager.checkListDelay(
+      const listDelayPromise = delayManager.checkListDelay(
         names,
         groupName,
         timeout,
         36,
         abortController.signal,
       )
+
+      const groupDelayPromise = delayGroup(
+        groupName,
+        delayManager.getUrl(groupName),
+        timeout,
+      )
+        .then((result) => {
+          if (checkAllAbortRef.current !== abortController) return
+          delayManager.batchSetDelay(result, names, groupName)
+          abortController.abort()
+        })
+        .catch((error) => {
+          if (checkAllAbortRef.current !== abortController) return
+          console.warn(
+            `[ProxyGroups] Group delay failed, falling back to per-proxy checks: ${groupName}`,
+            error,
+          )
+          return listDelayPromise
+        })
+
+      await Promise.race([listDelayPromise, groupDelayPromise])
+      completed = true
     } finally {
-      if (!abortController.signal.aborted) {
+      const isCurrentRun = checkAllAbortRef.current === abortController
+      if (isCurrentRun && (completed || !abortController.signal.aborted)) {
         if (group?.type === 'URLTest') {
           await unfixedProxy(groupName).catch(() => {})
         }
@@ -447,7 +475,7 @@ export const ProxyGroups = (props: Props) => {
         }
         onProxies()
       }
-      if (checkAllAbortRef.current === abortController) {
+      if (isCurrentRun) {
         checkAllAbortRef.current = null
       }
     }
