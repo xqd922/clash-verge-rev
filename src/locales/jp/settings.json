@@ -226,7 +226,6 @@
       "layout": {
         "title": "レイアウト設定",
         "fields": {
-          "preferSystemTitlebar": "Prefer System Titlebar",
           "trafficGraph": "トラフィックグラフ",
           "memoryUsage": "コアメモリ使用量",
           "proxyGroupIcon": "プロキシグループアイコン",

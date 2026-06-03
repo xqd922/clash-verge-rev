@@ -226,7 +226,6 @@
       "layout": {
         "title": "Настройки раскладки",
         "fields": {
-          "preferSystemTitlebar": "Использовать системную панель заголовка",
           "trafficGraph": "График трафика",
           "memoryUsage": "Использование памяти",
           "proxyGroupIcon": "Значок группы прокси",

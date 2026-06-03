@@ -642,7 +642,6 @@ export interface TranslationResources {
               memoryUsage: string
               navIcon: string
               pauseRenderTrafficStatsOnBlur: string
-              preferSystemTitlebar: string
               proxyGroupIcon: string
               proxyGroupsDisplayMode: string
               showOutboundModesInline: string

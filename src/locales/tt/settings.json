@@ -226,7 +226,6 @@
       "layout": {
         "title": "Расположение көйләүләре",
         "fields": {
-          "preferSystemTitlebar": "Prefer System Titlebar",
           "trafficGraph": "Трафик графигы",
           "memoryUsage": "Хәтер куллану",
           "proxyGroupIcon": "Прокси төркеме иконкасы",

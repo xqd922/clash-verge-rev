@@ -20,7 +20,6 @@ import { useTranslation } from 'react-i18next'
 import { BaseDialog, DialogRef, Switch, TooltipIcon } from '@/components/base'
 import { DEFAULT_HOVER_DELAY } from '@/components/proxy/proxy-group-navigator'
 import { useVerge } from '@/hooks/use-verge'
-import { useWindowDecorations } from '@/hooks/use-window'
 import { copyIconFile, getAppDir } from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
 import getSystem from '@/utils/get-system'
@@ -56,8 +55,6 @@ export const LayoutViewer = forwardRef<DialogRef>((_, ref) => {
   const [commonIcon, setCommonIcon] = useState('')
   const [sysproxyIcon, setSysproxyIcon] = useState('')
   const [tunIcon, setTunIcon] = useState('')
-
-  const { decorated, toggleDecorations } = useWindowDecorations()
 
   useEffect(() => {
     initIconPath()
@@ -120,25 +117,6 @@ export const LayoutViewer = forwardRef<DialogRef>((_, ref) => {
       onCancel={() => setOpen(false)}
     >
       <List>
-        <Item>
-          <ListItemText
-            primary={t(
-              'settings.components.verge.layout.fields.preferSystemTitlebar',
-            )}
-          />
-          <GuardState
-            value={decorated}
-            valueProps="checked"
-            onCatch={onError}
-            onFormat={onSwitchFormat}
-            onChange={async () => {
-              await toggleDecorations()
-            }}
-          >
-            <Switch edge="end" />
-          </GuardState>
-        </Item>
-
         <Item>
           <ListItemText
             primary={t('settings.components.verge.layout.fields.trafficGraph')}

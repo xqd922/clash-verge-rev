@@ -226,7 +226,6 @@
       "layout": {
         "title": "介面設定",
         "fields": {
-          "preferSystemTitlebar": "優先使用系統標題欄",
           "trafficGraph": "流量圖表",
           "memoryUsage": "內核佔用",
           "proxyGroupIcon": "代理組圖示",

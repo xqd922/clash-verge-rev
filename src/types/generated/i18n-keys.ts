@@ -457,7 +457,6 @@ export const translationKeys = [
   'settings.components.verge.theme.actions.editCss',
   'settings.components.verge.theme.dialogs.editCssTitle',
   'settings.components.verge.layout.title',
-  'settings.components.verge.layout.fields.preferSystemTitlebar',
   'settings.components.verge.layout.fields.trafficGraph',
   'settings.components.verge.layout.fields.memoryUsage',
   'settings.components.verge.layout.fields.proxyGroupIcon',

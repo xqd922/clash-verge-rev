@@ -39,7 +39,6 @@ import { UpdateButton } from '@/components/layout/update-button'
 import { WindowControls } from '@/components/layout/window-controller'
 import { useI18n } from '@/hooks/use-i18n'
 import { useVerge } from '@/hooks/use-verge'
-import { useWindowDecorations } from '@/hooks/use-window'
 import ProxiesPage from '@/pages/proxies'
 import { useThemeMode } from '@/services/states'
 import getSystem from '@/utils/get-system'
@@ -132,7 +131,6 @@ const Layout = () => {
     useState<MenuContextPosition | null>(null)
 
   const windowControlsRef = useRef<any>(null)
-  const { decorated } = useWindowDecorations()
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -208,17 +206,16 @@ const Layout = () => {
   }, [navCollapsed, patchVerge])
 
   const customTitlebar = useMemo(
-    () =>
-      decorated === false ? (
-        <div className="the_titlebar">
-          <div
-            className="the_titlebar-drag-region"
-            data-tauri-drag-region="true"
-          />
-          <WindowControls ref={windowControlsRef} />
-        </div>
-      ) : null,
-    [decorated],
+    () => (
+      <div className="the_titlebar">
+        <div
+          className="the_titlebar-drag-region"
+          data-tauri-drag-region="true"
+        />
+        <WindowControls ref={windowControlsRef} />
+      </div>
+    ),
+    [],
   )
 
   useLoadingOverlay(themeReady)
@@ -309,7 +306,7 @@ const Layout = () => {
             : {},
         ]}
       >
-        {/* Custom titlebar - rendered only when decorated is false, memoized for performance */}
+        {/* Custom titlebar */}
         {customTitlebar}
 
         <div className="layout-content">

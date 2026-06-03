@@ -226,7 +226,6 @@
       "layout": {
         "title": "Pengaturan Tata Letak",
         "fields": {
-          "preferSystemTitlebar": "Prefer System Titlebar",
           "trafficGraph": "Grafik Lalu Lintas",
           "memoryUsage": "Penggunaan Memori",
           "proxyGroupIcon": "Ikon Grup Proksi",

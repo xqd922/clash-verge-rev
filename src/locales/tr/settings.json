@@ -226,7 +226,6 @@
       "layout": {
         "title": "Düzen Ayarı",
         "fields": {
-          "preferSystemTitlebar": "Prefer System Titlebar",
           "trafficGraph": "Trafik Grafiği",
           "memoryUsage": "Çekirdek Kullanımı",
           "proxyGroupIcon": "Vekil Grup Simgesi",

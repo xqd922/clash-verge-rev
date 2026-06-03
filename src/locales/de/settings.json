@@ -226,7 +226,6 @@
       "layout": {
         "title": "Layout-Einstellungen",
         "fields": {
-          "preferSystemTitlebar": "Prefer System Titlebar",
           "trafficGraph": "Verkehrsdiagramm",
           "memoryUsage": "Kern-Speichernutzung",
           "proxyGroupIcon": "Proxy-Gruppen-Symbol",

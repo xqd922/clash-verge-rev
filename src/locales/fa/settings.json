@@ -226,7 +226,6 @@
       "layout": {
         "title": "تنظیمات چیدمان",
         "fields": {
-          "preferSystemTitlebar": "Prefer System Titlebar",
           "trafficGraph": "نمودار ترافیک",
           "memoryUsage": "استفاده از حافظه",
           "proxyGroupIcon": "آیکون گروه پراکسی",

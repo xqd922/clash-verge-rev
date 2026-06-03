@@ -226,7 +226,6 @@
       "layout": {
         "title": "إعدادات التخطيط",
         "fields": {
-          "preferSystemTitlebar": "Prefer System Titlebar",
           "trafficGraph": "مخطط حركة المرور",
           "memoryUsage": "استهلاك الذاكرة",
           "proxyGroupIcon": "أيقونة مجموعة الوكلاء",
