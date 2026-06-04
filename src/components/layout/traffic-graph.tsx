@@ -13,7 +13,7 @@ const upLineWidth = 4
 const downLineAlpha = 1
 const downLineWidth = 4
 const sampleIntervalMs = 1000
-const frameIntervalMs = 1000 / 15
+const frameIntervalMs = 1000 / 30
 const animationDurationMs = sampleIntervalMs
 
 const zeroTraffic: Traffic = { up: 0, down: 0 }
