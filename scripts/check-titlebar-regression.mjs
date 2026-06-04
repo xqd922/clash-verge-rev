@@ -10,6 +10,7 @@ const files = {
   layoutViewer: read('src/components/setting/mods/layout-viewer.tsx'),
   windowRust: read('src-tauri/src/utils/resolve/window.rs'),
   capability: read('src-tauri/capabilities/migrated.json'),
+  lib: read('src-tauri/src/lib.rs'),
 }
 
 const failures = []
@@ -55,6 +56,11 @@ reject(
 reject(
   /core:window:allow-set-decorations/.test(files.capability),
   'Tauri capabilities must not allow runtime decoration changes.',
+)
+reject(
+  /StateFlags::default\(\)/.test(files.lib) ||
+    !/StateFlags::DECORATIONS/.test(files.lib),
+  'Window state plugin must exclude DECORATIONS so persisted decorated state cannot restore the system titlebar.',
 )
 
 if (failures.length > 0) {
