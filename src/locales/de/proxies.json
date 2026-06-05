@@ -25,7 +25,12 @@
     },
     "labels": {
       "proxyCount": "Anzahl der Knoten",
-      "delayCheckReset": "Latenztest durchführen, um Fixierung aufzuheben"
+      "delayCheckReset": "Latenztest durchführen, um Fixierung aufzuheben",
+      "smartRank": {
+        "MostUsed": "Most Used",
+        "OccasionalUsed": "Often Used",
+        "RarelyUsed": "Sometimes"
+      }
     },
     "tooltips": {
       "locate": "Aktueller Knoten",

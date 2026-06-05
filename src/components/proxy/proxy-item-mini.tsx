@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import { BaseLoading } from '@/components/base'
 import { useProxyDelayState } from '@/hooks/use-proxy-delay-state'
+import { SMART_RANK_I18N_KEY, type SmartRank } from '@/hooks/use-smart-weights'
 import delayManager from '@/services/delay'
 
 interface Props {
@@ -11,12 +12,13 @@ interface Props {
   proxy: IProxyItem
   selected: boolean
   showType?: boolean
+  smartRank?: SmartRank
   onClick?: (name: string) => void
 }
 
 // 多列布局
 export const ProxyItemMini = (props: Props) => {
-  const { group, proxy, selected, showType = true, onClick } = props
+  const { group, proxy, selected, showType = true, smartRank, onClick } = props
 
   const { t } = useTranslation()
 
@@ -117,6 +119,11 @@ export const ProxyItemMini = (props: Props) => {
             {!!proxy.provider && (
               <TypeBox color="text.secondary" component="span">
                 {proxy.provider}
+              </TypeBox>
+            )}
+            {smartRank && (
+              <TypeBox color="text.secondary" component="span">
+                {t(SMART_RANK_I18N_KEY[smartRank])}
               </TypeBox>
             )}
             <TypeBox color="text.secondary" component="span">

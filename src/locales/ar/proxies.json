@@ -25,7 +25,12 @@
     },
     "labels": {
       "proxyCount": "Proxy Count",
-      "delayCheckReset": "فحص التأخير لإلغاء الثابت"
+      "delayCheckReset": "فحص التأخير لإلغاء الثابت",
+      "smartRank": {
+        "MostUsed": "Most Used",
+        "OccasionalUsed": "Often Used",
+        "RarelyUsed": "Sometimes"
+      }
     },
     "tooltips": {
       "locate": "الموقع",

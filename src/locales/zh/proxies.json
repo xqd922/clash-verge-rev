@@ -25,7 +25,12 @@
     },
     "labels": {
       "proxyCount": "节点数量",
-      "delayCheckReset": "进行延迟测试，以取消固定"
+      "delayCheckReset": "进行延迟测试，以取消固定",
+      "smartRank": {
+        "MostUsed": "最常使用",
+        "OccasionalUsed": "经常使用",
+        "RarelyUsed": "偶尔使用"
+      }
     },
     "tooltips": {
       "locate": "当前节点",

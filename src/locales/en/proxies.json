@@ -25,7 +25,12 @@
     },
     "labels": {
       "proxyCount": "Proxy Count",
-      "delayCheckReset": "Delay check to cancel fixed"
+      "delayCheckReset": "Delay check to cancel fixed",
+      "smartRank": {
+        "MostUsed": "Most Used",
+        "OccasionalUsed": "Often Used",
+        "RarelyUsed": "Sometimes"
+      }
     },
     "tooltips": {
       "locate": "locate",

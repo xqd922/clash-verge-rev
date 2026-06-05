@@ -25,7 +25,12 @@
     },
     "labels": {
       "proxyCount": "Proxy Count",
-      "delayCheckReset": "بررسی تأخیر برای لغو ثابت"
+      "delayCheckReset": "بررسی تأخیر برای لغو ثابت",
+      "smartRank": {
+        "MostUsed": "Most Used",
+        "OccasionalUsed": "Often Used",
+        "RarelyUsed": "Sometimes"
+      }
     },
     "tooltips": {
       "locate": "موقعیت",

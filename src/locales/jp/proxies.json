@@ -25,7 +25,12 @@
     },
     "labels": {
       "proxyCount": "ノード数",
-      "delayCheckReset": "遅延テストを実行して固定を解除する"
+      "delayCheckReset": "遅延テストを実行して固定を解除する",
+      "smartRank": {
+        "MostUsed": "Most Used",
+        "OccasionalUsed": "Often Used",
+        "RarelyUsed": "Sometimes"
+      }
     },
     "tooltips": {
       "locate": "現在のノード",

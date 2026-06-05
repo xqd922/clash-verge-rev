@@ -25,7 +25,12 @@
     },
     "labels": {
       "proxyCount": "Proxy Count",
-      "delayCheckReset": "Беркетелгәнне гамәлдән чыгару өчен задержканы тикшерү"
+      "delayCheckReset": "Беркетелгәнне гамәлдән чыгару өчен задержканы тикшерү",
+      "smartRank": {
+        "MostUsed": "Most Used",
+        "OccasionalUsed": "Often Used",
+        "RarelyUsed": "Sometimes"
+      }
     },
     "tooltips": {
       "locate": "Урын",

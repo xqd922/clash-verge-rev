@@ -10,9 +10,11 @@ import {
   SxProps,
   Theme,
 } from '@mui/material'
+import { useTranslation } from 'react-i18next'
 
 import { BaseLoading } from '@/components/base'
 import { useProxyDelayState } from '@/hooks/use-proxy-delay-state'
+import { SMART_RANK_I18N_KEY, type SmartRank } from '@/hooks/use-smart-weights'
 import delayManager from '@/services/delay'
 
 interface Props {
@@ -20,6 +22,7 @@ interface Props {
   proxy: IProxyItem
   selected: boolean
   showType?: boolean
+  smartRank?: SmartRank
   sx?: SxProps<Theme>
   onClick?: (name: string) => void
 }
@@ -43,7 +46,16 @@ const TypeBox = styled('span')(({ theme }) => ({
 }))
 
 export const ProxyItem = (props: Props) => {
-  const { group, proxy, selected, showType = true, sx, onClick } = props
+  const {
+    group,
+    proxy,
+    selected,
+    showType = true,
+    smartRank,
+    sx,
+    onClick,
+  } = props
+  const { t } = useTranslation()
 
   const { delayValue, isPreset, timeout, onDelay } = useProxyDelayState(
     proxy,
@@ -99,6 +111,9 @@ export const ProxyItem = (props: Props) => {
               </Box>
               {showType && !!proxy.provider && (
                 <TypeBox>{proxy.provider}</TypeBox>
+              )}
+              {showType && smartRank && (
+                <TypeBox>{t(SMART_RANK_I18N_KEY[smartRank])}</TypeBox>
               )}
               {showType && <TypeBox>{proxy.type}</TypeBox>}
               {showType && proxy.udp && <TypeBox>UDP</TypeBox>}

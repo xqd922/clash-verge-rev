@@ -455,6 +455,11 @@ export interface TranslationResources {
         labels: {
           delayCheckReset: string
           proxyCount: string
+          smartRank: {
+            MostUsed: string
+            OccasionalUsed: string
+            RarelyUsed: string
+          }
         }
         messages: {
           directMode: string

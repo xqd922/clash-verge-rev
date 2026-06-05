@@ -25,7 +25,12 @@
     },
     "labels": {
       "proxyCount": "Vekil Sayısı",
-      "delayCheckReset": "Sabit iptali için gecikme kontrolü"
+      "delayCheckReset": "Sabit iptali için gecikme kontrolü",
+      "smartRank": {
+        "MostUsed": "Most Used",
+        "OccasionalUsed": "Often Used",
+        "RarelyUsed": "Sometimes"
+      }
     },
     "tooltips": {
       "locate": "konum",

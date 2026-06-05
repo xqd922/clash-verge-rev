@@ -17,6 +17,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useIconCache } from '@/hooks/use-icon-cache'
+import { useSmartWeights } from '@/hooks/use-smart-weights'
 import { useVerge } from '@/hooks/use-verge'
 import { useThemeMode } from '@/services/states'
 
@@ -62,6 +63,9 @@ export const ProxyRender = (props: RenderProps) => {
     enabled: enable_group_icon,
   })
 
+  const isSmart = group.type === 'Smart'
+  const { topNodes, rankMap } = useSmartWeights(group.name, isSmart)
+
   const showType = headState?.showType
   const proxyColItemsMemo = useMemo(() => {
     if (type !== 4 || !proxyCol) {
@@ -75,10 +79,11 @@ export const ProxyRender = (props: RenderProps) => {
         proxy={proxyItem!}
         selected={group.now === proxyItem?.name}
         showType={showType}
+        smartRank={rankMap.get(proxyItem?.name ?? '')}
         onClick={() => onChangeProxy(group, proxyItem!)}
       />
     ))
-  }, [type, proxyCol, item.key, group, showType, onChangeProxy])
+  }, [type, proxyCol, item.key, group, showType, rankMap, onChangeProxy])
 
   if (type === 0) {
     return (
@@ -130,12 +135,22 @@ export const ProxyRender = (props: RenderProps) => {
               }}
             >
               <Box component="span" sx={{ marginTop: '2px' }}>
-                <StyledTypeBox>{group.type}</StyledTypeBox>
-                {group.type !== 'Smart' && (
-                  <StyledSubtitle sx={{ color: 'text.secondary' }}>
-                    {group.now}
-                  </StyledSubtitle>
-                )}
+                <StyledTypeBox>
+                  {isSmart ? 'Smart Group' : group.type}
+                </StyledTypeBox>
+                {isSmart
+                  ? topNodes.length > 0 && (
+                      <StyledSubtitle sx={{ color: 'text.secondary' }}>
+                        {topNodes
+                          .map((n) => `${n.name} ${Math.round(n.weight)}`)
+                          .join(' · ')}
+                      </StyledSubtitle>
+                    )
+                  : group.now && (
+                      <StyledSubtitle sx={{ color: 'text.secondary' }}>
+                        {group.now}
+                      </StyledSubtitle>
+                    )}
               </Box>
             </Box>
           }
@@ -186,6 +201,7 @@ export const ProxyRender = (props: RenderProps) => {
         proxy={proxy!}
         selected={group.now === proxy?.name}
         showType={headState?.showType}
+        smartRank={rankMap.get(proxy?.name ?? '')}
         sx={{ py: 0, pl: 2 }}
         onClick={() => onChangeProxy(group, proxy!)}
       />
