@@ -12,8 +12,12 @@ use std::time::{Duration, Instant};
 use tauri_plugin_clash_verge_sysinfo;
 
 const CORE_READY_MAX_WAIT: Duration = Duration::from_secs(20);
-const SMART_CORE_READY_MAX_WAIT: Duration = Duration::from_secs(60);
+const SMART_CORE_READY_MAX_WAIT: Duration = Duration::from_secs(180);
 const CORE_READY_POLL_INTERVAL: Duration = Duration::from_millis(100);
+const CORE_STARTUP_LOG_TAIL_LINES: usize = 8;
+const SMART_CORE_NAME: &str = "verge-mihomo-smart";
+const SMART_MODEL_FILE: &str = "Model.bin";
+const SMART_MODEL_MIN_BYTES: u64 = 4 * 1024 * 1024;
 
 impl CoreManager {
     pub async fn start_core(&self) -> Result<()> {
@@ -128,6 +132,8 @@ impl CoreManager {
     }
 
     async fn prepare_startup(&self) -> Result<()> {
+        self.ensure_smart_model_resource().await;
+
         // Portable mode must always use sidecar to avoid conflicts with
         // a service installed by a non-portable installation (the service
         // would start mihomo with the non-portable home directory).
@@ -148,6 +154,77 @@ impl CoreManager {
 
         self.set_running_mode(mode);
         Ok(())
+    }
+
+    async fn ensure_smart_model_resource(&self) {
+        let clash_core = Config::verge().await.latest_arc().get_valid_clash_core();
+        if clash_core != SMART_CORE_NAME {
+            return;
+        }
+
+        let src_path = match dirs::app_resources_dir() {
+            Ok(path) => path.join(SMART_MODEL_FILE),
+            Err(err) => {
+                logging!(warn, Type::Core, "Failed to resolve resource dir: {}", err);
+                return;
+            }
+        };
+        if !src_path.exists() {
+            logging!(
+                warn,
+                Type::Core,
+                "Bundled Smart model not found: {}",
+                src_path.display()
+            );
+            return;
+        }
+
+        let dest_path = match dirs::app_home_dir() {
+            Ok(path) => path.join(SMART_MODEL_FILE),
+            Err(err) => {
+                logging!(warn, Type::Core, "Failed to resolve app home dir: {}", err);
+                return;
+            }
+        };
+
+        let should_copy = match tokio::fs::metadata(&dest_path).await {
+            Ok(metadata) => metadata.len() < SMART_MODEL_MIN_BYTES || resource_is_newer(&src_path, &dest_path).await,
+            Err(_) => true,
+        };
+
+        if !should_copy {
+            return;
+        }
+
+        if let Some(parent) = dest_path.parent()
+            && let Err(err) = tokio::fs::create_dir_all(parent).await
+        {
+            logging!(
+                warn,
+                Type::Core,
+                "Failed to create Smart model directory {}: {}",
+                parent.display(),
+                err
+            );
+            return;
+        }
+
+        match tokio::fs::copy(&src_path, &dest_path).await {
+            Ok(_) => logging!(
+                info,
+                Type::Core,
+                "Smart model prepared from bundled resource: {}",
+                dest_path.display()
+            ),
+            Err(err) => logging!(
+                warn,
+                Type::Core,
+                "Failed to prepare bundled Smart model from {} to {}: {}",
+                src_path.display(),
+                dest_path.display(),
+                err
+            ),
+        }
     }
 
     fn after_core_process(&self) {
@@ -173,6 +250,7 @@ impl CoreManager {
             if start.elapsed() >= max_wait {
                 let elapsed_ms = start.elapsed().as_millis();
                 let reason = last_error.unwrap_or_else(|| "unknown error".to_string());
+                let reason = append_core_startup_log_tail(reason).await;
                 logging!(
                     warn,
                     Type::Core,
@@ -251,6 +329,30 @@ impl CoreManager {
     }
 }
 
+async fn resource_is_newer(src_path: &std::path::Path, dest_path: &std::path::Path) -> bool {
+    let src_modified = tokio::fs::metadata(src_path).await.and_then(|m| m.modified());
+    let dest_modified = tokio::fs::metadata(dest_path).await.and_then(|m| m.modified());
+
+    matches!((src_modified, dest_modified), (Ok(src), Ok(dest)) if src > dest)
+}
+
+async fn append_core_startup_log_tail(reason: std::string::String) -> std::string::String {
+    let logs = CLASH_LOGGER.get_logs().await;
+    if logs.is_empty() {
+        return reason;
+    }
+
+    let mut tail = logs
+        .iter()
+        .rev()
+        .take(CORE_STARTUP_LOG_TAIL_LINES)
+        .map(|line| line.as_str())
+        .collect::<Vec<_>>();
+    tail.reverse();
+
+    format!("{}\nRecent core logs:\n{}", reason, tail.join("\n"))
+}
+
 fn apply_core_change_to_draft(d: &mut IVerge, clash_core: &str) {
     d.clash_core = Some(clash_core.into());
     d.enable_smart_convert = Some(clash_core == "verge-mihomo-smart");
@@ -293,6 +395,11 @@ mod tests {
     #[test]
     fn core_ready_wait_budget_allows_smart_core_startup() {
         assert!(super::CORE_READY_MAX_WAIT >= Duration::from_secs(20));
-        assert!(super::SMART_CORE_READY_MAX_WAIT >= Duration::from_secs(60));
+        assert!(super::SMART_CORE_READY_MAX_WAIT >= Duration::from_secs(180));
+    }
+
+    #[test]
+    fn smart_model_min_size_rejects_truncated_download() {
+        assert!(super::SMART_MODEL_MIN_BYTES > 2 * 1024 * 1024);
     }
 }

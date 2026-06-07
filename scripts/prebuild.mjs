@@ -183,6 +183,8 @@ let META_VERSION
 const META_SMART_URL_PREFIX = `https://github.com/vernesong/mihomo/releases/download/Prerelease-Alpha`
 const META_SMART_RELEASE_API =
   'https://api.github.com/repos/vernesong/mihomo/releases/tags/Prerelease-Alpha'
+const META_SMART_MODEL_URL =
+  'https://github.com/vernesong/mihomo/releases/download/LightGBM-Model/Model.bin'
 let META_SMART_VERSION
 let META_SMART_DOWNLOAD_URL
 
@@ -826,6 +828,11 @@ const resolveGeoIP = () =>
     file: 'geoip.dat',
     downloadURL: `https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.dat`,
   })
+const resolveSmartModel = () =>
+  resolveResource({
+    file: 'Model.bin',
+    downloadURL: META_SMART_MODEL_URL,
+  })
 const resolveEnableLoopback = () =>
   resolveResource({
     file: 'enableLoopback.exe',
@@ -870,6 +877,7 @@ const tasks = [
   { name: 'mmdb', func: resolveMmdb, retry: 5 },
   { name: 'geosite', func: resolveGeosite, retry: 5 },
   { name: 'geoip', func: resolveGeoIP, retry: 5 },
+  { name: 'smart-model', func: resolveSmartModel, retry: 5 },
   {
     name: 'enableLoopback',
     func: resolveEnableLoopback,
