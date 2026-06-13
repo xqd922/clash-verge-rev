@@ -399,6 +399,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::assertions_on_constants)]
     fn smart_model_min_size_rejects_truncated_download() {
         assert!(super::SMART_MODEL_MIN_BYTES > 2 * 1024 * 1024);
     }
