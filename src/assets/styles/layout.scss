@@ -48,8 +48,8 @@
 
         .the-newbtn {
           position: absolute;
-          right: 10px;
-          top: 15px;
+          right: 9px;
+          top: 2px;
           border-radius: 8px;
           padding: 2px 4px;
           transform: scale(0.8);
@@ -169,10 +169,6 @@
       top: 5px;
     }
 
-    .layout-content__left .the-newbtn {
-      right: 9px;
-      top: 2px;
-    }
   }
 }
 
