@@ -268,6 +268,14 @@ async function getLatestAlphaVersion() {
 }
 
 async function getLatestReleaseVersion() {
+  // Allow pinning via MIHOMO_VERSION env var (e.g. MIHOMO_VERSION=v1.26.0)
+  if (process.env.MIHOMO_VERSION) {
+    META_VERSION = process.env.MIHOMO_VERSION.trim()
+    log_info(
+      `Using pinned release version from MIHOMO_VERSION: ${META_VERSION}`,
+    )
+    return
+  }
   if (!FORCE) {
     const cached = await getCachedVersion('META_VERSION')
     if (cached) {
