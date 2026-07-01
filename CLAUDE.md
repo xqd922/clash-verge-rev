@@ -200,6 +200,23 @@ Enhancement types: Merge (YAML overlay), Script (JS via Boa engine), Rules/Proxi
 
 - pnpm 10.28.0 (enforced via corepack)
 
+## Commit Style
+
+Conventional Commits format. Lowercase description, no period, no body.
+
+```
+fix: nudge update button upward
+feat: support pinning mihomo core version in personal release
+fix: align update button position on Windows with macOS
+feat(proxy): show Smart group node weight ranking
+release: 7.0.29
+```
+
+- Prefix: `fix:`, `feat:`, `release:`, etc.
+- Optional scope: `feat(proxy):`, `fix(profiles):`
+- Description is lowercase, concise, no trailing period
+- No commit body or footer
+
 ## Personal Branch Release
 
 The `personal` branch has its own release workflow separate from the main `release.yml`.
@@ -214,15 +231,30 @@ The `personal` branch has its own release workflow separate from the main `relea
 ### How to Release from Personal Branch
 
 ```bash
-# 1. Ensure all changes are committed and pushed to personal branch
+# 1. Bump version (replace 7.0.X with target version)
+#    Files to update: package.json, src-tauri/Cargo.toml, src-tauri/tauri.conf.json
+#    Also add a changelog entry at the top of Changelog.md
+
+# 2. Update Cargo.lock
+cd src-tauri && cargo update -p clash-verge && cd ..
+
+# 3. Commit the release
+git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json Changelog.md Cargo.lock
+git commit -m "release: 7.0.X"
+
+# 4. Push
 git push origin personal
 
-# 2. Trigger the workflow manually (do NOT push tags — release.yml will pick them up and fail)
-gh workflow run personal-release.yml \
-  -f version="7.0.9" \
-  -f tag="v7.0.9"
+# 5. Delete existing remote tag/release (if any)
+gh release delete v7.0.X --yes --cleanup-tag 2>/dev/null; git tag -d v7.0.X 2>/dev/null
 
-# 3. Monitor the build
+# 6. Trigger the workflow
+#    Must use --ref personal because the default branch (dev) doesn't have this workflow
+gh workflow run personal-release.yml --ref personal \
+  -f version="7.0.X" \
+  -f tag="v7.0.X"
+
+# 7. Monitor the build
 gh run list --workflow=personal-release.yml --limit 3
 gh run watch  # watch the latest run
 ```
