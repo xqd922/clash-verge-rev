@@ -510,6 +510,7 @@ pub enum ProxyType {
     RejectDrop,
     Compatible,
     Pass,
+    PassRule,
     Dns,
     Shadowsocks,
     ShadowsocksR,
