@@ -1,3 +1,36 @@
+## v(7.0.30)
+
+### 新增
+
+- 支持在个人版发版流程中锁定 mihomo 核心版本
+
+### 修复
+
+- 修复 mihomo 核心移除 `global-client-fingerprint` 字段后 `BaseConfig` 反序列化失败导致代理页面模式切换和高亮失效的问题
+- 修复 Smart 核心返回 PassRule 代理类型导致代理页面空白的问题
+- 修复更新按钮位置在 Windows 上与 macOS 不一致的问题
+- 修复更新按钮向上偏移的问题
+- 修复模式切换（热键/托盘/前端）错误被静默吞掉的问题，改为向前端传播错误并显示通知
+- 修复运行时配置不跟踪 mode 变更的问题
+
+### 修改方案
+
+**BaseConfig 反序列化失败（模式切换/高亮失效根因）：**
+mihomo 核心新版本移除了 `global-client-fingerprint` 字段（MetaCubeX/mihomo commit bd72c65b），但 `BaseConfig` 结构体仍将 `global_client_fingerprint` 定义为必填 `String`，serde 反序列化时遇到缺失字段直接报错，导致 `GET /configs` 整个响应解析失败。`clashConfig` 始终为 `undefined`，`curMode` 无法获取，按钮不高亮且切换无效果。
+修复方式：将 `global_client_fingerprint` 和 `global_ua` 改为 `Option<String>` + `#[serde(default)]`，TypeScript 绑定同步更新为可选字段。
+
+**PassRule 代理类型：**
+Smart 核心返回 `PassRule` 类型的代理节点，但 `ProxyType` 枚举中缺少该变体，serde 反序列化失败导致整个代理列表解析出错，代理页面空白。
+修复方式：在 `ProxyType` 枚举中添加 `PassRule` 变体。
+
+**模式切换错误静默吞掉：**
+`change_clash_mode` 返回类型为 `()`，`patch_clash_mode` Tauri 命令始终返回 `Ok(())`，前端无法感知切换是否成功。
+修复方式：`change_clash_mode` 返回 `anyhow::Result<()>`，`patch_clash_mode` 通过 `.stringify_err()` 传播错误，前端增加 try/catch + `showNotice.error` 通知。热键和托盘菜单同步增加错误处理。
+
+**运行时配置不跟踪 mode：**
+`PATCH_CONFIG_INNER` 数组只包含 `allow-lan`、`ipv6`、`log-level`、`unified-delay`、`tunnels`，缺少 `mode`，导致模式变更不会同步到运行时配置。
+修复方式：在 `PATCH_CONFIG_INNER` 中添加 `"mode"`，并在 `change_clash_mode` 成功后同步更新运行时配置。
+
 ## v(7.0.29)
 
 ### 修复
