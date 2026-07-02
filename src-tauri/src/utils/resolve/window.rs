@@ -4,7 +4,7 @@ use tauri::webview::PageLoadEvent;
 use tauri::{Theme, WebviewWindow};
 
 use crate::{config::Config, core::handle, utils::resolve::window_script::build_window_initial_script};
-use clash_verge_logging::{Type, logging, logging_error};
+use clash_verge_logging::{Type, logging_error};
 
 const DARK_BACKGROUND_COLOR: Color = Color(46, 48, 61, 255); // #2E303D
 const LIGHT_BACKGROUND_COLOR: Color = Color(245, 245, 245, 255); // #F5F5F5
@@ -84,34 +84,8 @@ pub async fn build_new_window() -> Result<WebviewWindow, String> {
     match builder.build() {
         Ok(window) => {
             logging_error!(Type::Window, window.set_background_color(Some(background_color)));
-            #[cfg(windows)]
-            apply_square_corners(&window);
             Ok(window)
         }
         Err(e) => Err(e.to_string()),
-    }
-}
-
-/// 关闭 Windows 11 默认的窗口圆角，使无系统标题栏时右上角控件保持直角
-#[cfg(windows)]
-fn apply_square_corners(window: &WebviewWindow) {
-    use windows::Win32::Foundation::HWND;
-    use windows::Win32::Graphics::Dwm::{DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_DONOTROUND, DwmSetWindowAttribute};
-
-    let Ok(raw) = window.hwnd() else {
-        return;
-    };
-    let hwnd = HWND(raw.0);
-    let preference = DWMWCP_DONOTROUND;
-    let result = unsafe {
-        DwmSetWindowAttribute(
-            hwnd,
-            DWMWA_WINDOW_CORNER_PREFERENCE,
-            std::ptr::addr_of!(preference).cast(),
-            std::mem::size_of_val(&preference) as u32,
-        )
-    };
-    if let Err(e) = result {
-        logging!(warn, Type::Window, "设置窗口直角失败: {e}");
     }
 }
