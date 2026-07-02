@@ -18,6 +18,7 @@ import {
   patchClashMode,
   updateProxyChainConfigInRuntime,
 } from '@/services/cmds'
+import { showNotice } from '@/services/notice-service'
 import { debugLog } from '@/utils/debug'
 
 const MODES = ['rule', 'global', 'direct'] as const
@@ -45,7 +46,7 @@ const ProxyPage = () => {
   )
 
   const { clashConfig } = useClashConfigData()
-  const { refreshClashConfig } = useAppRefreshers()
+  const { refreshClashConfig, refreshProxy } = useAppRefreshers()
 
   const updateChainConfigData = useCallback((value: string | null) => {
     dispatchChainConfigData(value)
@@ -61,19 +62,30 @@ const ProxyPage = () => {
     if (mode !== curMode && verge?.auto_close_connection) {
       closeAllConnections()
     }
-    await patchClashMode(mode)
-    refreshClashConfig()
+    try {
+      await patchClashMode(mode)
+    } catch (error) {
+      console.error('[ProxyDiagnostics] patchClashMode:failed', error)
+      showNotice.error('Failed to switch proxy mode:', error)
+      return
+    }
+
+    const refreshResults = await Promise.allSettled([
+      refreshClashConfig(),
+      refreshProxy(),
+    ])
+    if (refreshResults.some((result) => result.status === 'rejected')) {
+      console.warn('[ProxyDiagnostics] patchClashMode:refresh-failed')
+    }
   })
 
   const onToggleChainMode = useLockFn(async () => {
     const newChainMode = !isChainMode
 
     setIsChainMode(newChainMode)
-    // 保存链式代理按钮状态到 localStorage
     localStorage.setItem('proxy-chain-mode-enabled', newChainMode.toString())
 
     if (!newChainMode) {
-      // 退出链式代理模式时，清除链式代理配置
       try {
         debugLog('Exiting chain mode, clearing chain configuration')
         await updateProxyChainConfigInRuntime(null)

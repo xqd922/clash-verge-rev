@@ -80,7 +80,7 @@ fn after_change_clash_mode() {
 }
 
 /// Change Clash mode (rule/global/direct/script)
-pub async fn change_clash_mode(mode: String) {
+pub async fn change_clash_mode(mode: String) -> anyhow::Result<()> {
     let mut mapping = Mapping::new();
     mapping.insert(Value::from("mode"), Value::from(mode.as_str()));
     // Convert YAML mapping to JSON Value
@@ -95,6 +95,11 @@ pub async fn change_clash_mode(mode: String) {
             clash.edit_draft(|d| d.patch_config(&mapping));
             clash.apply();
 
+            // 同步模式到运行时配置
+            let runtime = Config::runtime().await;
+            runtime.edit_draft(|d| d.patch_config(&mapping));
+            runtime.apply();
+
             // 分离数据获取和异步调用
             let clash_data = clash.data_arc();
             if clash_data.save_config().await.is_ok() {
@@ -107,8 +112,12 @@ pub async fn change_clash_mode(mode: String) {
                 after_change_clash_mode();
             }
         }
-        Err(err) => logging!(error, Type::Core, "{err}"),
+        Err(err) => {
+            logging!(error, Type::Core, "{err}");
+            return Err(anyhow::anyhow!("{err}"));
+        }
     }
+    Ok(())
 }
 
 /// Test delay to a URL through proxy.

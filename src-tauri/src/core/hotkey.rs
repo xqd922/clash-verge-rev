@@ -124,21 +124,33 @@ impl Hotkey {
                 });
             }
             HotkeyFunction::ClashModeRule => {
-                AsyncHandler::spawn(async move || {
-                    feat::change_clash_mode("rule".into()).await;
-                    notify_event(NotificationEvent::ClashModeChanged { mode: "Rule" }).await;
+                AsyncHandler::spawn(async move || match feat::change_clash_mode("rule".into()).await {
+                    Ok(()) => {
+                        notify_event(NotificationEvent::ClashModeChanged { mode: "Rule" }).await;
+                    }
+                    Err(err) => {
+                        logging!(error, Type::Hotkey, "Failed to switch Clash mode: {err}");
+                    }
                 });
             }
             HotkeyFunction::ClashModeGlobal => {
-                AsyncHandler::spawn(async move || {
-                    feat::change_clash_mode("global".into()).await;
-                    notify_event(NotificationEvent::ClashModeChanged { mode: "Global" }).await;
+                AsyncHandler::spawn(async move || match feat::change_clash_mode("global".into()).await {
+                    Ok(()) => {
+                        notify_event(NotificationEvent::ClashModeChanged { mode: "Global" }).await;
+                    }
+                    Err(err) => {
+                        logging!(error, Type::Hotkey, "Failed to switch Clash mode: {err}");
+                    }
                 });
             }
             HotkeyFunction::ClashModeDirect => {
-                AsyncHandler::spawn(async move || {
-                    feat::change_clash_mode("direct".into()).await;
-                    notify_event(NotificationEvent::ClashModeChanged { mode: "Direct" }).await;
+                AsyncHandler::spawn(async move || match feat::change_clash_mode("direct".into()).await {
+                    Ok(()) => {
+                        notify_event(NotificationEvent::ClashModeChanged { mode: "Direct" }).await;
+                    }
+                    Err(err) => {
+                        logging!(error, Type::Hotkey, "Failed to switch Clash mode: {err}");
+                    }
                 });
             }
             HotkeyFunction::ToggleSystemProxy => {
