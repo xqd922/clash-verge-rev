@@ -297,6 +297,12 @@ impl CoreManager {
             return;
         }
 
+        // service IPC path 一开始就不存在时，跳过等待直接 fallback 到 sidecar
+        if !service::is_service_ipc_path_exists() {
+            logging!(info, Type::Core, "Service IPC path not found, skipping service wait");
+            return;
+        }
+
         let max_times = timing::SERVICE_WAIT_MAX.as_millis() / timing::SERVICE_WAIT_INTERVAL.as_millis();
         let backoff = ConstantBuilder::default()
             .with_delay(timing::SERVICE_WAIT_INTERVAL)

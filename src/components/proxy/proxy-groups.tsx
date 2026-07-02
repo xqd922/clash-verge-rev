@@ -73,11 +73,11 @@ export const ProxyGroups = (props: Props) => {
   const { pathname } = useLocation()
   const { mode, isChainMode = false, chainConfigData } = props
 
-  // Drive 3s polling on the shared TQ cache; data is read via granular context below
+  // Cold start: poll every 1s until data arrives, then back off to 3s
   useQuery({
     queryKey: ['getProxies'],
     queryFn: calcuProxies,
-    refetchInterval: 3000,
+    refetchInterval: (query) => (query.state.data ? 3000 : 1000),
     refetchIntervalInBackground: false,
     staleTime: 1500,
     refetchOnWindowFocus: false,

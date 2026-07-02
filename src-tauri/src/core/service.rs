@@ -379,7 +379,14 @@ pub(super) async fn start_with_existing_service(config_file: &PathBuf) -> Result
 pub(super) async fn run_core_by_service(config_file: &PathBuf) -> Result<()> {
     logging!(info, Type::Service, "正在尝试通过服务启动核心");
 
-    SERVICE_MANAGER.lock().await.refresh().await?;
+    // 只在服务未就绪时才 refresh，避免重复重装
+    let needs_refresh = {
+        let manager = SERVICE_MANAGER.lock().await;
+        !matches!(manager.current(), ServiceStatus::Ready)
+    };
+    if needs_refresh {
+        SERVICE_MANAGER.lock().await.refresh().await?;
+    }
 
     logging!(info, Type::Service, "服务已运行且版本匹配，直接使用");
     start_with_existing_service(config_file).await

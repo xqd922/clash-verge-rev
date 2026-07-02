@@ -58,6 +58,8 @@ pub fn resolve_setup_async() {
         let core_init = AsyncHandler::spawn(|| async {
             init_service_manager().await;
             init_core_manager().await;
+            // 核心就绪后立即通知前端刷新，不要等其他初始化任务
+            Handle::refresh_clash();
             init_system_proxy().await;
             init_system_proxy_guard().await;
         });
