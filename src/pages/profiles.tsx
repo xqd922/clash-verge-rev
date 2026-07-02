@@ -322,8 +322,8 @@ const ProfilePage = () => {
     }
   }
 
-  // 强化的刷新策略
-  // maxRetries 设为 1：useProfiles 内部 useQuery 已配置 retry:3，业务层只需 1 次额外重试
+  // 导入后刷新策略：只刷新 profile 列表，不触发 onEnhance
+  // 导入新订阅不会改变当前活跃 profile，无需重新增强（否则会触发 activating 遮罩导致当前订阅变灰）
   const performRobustRefresh = async () => {
     let retryCount = 0
     const maxRetries = 1
@@ -341,7 +341,6 @@ const ProfilePage = () => {
           setTimeout(resolve, baseDelay * (retryCount + 1)),
         )
 
-        await onEnhance(false)
         return
       } catch (error) {
         console.error(`[导入刷新] 第${retryCount + 1}次刷新失败:`, error)
@@ -360,7 +359,6 @@ const ProfilePage = () => {
         queryKey: ['getProfiles'],
         queryFn: getProfiles,
       })
-      await onEnhance(false)
       showNotice.error(
         'profiles.page.feedback.notifications.importNeedsRefresh',
         3000,
