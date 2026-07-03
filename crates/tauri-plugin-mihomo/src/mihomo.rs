@@ -710,7 +710,7 @@ impl Mihomo {
     pub async fn delay_proxy_by_name(&self, proxy_name: &str, test_url: &str, timeout: u32) -> Result<ProxyDelay> {
         let proxy_name_encode = urlencoding::encode(proxy_name);
         let suffix_url = format!("/proxies/{proxy_name_encode}/delay");
-        let req_timeout = Duration::from_millis(timeout as u64) + DEFAULT_REQUEST_TIMEOUT;
+        let req_timeout = Duration::from_millis(timeout as u64);
         let client = self
             .build_request(Method::GET, &suffix_url)?
             .query(&[("timeout", &timeout.to_string()), ("url", &test_url.to_string())])

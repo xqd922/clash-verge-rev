@@ -27,85 +27,6 @@ class DelayManager {
   // 每个分组的监听
   private groupListenerMap = new Map<string, () => void>()
 
-  private pendingItemUpdates = new Map<string, DelayUpdate[]>()
-  private pendingGroupUpdates = new Set<string>()
-  private itemFlushScheduled = false
-  private groupFlushScheduled = false
-
-  private scheduleOnNextFrame(run: () => void): void {
-    if (typeof window !== 'undefined') {
-      if (typeof window.requestAnimationFrame === 'function') {
-        window.requestAnimationFrame(run)
-        return
-      }
-      if (typeof window.setTimeout === 'function') {
-        window.setTimeout(run, 0)
-        return
-      }
-    }
-
-    Promise.resolve().then(run)
-  }
-
-  private scheduleItemFlush() {
-    if (this.itemFlushScheduled) return
-    this.itemFlushScheduled = true
-
-    this.scheduleOnNextFrame(() => {
-      this.itemFlushScheduled = false
-      const updates = this.pendingItemUpdates
-      this.pendingItemUpdates = new Map()
-
-      updates.forEach((queue, proxyName) => {
-        const listeners = this.listenerMap.get(proxyName)
-        if (!listeners) return
-
-        queue.forEach((update) => {
-          // 通知所有监听这个节点的监听器
-          listeners.forEach((listener, listenerId) => {
-            try {
-              listener(update)
-            } catch (error) {
-              console.error(
-                `[DelayManager] 通知节点延迟监听器失败: ${proxyName}:${listenerId}`,
-                error,
-              )
-            }
-          })
-        })
-      })
-    })
-  }
-
-  private scheduleGroupFlush() {
-    if (this.groupFlushScheduled) return
-    this.groupFlushScheduled = true
-
-    this.scheduleOnNextFrame(() => {
-      this.groupFlushScheduled = false
-      const groups = this.pendingGroupUpdates
-      this.pendingGroupUpdates = new Set()
-
-      groups.forEach((group) => {
-        const listener = this.groupListenerMap.get(group)
-        if (!listener) return
-        try {
-          listener()
-        } catch (error) {
-          console.error(
-            `[DelayManager] 通知分组延迟监听器失败: ${group}`,
-            error,
-          )
-        }
-      })
-    })
-  }
-
-  private queueGroupNotification(group: string) {
-    this.pendingGroupUpdates.add(group)
-    this.scheduleGroupFlush()
-  }
-
   // 设置测速 URL（支持每组独立 URL）
   setUrl(group: string, url: string) {
     if (!url?.trim()) return
@@ -179,13 +100,27 @@ class DelayManager {
 
     this.cache.set(key, update)
 
-    const queue = this.pendingItemUpdates.get(key)
-    if (queue) {
-      queue.push(update)
-    } else {
-      this.pendingItemUpdates.set(key, [update])
+    // 立即通知所有监听这个节点的监听器
+    const listeners = this.listenerMap.get(key)
+    if (listeners) {
+      listeners.forEach((listener) => {
+        try {
+          listener(update)
+        } catch (error) {
+          console.error(`[DelayManager] 通知节点延迟监听器失败: ${name}`, error)
+        }
+      })
     }
-    this.scheduleItemFlush()
+
+    // 立即通知组监听器
+    const groupListener = this.groupListenerMap.get(group)
+    if (groupListener) {
+      try {
+        groupListener()
+      } catch (error) {
+        console.error(`[DelayManager] 通知分组延迟监听器失败: ${group}`, error)
+      }
+    }
 
     return update
   }
@@ -270,7 +205,6 @@ class DelayManager {
         this.setDelay(name, group, 0)
       }
     }
-    this.queueGroupNotification(group)
   }
 
   async checkListDelay(
@@ -287,12 +221,6 @@ class DelayManager {
     }
 
     let index = 0
-    let completedCount = 0
-    const total = names.length
-    const listener = this.groupListenerMap.get(group)
-    // 按完成百分比通知组刷新，减少通知频率
-    const notifyInterval = Math.max(1, Math.floor(total / 10))
-    let lastNotifyCount = 0
 
     const help = async (): Promise<void> => {
       if (signal?.aborted) return
@@ -304,17 +232,6 @@ class DelayManager {
       } catch (ignoreError) {
         // 设置为错误状态
         this.setDelay(currName, group, 1e6)
-      }
-
-      completedCount++
-      // 每完成约 10% 通知一次组刷新，或者最后一个节点完成时
-      if (
-        listener &&
-        (completedCount - lastNotifyCount >= notifyInterval ||
-          completedCount === total)
-      ) {
-        lastNotifyCount = completedCount
-        this.queueGroupNotification(group)
       }
 
       return help()
