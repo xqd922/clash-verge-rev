@@ -89,9 +89,14 @@ impl CoreManager {
             return Ok(ValidationOutcome::invalid_from_message(message));
         }
 
-        self.apply_generate_config().await
+        // 乐观更新：跳过 mihomo -t 子进程验证，直接生成配置文件并热重载
+        // 验证由增强管线保证，如果配置无效则热重载会失败并触发核心重启
+        let run_path = Config::generate_file(ConfigType::Run).await?;
+        self.apply_config(run_path).await?;
+        Ok(ValidationOutcome::Valid)
     }
 
+    /// 带验证的配置应用（供 runtime.rs 等需要验证的场景使用）
     pub async fn apply_generate_config(&self) -> Result<ValidationOutcome> {
         match CoreConfigValidator::global().validate_config_outcome().await {
             Ok(outcome) if outcome.is_valid() => {
