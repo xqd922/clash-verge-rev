@@ -1,3 +1,30 @@
+## v(7.0.32)
+
+### 修复
+
+- 优化冷启动速度，跳过 service IPC 不存在时的 3 秒等待，核心就绪后立即通知前端
+- 修复服务重复重装导致启动慢 4 秒的问题
+- 恢复 v1.7.7 的乐观配置切换，跳过子进程验证使切换更快
+- 恢复 v1.7.7 的延迟测速体验，移除 5 秒额外 HTTP 超时，结果逐个立即显示
+
+### 修改方案
+
+**冷启动优化（service IPC 白等 3 秒）：**
+`wait_for_service_if_needed()` 在 TUN 模式下会轮询 service IPC 是否就绪，每 200ms 一次，最多 3 秒（`SERVICE_WAIT_MAX`）。当 service 根本不存在时（IPC path 不存在），这 3 秒完全是白等。
+修复方式：在进入重试循环前检查 `is_service_ipc_path_exists()`，如果 service IPC path 一开始就不存在，直接跳过等待，fallback 到 sidecar 模式。
+
+**冷启动优化（服务重复重装 4 秒）：**
+`init_service_manager()` 会调用 `manager.refresh()` 检查服务版本并可能重装（~2 秒）。随后 `init_core_manager()` → `start_core_by_service()` → `run_core_by_service()` 内部无条件再次调用 `SERVICE_MANAGER.lock().await.refresh()`，又触发一次重装（~2 秒）。两次重装总共浪费 4 秒。
+修复方式：`run_core_by_service()` 中先检查 `manager.current()` 是否为 `ServiceStatus::Ready`，已就绪则跳过 refresh。同时将 `Handle::refresh_clash()` 从 `futures::join!` 之后移到 `init_core_manager()` 之后，核心就绪后立即通知前端刷新数据。
+
+**配置切换优化（子进程验证）：**
+v7.0.31 的 `perform_config_update()` 在每次配置切换时都会 spawn `mihomo -t` 子进程验证配置文件（`validate_config_outcome()`），在 Windows 上耗时 100-500ms。加上两次文件写入（Check + Run），总切换时间 200-900ms。v1.7.7 从不做子进程验证，直接生成配置文件并热重载，切换时间 130-460ms。
+修复方式：`perform_config_update()` 跳过 `CoreConfigValidator::validate_config_outcome()` 子进程验证，直接生成 Run 配置文件并调用 `apply_config()` 热重载。增强管线本身已有 YAML 语法检查；如果配置无效，热重载会失败并触发核心重启作为兜底。`apply_generate_config()` 保留给 `runtime.rs` 等需要验证的场景使用。前端同步简化 `activateProfile`，移除 AbortController、序列号跟踪、中断处理等复杂机制，回到 v1.7.7 的简单 await 风格。
+
+**延迟测速优化（HTTP 超时 + UI 更新）：**
+v7.0.31 的 mihomo plugin 在每个延迟测试请求上额外加了 5 秒 HTTP 超时（`DEFAULT_REQUEST_TIMEOUT`），导致失败节点等待时间从 `timeout` 变为 `timeout + 5s`。同时前端使用 `requestAnimationFrame` 批量更新延迟结果，每 ~10% 完成才通知一次 UI 刷新，结果分批出现而不是逐个流式显示。
+修复方式：`delay_proxy_by_name()` 中 `req_timeout` 改为 `Duration::from_millis(timeout)`（移除 `+ DEFAULT_REQUEST_TIMEOUT`）。前端 `DelayManager` 移除 `requestAnimationFrame` 批量调度逻辑（`scheduleItemFlush`、`scheduleGroupFlush`、`pendingItemUpdates`、`pendingGroupUpdates`），`setDelay()` 改为立即通知所有监听器，`checkListDelay()` 移除 10% 节流，每个节点完成都立即通知组刷新。
+
 ## v(7.0.31)
 
 ### 修复
