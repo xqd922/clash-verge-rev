@@ -64,7 +64,15 @@ export const ProxyRender = (props: RenderProps) => {
   })
 
   const isSmart = group.type === 'Smart'
-  const { topNodes, rankMap } = useSmartWeights(group.name, isSmart)
+  const groupProxyNames = useMemo(
+    () => group.all.map((proxyItem) => proxyItem.name),
+    [group.all],
+  )
+  const { topNodes, rankMap } = useSmartWeights(
+    group.name,
+    isSmart,
+    groupProxyNames,
+  )
 
   const showType = headState?.showType
   const proxyColItemsMemo = useMemo(() => {

@@ -68,7 +68,7 @@ export const ProxyItem = (props: Props) => {
     group.type,
   )
   const isSmart = proxy.type === 'Smart'
-  const { topNodes } = useSmartWeights(proxy.name, isSmart)
+  const { topNodes } = useSmartWeights(proxy.name, isSmart, proxy.all)
   const proxyNow = getProxyNowLabel(proxy.type, proxy.now, topNodes[0])
 
   return (

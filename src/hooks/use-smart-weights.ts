@@ -44,28 +44,40 @@ export function getProxyNowLabel(
   smartTopNode?: SmartTopNode,
 ): string | undefined {
   return proxyType === 'Smart'
-    ? formatSmartTopNode(smartTopNode) || proxyNow
+    ? formatSmartTopNode(smartTopNode) || undefined
     : proxyNow
 }
 
 // Smart core exposes a per-group node weight ranking via GET /group/{name}/weights.
 // The ranking reflects the dynamic scoring the smart algorithm uses to pick a node
 // per connection — there is no single stable "now" node for a smart group.
-export function parseSmartWeights(data: unknown): UseSmartWeights {
+export function parseSmartWeights(
+  data: unknown,
+  proxyNames?: string[],
+): UseSmartWeights {
   const rawList = (data as { weights?: RawNodeRankItem[] } | undefined)?.weights
 
   if (!Array.isArray(rawList) || rawList.length === 0) {
     return EMPTY
   }
 
+  const allowedNames = proxyNames?.length ? new Set(proxyNames) : null
+  const currentList = allowedNames
+    ? rawList.filter((item) => item?.Name && allowedNames.has(item.Name))
+    : rawList
+
+  if (currentList.length === 0) {
+    return EMPTY
+  }
+
   const rankMap = new Map<string, SmartRank>()
-  for (const item of rawList) {
+  for (const item of currentList) {
     if (item?.Name && item.Rank) {
       rankMap.set(item.Name, item.Rank as SmartRank)
     }
   }
 
-  const topNodes = rawList
+  const topNodes = currentList
     .filter((item) => item?.Name)
     .sort((a, b) => b.Weight - a.Weight)
     .slice(0, MAX_HEADER_NODES)
@@ -77,6 +89,7 @@ export function parseSmartWeights(data: unknown): UseSmartWeights {
 export function useSmartWeights(
   groupName: string,
   enabled: boolean,
+  proxyNames?: string[],
 ): UseSmartWeights {
   const queryClient = useQueryClient()
   const profileId = queryClient.getQueryData<IProfilesConfig>([
@@ -92,5 +105,5 @@ export function useSmartWeights(
     refetchOnReconnect: false,
   })
 
-  return useMemo(() => parseSmartWeights(data), [data])
+  return useMemo(() => parseSmartWeights(data, proxyNames), [data, proxyNames])
 }
