@@ -25,11 +25,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router'
-import {
-  delayGroup,
-  healthcheckProxyProvider,
-  unfixedProxy,
-} from 'tauri-plugin-mihomo-api'
+import { healthcheckProxyProvider, unfixedProxy } from 'tauri-plugin-mihomo-api'
 
 import { BaseEmpty } from '@/components/base'
 import { useProxySelection } from '@/hooks/use-proxy-selection'
@@ -434,35 +430,19 @@ export const ProxyGroups = (props: Props) => {
     }
 
     try {
-      const listDelayPromise = delayManager.checkListDelay(
+      await delayManager.checkListDelay(
         names,
         groupName,
         timeout,
         36,
         abortController.signal,
       )
-
-      const groupDelayPromise = delayGroup(
-        groupName,
-        delayManager.getUrl(groupName),
-        timeout,
-      )
-        .then((result) => {
-          if (checkAllAbortRef.current !== abortController) return
-          delayManager.batchSetDelay(result, names, groupName)
-          abortController.abort()
-        })
-        .catch((error) => {
-          if (checkAllAbortRef.current !== abortController) return
-          console.warn(
-            `[ProxyGroups] Group delay failed, falling back to per-proxy checks: ${groupName}`,
-            error,
-          )
-          return listDelayPromise
-        })
-
-      await Promise.race([listDelayPromise, groupDelayPromise])
       completed = true
+    } catch (error) {
+      console.warn(
+        `[ProxyGroups] Delay test failed for group: ${groupName}`,
+        error,
+      )
     } finally {
       const isCurrentRun = checkAllAbortRef.current === abortController
       if (isCurrentRun && (completed || !abortController.signal.aborted)) {
