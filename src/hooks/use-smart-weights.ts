@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { getSmartWeights } from 'tauri-plugin-mihomo-api'
 
@@ -41,8 +41,13 @@ export function useSmartWeights(
   groupName: string,
   enabled: boolean,
 ): UseSmartWeights {
+  const queryClient = useQueryClient()
+  const profileId = queryClient.getQueryData<IProfilesConfig>([
+    'getProfiles',
+  ])?.current
+
   const { data } = useQuery({
-    queryKey: ['smartWeights', groupName],
+    queryKey: ['smartWeights', groupName, profileId],
     queryFn: () => getSmartWeights(groupName),
     enabled,
     refetchInterval: 5000,
