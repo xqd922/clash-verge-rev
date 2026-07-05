@@ -17,7 +17,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useIconCache } from '@/hooks/use-icon-cache'
-import { useSmartWeights } from '@/hooks/use-smart-weights'
+import { formatSmartTopNode, useSmartWeights } from '@/hooks/use-smart-weights'
 import { useVerge } from '@/hooks/use-verge'
 import { useThemeMode } from '@/services/states'
 
@@ -141,9 +141,7 @@ export const ProxyRender = (props: RenderProps) => {
                 {isSmart
                   ? topNodes.length > 0 && (
                       <StyledSubtitle sx={{ color: 'text.secondary' }}>
-                        {topNodes
-                          .map((n) => `${n.name} ${Math.round(n.weight)}`)
-                          .join(' · ')}
+                        {topNodes.map(formatSmartTopNode).join(' · ')}
                       </StyledSubtitle>
                     )
                   : group.now && (

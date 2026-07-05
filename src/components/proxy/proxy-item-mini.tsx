@@ -4,7 +4,12 @@ import { useTranslation } from 'react-i18next'
 
 import { BaseLoading } from '@/components/base'
 import { useProxyDelayState } from '@/hooks/use-proxy-delay-state'
-import { SMART_RANK_I18N_KEY, type SmartRank } from '@/hooks/use-smart-weights'
+import {
+  getProxyNowLabel,
+  SMART_RANK_I18N_KEY,
+  type SmartRank,
+  useSmartWeights,
+} from '@/hooks/use-smart-weights'
 import delayManager from '@/services/delay'
 
 interface Props {
@@ -27,6 +32,9 @@ export const ProxyItemMini = (props: Props) => {
     group.name,
     group.type,
   )
+  const isSmart = proxy.type === 'Smart'
+  const { topNodes } = useSmartWeights(proxy.name, isSmart)
+  const proxyNow = getProxyNowLabel(proxy.type, proxy.now, topNodes[0])
 
   return (
     <ListItemButton
@@ -72,7 +80,7 @@ export const ProxyItemMini = (props: Props) => {
       ]}
     >
       <Box
-        title={`${proxy.name}\n${proxy.now ?? ''}`}
+        title={`${proxy.name}\n${proxyNow ?? ''}`}
         sx={{ overflow: 'hidden' }}
       >
         <Typography
@@ -99,7 +107,7 @@ export const ProxyItemMini = (props: Props) => {
               marginTop: '4px',
             }}
           >
-            {proxy.now && proxy.type !== 'Smart' && (
+            {proxyNow && (
               <Typography
                 variant="body2"
                 component="div"
@@ -113,7 +121,7 @@ export const ProxyItemMini = (props: Props) => {
                   marginRight: '8px',
                 }}
               >
-                {proxy.now}
+                {proxyNow}
               </Typography>
             )}
             {!!proxy.provider && (

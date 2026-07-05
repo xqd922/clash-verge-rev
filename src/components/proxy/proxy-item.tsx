@@ -14,7 +14,12 @@ import { useTranslation } from 'react-i18next'
 
 import { BaseLoading } from '@/components/base'
 import { useProxyDelayState } from '@/hooks/use-proxy-delay-state'
-import { SMART_RANK_I18N_KEY, type SmartRank } from '@/hooks/use-smart-weights'
+import {
+  getProxyNowLabel,
+  SMART_RANK_I18N_KEY,
+  type SmartRank,
+  useSmartWeights,
+} from '@/hooks/use-smart-weights'
 import delayManager from '@/services/delay'
 
 interface Props {
@@ -62,6 +67,9 @@ export const ProxyItem = (props: Props) => {
     group.name,
     group.type,
   )
+  const isSmart = proxy.type === 'Smart'
+  const { topNodes } = useSmartWeights(proxy.name, isSmart)
+  const proxyNow = getProxyNowLabel(proxy.type, proxy.now, topNodes[0])
 
   return (
     <ListItem sx={sx}>
@@ -107,7 +115,7 @@ export const ProxyItem = (props: Props) => {
                 }}
               >
                 {proxy.name}
-                {showType && proxy.now && ` - ${proxy.now}`}
+                {showType && proxyNow && ` - ${proxyNow}`}
               </Box>
               {showType && !!proxy.provider && (
                 <TypeBox>{proxy.provider}</TypeBox>

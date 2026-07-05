@@ -34,6 +34,20 @@ const EMPTY: UseSmartWeights = { topNodes: [], rankMap: new Map() }
 // 组头只展示权重最高的节点，和普通核心的 now 一样保持一行
 const MAX_HEADER_NODES = 1
 
+export function formatSmartTopNode(node?: SmartTopNode): string {
+  return node ? `${node.name} ${Math.round(node.weight)}` : ''
+}
+
+export function getProxyNowLabel(
+  proxyType: string,
+  proxyNow?: string,
+  smartTopNode?: SmartTopNode,
+): string | undefined {
+  return proxyType === 'Smart'
+    ? formatSmartTopNode(smartTopNode) || proxyNow
+    : proxyNow
+}
+
 // Smart core exposes a per-group node weight ranking via GET /group/{name}/weights.
 // The ranking reflects the dynamic scoring the smart algorithm uses to pick a node
 // per connection — there is no single stable "now" node for a smart group.
