@@ -78,7 +78,11 @@ export const useProfiles = () => {
   }
 
   // 根据selected的节点选择
-  const activateSelected = async (profileOverride?: IProfilesConfig) => {
+  // targetProfileUid: 显式指定要恢复的目标配置，避免闭包中 profiles.current 是旧值
+  const activateSelected = async (
+    profileOverride?: IProfilesConfig,
+    targetProfileUid?: string,
+  ) => {
     try {
       debugLog('[ActivateSelected] 开始处理代理选择')
 
@@ -90,8 +94,9 @@ export const useProfiles = () => {
         return
       }
 
+      const effectiveCurrent = targetProfileUid ?? profileData.current
       const current = profileData.items?.find(
-        (e) => e && e.uid === profileData.current,
+        (e) => e && e.uid === effectiveCurrent,
       )
 
       if (!current) {

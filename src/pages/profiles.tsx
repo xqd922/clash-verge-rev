@@ -308,7 +308,8 @@ const ProfilePage = () => {
         setActivatings((prev) => prev.filter((id) => id !== profile))
 
         // 后台执行：恢复节点选择、关闭连接（不阻塞 UI）
-        activateSelected(profiles).catch(() => {})
+        // 传入目标 profile UID，避免闭包中的 profiles.current 仍是旧值
+        activateSelected(profiles, profile).catch(() => {})
         mutateLogs()
         closeAllConnections()
 
