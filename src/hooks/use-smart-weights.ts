@@ -34,6 +34,15 @@ const EMPTY: UseSmartWeights = { topNodes: [], rankMap: new Map() }
 // 组头只展示权重最高的节点，和普通核心的 now 一样保持一行
 const MAX_HEADER_NODES = 1
 
+// Rank 优先级：MostUsed > OccasionalUsed > RarelyUsed
+// Weight 在不同 Rank 下含义不同（MostUsed=综合评分，RarelyUsed=连接成功率%）
+// 必须先按 Rank 优先级排序，再按 Weight 排序
+const RANK_PRIORITY: Record<string, number> = {
+  MostUsed: 3,
+  OccasionalUsed: 2,
+  RarelyUsed: 1,
+}
+
 export function formatSmartTopNode(node?: SmartTopNode): string {
   return node ? `${node.name} ${Math.round(node.weight)}` : ''
 }
@@ -85,7 +94,14 @@ export function parseSmartWeights(
 
   const topNodes = currentList
     .filter((item) => item?.Name)
-    .sort((a, b) => b.Weight - a.Weight)
+    .sort((a, b) => {
+      // 先按 Rank 优先级排序（MostUsed > OccasionalUsed > RarelyUsed）
+      const rankDiff =
+        (RANK_PRIORITY[b.Rank] ?? 0) - (RANK_PRIORITY[a.Rank] ?? 0)
+      if (rankDiff !== 0) return rankDiff
+      // 同 Rank 内按 Weight 排序
+      return b.Weight - a.Weight
+    })
     .slice(0, MAX_HEADER_NODES)
     .map((item) => ({ name: item.Name, weight: item.Weight }))
 
