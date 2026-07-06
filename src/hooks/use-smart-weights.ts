@@ -61,10 +61,16 @@ export function parseSmartWeights(
     return EMPTY
   }
 
-  const allowedNames = proxyNames?.length ? new Set(proxyNames) : null
-  const currentList = allowedNames
-    ? rawList.filter((item) => item?.Name && allowedNames.has(item.Name))
-    : rawList
+  // proxyNames 为空时不做过滤 —— 但如果没有传入，也不应显示全部权重
+  // 只有明确传入非空列表时才过滤；否则返回空（避免显示旧配置的节点）
+  if (!proxyNames?.length) {
+    return EMPTY
+  }
+
+  const allowedNames = new Set(proxyNames)
+  const currentList = rawList.filter(
+    (item) => item?.Name && allowedNames.has(item.Name),
+  )
 
   if (currentList.length === 0) {
     return EMPTY
@@ -96,8 +102,14 @@ export function useSmartWeights(
     'getProfiles',
   ])?.current
 
+  // 用代理组节点列表特征作为 queryKey 的一部分
+  // 当配置切换后代理组节点变化时，自动触发 refetch
+  const proxyKey = proxyNames?.length
+    ? `${proxyNames.length}:${proxyNames[0] ?? ''}:${proxyNames[proxyNames.length - 1] ?? ''}`
+    : 'empty'
+
   const { data } = useQuery({
-    queryKey: ['smartWeights', groupName, profileId],
+    queryKey: ['smartWeights', groupName, profileId, proxyKey],
     queryFn: () => getSmartWeights(groupName),
     enabled,
     refetchInterval: 5000,
