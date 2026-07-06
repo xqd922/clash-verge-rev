@@ -1,3 +1,12 @@
+## v(7.0.34)
+
+### 修复
+
+- 修复配置切换后节点选择丢失：`activateSelected` 使用闭包中过期的 `profiles` 引用，传入目标 profile UID 确保恢复正确的选择
+- 修复 Smart top1 排序：按 Rank 优先级（MostUsed > OccasionalUsed > RarelyUsed）排序后再按 Weight 排序，避免 RarelyUsed 节点（Weight=100 连接成功率）错误显示为 top1
+- 修复 Smart 权重过滤：`proxyNames` 为空时返回空结果，不再显示未过滤的旧配置节点
+- 配置切换后自动 invalidate `getProfiles` 查询，确保 Smart 权重的 `profileId` 及时更新
+
 ## v(7.0.33)
 
 ### 修复
