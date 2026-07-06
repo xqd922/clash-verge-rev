@@ -15,6 +15,7 @@ import {
   getRunningMode,
   getSystemProxy,
 } from '@/services/cmds'
+import { queryClient } from '@/services/query-client'
 
 import {
   ClashConfigContext,
@@ -139,6 +140,8 @@ export const AppDataProvider = ({
       lastUpdateTime = now
       refreshRules().catch(() => {})
       refreshRuleProviders().catch(() => {})
+      // 刷新 getProfiles 缓存，确保 useSmartWeights 的 profileId 及时更新
+      queryClient.invalidateQueries({ queryKey: ['getProfiles'] })
     }
 
     const handleRefreshProxy = () => {

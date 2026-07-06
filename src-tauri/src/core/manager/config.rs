@@ -120,6 +120,8 @@ impl CoreManager {
         match self.reload_config(path).await {
             Ok(_) => {
                 Config::runtime().await.apply();
+                // 清除 Smart 核心的权重缓存，避免切换配置后显示旧节点
+                self.flush_smart_cache_if_available().await;
                 logging!(info, Type::Core, "Configuration applied");
                 Ok(())
             }
@@ -132,6 +134,7 @@ impl CoreManager {
                 match self.restart_core().await {
                     Ok(_) => {
                         Config::runtime().await.apply();
+                        self.flush_smart_cache_if_available().await;
                         logging!(info, Type::Core, "Configuration applied after restart");
                         Ok(())
                     }
@@ -142,6 +145,15 @@ impl CoreManager {
                     }
                 }
             }
+        }
+    }
+
+    /// 清除 Smart 核心权重缓存（仅在 Smart 核心下生效）
+    async fn flush_smart_cache_if_available(&self) {
+        let mihomo = handle::Handle::mihomo().await;
+        if let Err(e) = mihomo.flush_smart_cache().await {
+            // Smart 核心不支持此 API 时静默忽略
+            logging!(debug, Type::Core, "Flush smart cache skipped: {e}");
         }
     }
 
