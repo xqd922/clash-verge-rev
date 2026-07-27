@@ -1,4 +1,4 @@
-use super::CoreManager;
+use super::{ConfigUpdatePermit, CoreManager};
 use crate::{
     config::{Config, ConfigType, runtime::IRuntime},
     constants::timing,
@@ -39,6 +39,25 @@ impl CoreManager {
     }
 
     pub async fn update_config_with_force(&self, force: bool) -> Result<ValidationOutcome> {
+        let Some(permit) = self.try_acquire_config_update() else {
+            logging!(info, Type::Core, "Configuration update is already running");
+            return Ok(ValidationOutcome::Busy);
+        };
+        self.update_config_with_force_permit(force, &permit).await
+    }
+
+    pub(crate) async fn update_config_forced_with_permit(
+        &self,
+        permit: &ConfigUpdatePermit<'_>,
+    ) -> Result<ValidationOutcome> {
+        self.update_config_with_force_permit(true, permit).await
+    }
+
+    async fn update_config_with_force_permit(
+        &self,
+        force: bool,
+        permit: &ConfigUpdatePermit<'_>,
+    ) -> Result<ValidationOutcome> {
         if handle::Handle::global().is_exiting() {
             return Ok(ValidationOutcome::Skipped {
                 reason: ValidationSkipReason::Exiting,
@@ -56,7 +75,7 @@ impl CoreManager {
             self.set_last_update(Instant::now());
         }
 
-        self.perform_config_update().await
+        self.perform_config_update(permit).await
     }
 
     pub async fn update_config_checked(&self) -> Result<()> {
@@ -82,7 +101,7 @@ impl CoreManager {
         true
     }
 
-    async fn perform_config_update(&self) -> Result<ValidationOutcome> {
+    async fn perform_config_update(&self, permit: &ConfigUpdatePermit<'_>) -> Result<ValidationOutcome> {
         if let Err(err) = Config::generate().await {
             let message: String = err.to_string().into();
             Config::runtime().await.discard();
@@ -91,18 +110,59 @@ impl CoreManager {
 
         // 乐观更新：跳过 mihomo -t 子进程验证，直接生成配置文件并热重载
         // 验证由增强管线保证，如果配置无效则热重载会失败并触发核心重启
-        let run_path = Config::generate_file(ConfigType::Run).await?;
-        self.apply_config(run_path).await?;
+        let run_path = match Config::generate_file(ConfigType::Run).await {
+            Ok(path) => path,
+            Err(err) => {
+                Config::runtime().await.discard();
+                return Err(err);
+            }
+        };
+        if let Err(err) = self.apply_config(run_path, permit).await {
+            Config::runtime().await.discard();
+            return Err(err);
+        }
         Ok(ValidationOutcome::Valid)
     }
 
-    /// 带验证的配置应用（供 runtime.rs 等需要验证的场景使用）
-    pub async fn apply_generate_config(&self) -> Result<ValidationOutcome> {
+    pub(crate) async fn update_runtime_config<F>(&self, f: F) -> Result<ValidationOutcome>
+    where
+        F: FnOnce(&mut IRuntime),
+    {
+        let Some(permit) = self.try_acquire_config_update() else {
+            logging!(info, Type::Core, "Configuration update is already running");
+            return Ok(ValidationOutcome::Busy);
+        };
+
+        self.update_runtime_config_with_permit(&permit, f).await
+    }
+
+    pub(crate) async fn update_runtime_config_with_permit<F>(
+        &self,
+        permit: &ConfigUpdatePermit<'_>,
+        f: F,
+    ) -> Result<ValidationOutcome>
+    where
+        F: FnOnce(&mut IRuntime),
+    {
+        debug_assert!(std::ptr::eq(permit.manager, self));
+
+        Config::runtime().await.edit_draft(f);
+        self.apply_generate_config_inner(permit).await
+    }
+
+    async fn apply_generate_config_inner(&self, permit: &ConfigUpdatePermit<'_>) -> Result<ValidationOutcome> {
         match CoreConfigValidator::global().validate_config_outcome().await {
             Ok(outcome) if outcome.is_valid() => {
-                let run_path = Config::generate_file(ConfigType::Run).await?;
-                self.apply_config(run_path).await?;
-                Ok(ValidationOutcome::Valid)
+                let result = async {
+                    let run_path = Config::generate_file(ConfigType::Run).await?;
+                    self.apply_config(run_path, permit).await?;
+                    Ok(ValidationOutcome::Valid)
+                }
+                .await;
+                if result.is_err() {
+                    Config::runtime().await.discard();
+                }
+                result
             }
             Ok(outcome) => {
                 Config::runtime().await.discard();
@@ -115,7 +175,7 @@ impl CoreManager {
         }
     }
 
-    async fn apply_config(&self, path: PathBuf) -> Result<()> {
+    async fn apply_config(&self, path: PathBuf, permit: &ConfigUpdatePermit<'_>) -> Result<()> {
         let path = dirs::path_to_str(&path)?;
         match self.reload_config(path).await {
             Ok(_) => {
@@ -129,7 +189,7 @@ impl CoreManager {
                     Type::Core,
                     "Failed to apply configuration by mihomo api, restart core to apply it, error msg: {err}"
                 );
-                match self.restart_core().await {
+                match self.restart_core_with_permit(permit).await {
                     Ok(_) => {
                         Config::runtime().await.apply();
                         logging!(info, Type::Core, "Configuration applied after restart");
@@ -138,7 +198,14 @@ impl CoreManager {
                     Err(err) => {
                         logging!(error, Type::Core, "Failed to restart core: {}", err);
                         Config::runtime().await.discard();
-                        Err(anyhow!("Failed to apply config: {}", err))
+                        match self.restore_committed_runtime(permit).await {
+                            Ok(()) => Err(anyhow!("Failed to apply config: {}", err)),
+                            Err(rollback_err) => Err(anyhow!(
+                                "Failed to apply config: {}; failed to restore previous runtime config: {}",
+                                err,
+                                rollback_err
+                            )),
+                        }
                     }
                 }
             }
@@ -147,5 +214,22 @@ impl CoreManager {
 
     async fn reload_config(&self, path: &str) -> Result<(), MihomoError> {
         handle::Handle::mihomo().await.reload_config(true, path).await
+    }
+
+    async fn restore_committed_runtime(&self, permit: &ConfigUpdatePermit<'_>) -> Result<()> {
+        let rollback_path = Config::generate_file(ConfigType::Run).await?;
+        self.restart_core_with_permit(permit).await?;
+        logging!(
+            warn,
+            Type::Core,
+            "Restored previous runtime config after failed restart"
+        );
+        logging!(
+            debug,
+            Type::Core,
+            "Restored runtime config file: {}",
+            rollback_path.display()
+        );
+        Ok(())
     }
 }

@@ -22,7 +22,7 @@ export interface UseProxyDelayState {
   delayValue: number
   isPreset: boolean
   timeout: number
-  onDelay: () => Promise<void>
+  onDelay: (providerName?: string) => Promise<void>
 }
 
 export function useProxyDelayState(
@@ -74,12 +74,13 @@ export function useProxyDelayState(
     updateDelay()
   }, [updateDelay])
 
-  const onDelay = useLockFn(async () => {
+  const onDelay = useLockFn(async (providerName?: string) => {
     setDelayState({ delay: -2, updatedAt: Date.now() })
     const nextState = await delayManager.checkDelay(
       proxy.name,
       groupName,
       timeout,
+      providerName || proxy.provider,
     )
     if (groupType === 'URLTest') {
       await unfixedProxy(groupName).catch(() => {})

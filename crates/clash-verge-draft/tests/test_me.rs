@@ -219,6 +219,37 @@ mod tests {
             .unwrap_err();
 
         assert_eq!(format!("{err}"), "boom");
+
+        #[allow(clippy::unwrap_used)]
+        block_on_ready(draft.with_data_modify(|mut v| async move {
+            v.enable_auto_launch = Some(true);
+            Ok((v, ()))
+        }))
+        .unwrap();
+        assert_eq!(draft.data_arc().enable_auto_launch, Some(true));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_with_data_modify_serializes_concurrent_updates() {
+        let draft = std::sync::Arc::new(Draft::new(0usize));
+        let mut tasks = Vec::new();
+        for _ in 0..32 {
+            let draft = std::sync::Arc::clone(&draft);
+            tasks.push(tokio::spawn(async move {
+                draft
+                    .with_data_modify(|value| async move {
+                        tokio::task::yield_now().await;
+                        Ok((value + 1, ()))
+                    })
+                    .await
+            }));
+        }
+
+        for task in tasks {
+            #[allow(clippy::unwrap_used)]
+            task.await.unwrap().unwrap();
+        }
+        assert_eq!(*draft.data_arc(), 32);
     }
 
     #[test]

@@ -57,6 +57,10 @@ pub fn use_tun(mut config: Mapping, enable: bool) -> Mapping {
                 revise!(dns_val, "fake-ip-range", "198.18.0.1/16");
             }
 
+            if ipv6_val && !dns_val.contains_key(Value::from("fake-ip-range6")) {
+                revise!(dns_val, "fake-ip-range6", "fdfe:dcba:9876::1/64");
+            }
+
             #[cfg(target_os = "macos")]
             {
                 AsyncHandler::spawn(move || async move {

@@ -4,9 +4,27 @@ use clash_verge_logging::{Type, logging};
 use nanoid::nanoid;
 use serde::{Serialize, de::DeserializeOwned};
 use serde_yaml_ng::Mapping;
-#[cfg(target_os = "windows")]
-use std::path::Path;
-use std::{path::PathBuf, str::FromStr};
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+};
+use tokio::io::AsyncWriteExt as _;
+
+struct StagedFileGuard(Option<PathBuf>);
+
+impl StagedFileGuard {
+    fn disarm(&mut self) {
+        self.0 = None;
+    }
+}
+
+impl Drop for StagedFileGuard {
+    fn drop(&mut self) {
+        if let Some(path) = self.0.take() {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+}
 
 /// read data from yaml as struct T
 pub async fn read_yaml<T: DeserializeOwned>(path: &PathBuf) -> Result<T> {
@@ -58,7 +76,7 @@ pub async fn read_seq_map(path: &PathBuf) -> Result<SeqMap> {
 
 /// save the data to the file
 /// can set `prefix` string to add some comments
-pub async fn save_yaml<T: Serialize + Sync>(path: &PathBuf, data: &T, prefix: Option<&str>) -> Result<()> {
+pub async fn save_yaml<T: Serialize + Sync>(path: &Path, data: &T, prefix: Option<&str>) -> Result<()> {
     let data_str = with_encryption(|| async { serde_yaml_ng::to_string(data) }).await?;
 
     let yaml_str = match prefix {
@@ -66,12 +84,82 @@ pub async fn save_yaml<T: Serialize + Sync>(path: &PathBuf, data: &T, prefix: Op
         None => data_str,
     };
 
-    let path_str = path.as_os_str().to_string_lossy().to_string();
-    tokio::fs::write(path, yaml_str.as_bytes())
+    let file_name = path
+        .file_name()
+        .ok_or_else(|| anyhow!("invalid YAML path: {}", path.display()))?;
+    let staged_path = path.with_file_name(format!(
+        ".{}.tmp-{}-{}",
+        file_name.to_string_lossy(),
+        std::process::id(),
+        nanoid!(10)
+    ));
+    let mut staged_guard = StagedFileGuard(Some(staged_path.clone()));
+    let mut staged_file = tokio::fs::OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(&staged_path)
         .await
-        .with_context(|| format!("failed to save file \"{path_str}\""))?;
-    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        .with_context(|| format!("failed to stage YAML file \"{}\"", path.display()))?;
+
+    #[cfg(unix)]
+    if let Ok(metadata) = tokio::fs::metadata(path).await {
+        tokio::fs::set_permissions(&staged_path, metadata.permissions())
+            .await
+            .with_context(|| format!("failed to preserve permissions for \"{}\"", path.display()))?;
+    }
+
+    staged_file
+        .write_all(yaml_str.as_bytes())
+        .await
+        .with_context(|| format!("failed to write staged YAML file \"{}\"", path.display()))?;
+    staged_file
+        .flush()
+        .await
+        .with_context(|| format!("failed to flush staged YAML file \"{}\"", path.display()))?;
+    staged_file
+        .sync_all()
+        .await
+        .with_context(|| format!("failed to sync staged YAML file \"{}\"", path.display()))?;
+    drop(staged_file);
+
+    replace_file_atomically(&staged_path, path)
+        .await
+        .with_context(|| format!("failed to replace YAML file \"{}\"", path.display()))?;
+    staged_guard.disarm();
     Ok(())
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) async fn replace_file_atomically(staged_path: &Path, dest_path: &Path) -> std::io::Result<()> {
+    use std::os::windows::ffi::OsStrExt as _;
+    use windows_sys::Win32::Storage::FileSystem::{MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH, MoveFileExW};
+
+    let staged_path = staged_path.to_owned();
+    let dest_path = dest_path.to_owned();
+    tokio::task::spawn_blocking(move || {
+        let staged_wide = staged_path.as_os_str().encode_wide().chain(Some(0)).collect::<Vec<_>>();
+        let dest_wide = dest_path.as_os_str().encode_wide().chain(Some(0)).collect::<Vec<_>>();
+        // SAFETY: both buffers are NUL-terminated and remain alive for the call.
+        let result = unsafe {
+            MoveFileExW(
+                staged_wide.as_ptr(),
+                dest_wide.as_ptr(),
+                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
+            )
+        };
+        if result == 0 {
+            Err(std::io::Error::last_os_error())
+        } else {
+            Ok(())
+        }
+    })
+    .await
+    .map_err(std::io::Error::other)?
+}
+
+#[cfg(not(target_os = "windows"))]
+pub(crate) async fn replace_file_atomically(staged_path: &Path, dest_path: &Path) -> std::io::Result<()> {
+    tokio::fs::rename(staged_path, dest_path).await
 }
 
 const ALPHABET: [char; 62] = [
@@ -242,4 +330,37 @@ pub fn snapshot_path(original_path: &Path) -> Result<PathBuf> {
     std::fs::copy(original_path, &temp_path)?;
 
     Ok(temp_path)
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+
+    #[tokio::test]
+    async fn save_yaml_atomically_replaces_existing_file() -> Result<()> {
+        let unique = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let test_dir = std::env::temp_dir().join(format!("clash-verge-yaml-save-{}-{unique}", std::process::id()));
+        let config_path = test_dir.join("settings.yaml");
+        tokio::fs::create_dir_all(&test_dir).await?;
+        tokio::fs::write(&config_path, b"truncated: [").await?;
+
+        super::save_yaml(&config_path, &vec!["new", "value"], Some("# test config")).await?;
+
+        let saved = tokio::fs::read_to_string(&config_path).await?;
+        assert!(saved.starts_with("# test config\n\n"));
+        assert_eq!(serde_yaml_ng::from_str::<Vec<String>>(&saved[15..])?, ["new", "value"]);
+
+        let mut entries = tokio::fs::read_dir(&test_dir).await?;
+        let mut names = Vec::new();
+        while let Some(entry) = entries.next_entry().await? {
+            names.push(entry.file_name());
+        }
+        assert_eq!(names, [std::ffi::OsString::from("settings.yaml")]);
+
+        tokio::fs::remove_dir_all(test_dir).await?;
+        Ok(())
+    }
 }

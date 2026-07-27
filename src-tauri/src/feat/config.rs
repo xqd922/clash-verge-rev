@@ -1,9 +1,9 @@
 use crate::{
     config::{Config, IVerge},
-    core::{CoreManager, autostart, handle, hotkey, logger::Logger, sysopt, tray},
+    core::{CoreManager, autostart, handle, hotkey, logger::Logger, manager::ConfigUpdatePermit, sysopt, tray},
     module::{auto_backup::AutoBackupManager, lightweight},
 };
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use bitflags::bitflags;
 use clash_verge_draft::SharedDraft;
 use clash_verge_logging::{Type, logging, logging_error};
@@ -11,36 +11,74 @@ use serde_yaml_ng::Mapping;
 
 /// Patch Clash configuration
 pub async fn patch_clash(patch: &Mapping) -> Result<()> {
-    Config::clash().await.edit_draft(|d| d.patch_config(patch));
-
-    let res = {
-        // 激活订阅
-        if patch.get("secret").is_some() || patch.get("external-controller").is_some() {
-            Config::generate().await?;
-            CoreManager::global().restart_core().await?;
-        } else {
-            if patch.get("mode").is_some() {
-                tray::Tray::global().update_menu_and_icon().await;
-            }
-            Config::runtime().await.edit_draft(|d| d.patch_config(patch));
-            CoreManager::global().update_config_checked().await?;
-        }
-        handle::Handle::refresh_clash();
-        <Result<()>>::Ok(())
+    let manager = CoreManager::global();
+    let Some(config_permit) = manager.try_acquire_config_update() else {
+        return Err(anyhow!("A configuration update is already running"));
     };
-    match res {
-        Ok(()) => {
-            Config::clash().await.apply();
-            // 分离数据获取和异步调用
-            let clash_data = Config::clash().await.data_arc();
-            clash_data.save_config().await?;
-            Ok(())
+
+    let clash = Config::clash().await;
+    let runtime = Config::runtime().await;
+    let committed_clash = clash.data_arc();
+    let restart_required = patch.get("secret").is_some() || patch.get("external-controller").is_some();
+
+    clash.edit_draft(|draft| draft.patch_config(patch));
+    if restart_required {
+        if let Err(err) = Config::generate().await {
+            clash.discard();
+            runtime.discard();
+            return Err(err);
         }
-        Err(err) => {
-            Config::clash().await.discard();
-            Err(err)
-        }
+    } else {
+        runtime.edit_draft(|draft| draft.patch_config(patch));
     }
+
+    // Persist the staged Clash config before changing the running core. From
+    // this point onward every failure restores the committed file snapshot.
+    if let Err(err) = clash.latest_arc().save_config().await {
+        clash.discard();
+        runtime.discard();
+        return match committed_clash.save_config().await {
+            Ok(()) => Err(err),
+            Err(rollback_err) => Err(anyhow!("{err}; failed to restore Clash config file: {rollback_err}")),
+        };
+    }
+
+    let update_result = if restart_required {
+        manager.restart_core_with_permit(&config_permit).await
+    } else {
+        match manager.update_config_forced_with_permit(&config_permit).await {
+            Ok(outcome) if outcome.is_valid() => Ok(()),
+            Ok(outcome) => Err(anyhow!("{outcome}")),
+            Err(err) => Err(err),
+        }
+    };
+
+    if let Err(err) = update_result {
+        clash.discard();
+        runtime.discard();
+
+        let mut rollback_errors = Vec::new();
+        if let Err(rollback_err) = committed_clash.save_config().await {
+            rollback_errors.push(format!("failed to restore Clash config file: {rollback_err}"));
+        }
+        if restart_required && let Err(rollback_err) = manager.restart_core_with_permit(&config_permit).await {
+            rollback_errors.push(format!("failed to restart the previous core config: {rollback_err}"));
+        }
+
+        return if rollback_errors.is_empty() {
+            Err(err)
+        } else {
+            Err(anyhow!("{err}; rollback failed: {}", rollback_errors.join("; ")))
+        };
+    }
+
+    clash.apply();
+    runtime.apply();
+    if patch.get("mode").is_some() {
+        tray::Tray::global().update_menu_and_icon().await;
+    }
+    handle::Handle::refresh_clash();
+    Ok(())
 }
 
 // Define update flags as bitflags for better performance
@@ -202,98 +240,225 @@ fn determine_update_flags(patch: &IVerge) -> UpdateFlags {
     update_flags
 }
 
+#[derive(Default)]
+struct AppliedSystemEffects {
+    launch: bool,
+    locale: bool,
+    sys_proxy: bool,
+    hotkeys: bool,
+}
+
+async fn rollback_system_effects(effects: &AppliedSystemEffects, committed_verge: &IVerge) -> Vec<String> {
+    let mut rollback_errors = Vec::new();
+
+    if effects.hotkeys {
+        let hotkey = hotkey::Hotkey::global();
+        if let Err(err) = hotkey.reset() {
+            rollback_errors.push(format!("failed to reset hotkeys: {err}"));
+        }
+        // reset unregisters OS shortcuts but does not clear Hotkey's current
+        // snapshot. Move it through empty so update re-registers every old key
+        // and reports registration failures instead of silently ignoring them.
+        if let Err(err) = hotkey.update(Vec::new()).await {
+            rollback_errors.push(format!("failed to clear hotkey state: {err}"));
+        }
+        if let Err(err) = hotkey.update(committed_verge.hotkeys.clone().unwrap_or_default()).await {
+            rollback_errors.push(format!("failed to restore hotkeys: {err}"));
+        }
+    }
+
+    if effects.sys_proxy {
+        let sysopt = sysopt::Sysopt::global();
+        if let Err(err) = sysopt.update_sysproxy().await {
+            rollback_errors.push(format!("failed to restore system proxy: {err}"));
+        }
+        sysopt.refresh_guard().await;
+    }
+
+    if effects.locale {
+        clash_verge_i18n::sync_locale(committed_verge.language.as_deref());
+    }
+
+    if effects.launch
+        && let Err(err) = autostart::update_launch().await
+    {
+        rollback_errors.push(format!("failed to restore auto-launch: {err}"));
+    }
+
+    rollback_errors
+}
+
 #[allow(clippy::cognitive_complexity)]
-async fn process_terminated_flags(update_flags: UpdateFlags, patch: &IVerge) -> Result<()> {
-    // Process updates based on flags
-    if update_flags.contains(UpdateFlags::RESTART_CORE) {
-        Config::generate().await?;
-        CoreManager::global().restart_core().await?;
-    }
-    if update_flags.contains(UpdateFlags::CLASH_CONFIG) {
-        CoreManager::global().update_config_checked().await?;
-        handle::Handle::refresh_clash();
-    }
-    if update_flags.contains(UpdateFlags::VERGE_CONFIG) {
-        Config::verge()
-            .await
-            .edit_draft(|d| d.enable_global_hotkey = patch.enable_global_hotkey);
-        handle::Handle::refresh_verge();
-    }
-    if update_flags.contains(UpdateFlags::LAUNCH) {
-        autostart::update_launch().await?;
-    }
-    if update_flags.contains(UpdateFlags::LANGUAGE)
-        && let Some(language) = &patch.language
-    {
-        clash_verge_i18n::set_locale(language.as_str());
-    }
-    if update_flags.contains(UpdateFlags::SYS_PROXY) {
-        sysopt::Sysopt::global().update_sysproxy().await?;
-        sysopt::Sysopt::global().refresh_guard().await;
-    }
-    if update_flags.contains(UpdateFlags::HOTKEY)
-        && let Some(hotkeys) = &patch.hotkeys
-    {
-        hotkey::Hotkey::global().update(hotkeys.to_owned()).await?;
-    }
-    if update_flags.contains(UpdateFlags::SYSTRAY_MENU) {
-        tray::Tray::global().update_menu().await?;
-    }
-    if update_flags.contains(UpdateFlags::SYSTRAY_ICON) {
-        tray::Tray::global()
-            .update_icon(&Config::verge().await.latest_arc())
-            .await?;
-        #[cfg(target_os = "macos")]
-        if patch.enable_tray_speed.is_some() {
-            tray::Tray::global().update_speed_task(patch.enable_tray_speed.unwrap_or(false));
+async fn process_terminated_flags(
+    update_flags: UpdateFlags,
+    patch: &IVerge,
+    committed_verge: &IVerge,
+    config_permit: &ConfigUpdatePermit<'_>,
+) -> Result<()> {
+    let mut effects = AppliedSystemEffects::default();
+    let mut restart_attempted = false;
+
+    let result: Result<()> = async {
+        if update_flags.contains(UpdateFlags::LAUNCH) {
+            effects.launch = true;
+            autostart::update_launch().await?;
         }
-    }
-    if update_flags.contains(UpdateFlags::SYSTRAY_TOOLTIP) {
-        tray::Tray::global().update_tooltip().await?;
-    }
-    if update_flags.contains(UpdateFlags::SYSTRAY_CLICK_BEHAVIOR) {
-        tray::Tray::global().update_click_behavior().await?;
-    }
-    if update_flags.contains(UpdateFlags::LIGHT_WEIGHT) {
-        if patch.enable_auto_light_weight_mode.unwrap_or(false) {
-            lightweight::enable_auto_light_weight_mode().await;
-        } else {
-            lightweight::disable_auto_light_weight_mode();
+        if update_flags.contains(UpdateFlags::LANGUAGE)
+            && let Some(language) = &patch.language
+        {
+            effects.locale = true;
+            clash_verge_i18n::set_locale(language.as_str());
         }
+        if update_flags.contains(UpdateFlags::SYS_PROXY) {
+            effects.sys_proxy = true;
+            sysopt::Sysopt::global().update_sysproxy().await?;
+            sysopt::Sysopt::global().refresh_guard().await;
+        }
+        if update_flags.contains(UpdateFlags::HOTKEY)
+            && let Some(hotkeys) = &patch.hotkeys
+        {
+            effects.hotkeys = true;
+            hotkey::Hotkey::global().update(hotkeys.to_owned()).await?;
+        }
+
+        // Apply the core change after reversible OS state. If it fails, the
+        // error path below restores both the old core and every applied state.
+        let manager = CoreManager::global();
+        if update_flags.contains(UpdateFlags::RESTART_CORE) {
+            Config::generate().await?;
+            restart_attempted = true;
+            manager.restart_core_with_permit(config_permit).await?;
+        } else if update_flags.contains(UpdateFlags::CLASH_CONFIG) {
+            match manager.update_config_forced_with_permit(config_permit).await {
+                Ok(outcome) if outcome.is_valid() => {}
+                Ok(outcome) => return Err(anyhow!("{outcome}")),
+                Err(err) => return Err(err),
+            }
+        }
+
+        // These operations only refresh process/UI state. They must not abort
+        // an otherwise committed config transaction.
+        if update_flags.contains(UpdateFlags::SYSTRAY_MENU) {
+            logging_error!(Type::Setup, tray::Tray::global().update_menu().await);
+        }
+        if update_flags.contains(UpdateFlags::SYSTRAY_ICON) {
+            logging_error!(
+                Type::Setup,
+                tray::Tray::global()
+                    .update_icon(&Config::verge().await.latest_arc())
+                    .await
+            );
+            #[cfg(target_os = "macos")]
+            if patch.enable_tray_speed.is_some() {
+                tray::Tray::global().update_speed_task(patch.enable_tray_speed.unwrap_or(false));
+            }
+        }
+        if update_flags.contains(UpdateFlags::SYSTRAY_TOOLTIP) {
+            logging_error!(Type::Setup, tray::Tray::global().update_tooltip().await);
+        }
+        if update_flags.contains(UpdateFlags::SYSTRAY_CLICK_BEHAVIOR) {
+            logging_error!(Type::Setup, tray::Tray::global().update_click_behavior().await);
+        }
+        if update_flags.contains(UpdateFlags::LIGHT_WEIGHT) {
+            if patch.enable_auto_light_weight_mode.unwrap_or(false) {
+                lightweight::enable_auto_light_weight_mode().await;
+            } else {
+                lightweight::disable_auto_light_weight_mode();
+            }
+        }
+        if update_flags.contains(UpdateFlags::LOG_LEVEL) {
+            logging_error!(Type::Setup, Logger::global().update_log_level(patch.get_log_level()));
+        }
+        if update_flags.contains(UpdateFlags::LOG_FILE) {
+            let log_max_size = patch.app_log_max_size.unwrap_or(128);
+            let log_max_count = patch.app_log_max_count.unwrap_or(8);
+            logging_error!(
+                Type::Setup,
+                Logger::global().update_log_config(log_max_size, log_max_count).await
+            );
+        }
+
+        if update_flags.contains(UpdateFlags::CLASH_CONFIG) {
+            handle::Handle::refresh_clash();
+        }
+        if update_flags.contains(UpdateFlags::VERGE_CONFIG) {
+            handle::Handle::refresh_verge();
+        }
+        Ok(())
     }
-    if update_flags.contains(UpdateFlags::LOG_LEVEL) {
-        Logger::global().update_log_level(patch.get_log_level())?;
+    .await;
+
+    let Err(err) = result else {
+        return Ok(());
+    };
+
+    // Rollback helpers read Config::verge().latest_arc(), so expose the old
+    // committed snapshots before replaying any OS state.
+    Config::verge().await.discard();
+    Config::runtime().await.discard();
+
+    let mut rollback_errors = Vec::new();
+    if restart_attempted && let Err(rollback_err) = CoreManager::global().restart_core_with_permit(config_permit).await
+    {
+        rollback_errors.push(format!("failed to restart the previous core config: {rollback_err}"));
     }
-    if update_flags.contains(UpdateFlags::LOG_FILE) {
-        let log_max_size = patch.app_log_max_size.unwrap_or(128);
-        let log_max_count = patch.app_log_max_count.unwrap_or(8);
-        Logger::global().update_log_config(log_max_size, log_max_count).await?;
+    rollback_errors.extend(rollback_system_effects(&effects, committed_verge).await);
+
+    if rollback_errors.is_empty() {
+        Err(err)
+    } else {
+        Err(anyhow!("{err}; rollback failed: {}", rollback_errors.join("; ")))
     }
-    Ok(())
 }
 
 pub async fn patch_verge(patch: &IVerge, not_save_file: bool) -> Result<()> {
-    Config::verge().await.edit_draft(|d| d.patch_config(patch));
+    let manager = CoreManager::global();
+    let Some(config_permit) = manager.try_acquire_config_update() else {
+        return Err(anyhow!("A configuration update is already running"));
+    };
+
+    patch_verge_with_permit(patch, not_save_file, &config_permit).await
+}
+
+pub(crate) async fn patch_verge_with_permit(
+    patch: &IVerge,
+    not_save_file: bool,
+    config_permit: &ConfigUpdatePermit<'_>,
+) -> Result<()> {
+    let verge = Config::verge().await;
+    let runtime = Config::runtime().await;
+    let committed_verge = verge.data_arc();
+
+    verge.edit_draft(|draft| draft.patch_config(patch));
 
     let update_flags = determine_update_flags(patch);
     logging!(debug, Type::Setup, "Determined update flags: {:?}", update_flags);
-    let process_flag_result: std::result::Result<(), anyhow::Error> = {
-        process_terminated_flags(update_flags, patch).await?;
-        Ok(())
-    };
 
-    if let Err(err) = process_flag_result {
-        Config::verge().await.discard();
+    if !not_save_file {
+        logging!(debug, Type::Setup, "Saving Verge configuration to file...");
+        if let Err(err) = verge.latest_arc().save_file().await {
+            verge.discard();
+            runtime.discard();
+            return match committed_verge.save_file().await {
+                Ok(()) => Err(err),
+                Err(rollback_err) => Err(anyhow!("{err}; failed to restore Verge config file: {rollback_err}")),
+            };
+        }
+    }
+
+    if let Err(err) = process_terminated_flags(update_flags, patch, &committed_verge, config_permit).await {
+        verge.discard();
+        runtime.discard();
+
+        if !not_save_file && let Err(rollback_err) = committed_verge.save_file().await {
+            return Err(anyhow!("{err}; failed to restore Verge config file: {rollback_err}"));
+        }
         return Err(err);
     }
-    Config::verge().await.apply();
+
+    verge.apply();
+    runtime.apply();
     logging_error!(Type::Backup, AutoBackupManager::global().refresh_settings().await);
-    if !not_save_file {
-        // 分离数据获取和异步调用
-        let verge_data = Config::verge().await.data_arc();
-        logging!(debug, Type::Setup, "Saving Verge configuration to file...");
-        verge_data.save_file().await?;
-    }
     Ok(())
 }
 

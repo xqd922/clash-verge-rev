@@ -146,7 +146,6 @@ impl Builder {
                 commands::ws_logs,
                 commands::ws_disconnect,
                 commands::clear_all_ws_connections,
-                // commands::ws_send,
             ])
             .setup(move |app, _api| {
                 // 初始化连接池

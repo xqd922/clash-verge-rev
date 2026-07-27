@@ -1,4 +1,4 @@
-import { execSync } from 'child_process'
+import { execFileSync, execSync } from 'child_process'
 import { createHash } from 'crypto'
 import fs from 'fs'
 import fsp from 'fs/promises'
@@ -515,7 +515,7 @@ async function resolveSidecar(binInfo) {
           throw new Error(`Expected binary not found in ${tempDir}`)
         await fsp.rename(path.join(tempDir, candidate), sidecarPath)
       }
-      if (platform !== 'win32') execSync(`chmod 755 ${sidecarPath}`)
+      if (platform !== 'win32') await fsp.chmod(sidecarPath, 0o755)
       log_success(`unzip finished: "${name}"`)
     } else if (zipFile.endsWith('.tgz')) {
       await extract({ cwd: tempDir, file: tempZip })
@@ -531,7 +531,7 @@ async function resolveSidecar(binInfo) {
       if (!extracted) extracted = files[0]
       if (!extracted) throw new Error(`Expected file not found in ${tempDir}`)
       await fsp.rename(path.join(tempDir, extracted), sidecarPath)
-      execSync(`chmod 755 ${sidecarPath}`)
+      await fsp.chmod(sidecarPath, 0o755)
       log_success(`tgz processed: "${name}"`)
     } else {
       // .gz
@@ -546,7 +546,8 @@ async function resolveSidecar(binInfo) {
           })
           .pipe(writeStream)
           .on('finish', () => {
-            if (platform !== 'win32') execSync(`chmod 755 ${sidecarPath}`)
+            if (platform !== 'win32')
+              execFileSync('chmod', ['755', sidecarPath])
             resolve()
           })
           .on('error', (e) => {
@@ -663,7 +664,7 @@ const resolveServicePermission = async () => {
           continue
         }
         try {
-          execSync(`chmod 755 ${filePath}`)
+          await fsp.chmod(filePath, 0o755)
           log_success(`chmod finished: "${filePath}"`)
         } catch (e) {
           log_error(`chmod failed for ${filePath}:`, e.message)

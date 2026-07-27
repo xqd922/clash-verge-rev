@@ -1,5 +1,4 @@
 use std::{
-    collections::VecDeque,
     ops::{Deref, DerefMut},
     pin::Pin,
     sync::{Arc, OnceLock},
@@ -7,11 +6,13 @@ use std::{
     time::{Duration, Instant},
 };
 
-use http::{
-    Version,
-    header::{CONTENT_LENGTH, CONTENT_TYPE},
+use bytes::Bytes;
+use crossbeam::queue::SegQueue;
+use http_body_util::{BodyExt, Full};
+use hyper::{
+    client::conn::http1,
+    rt::{Read, ReadBufCursor, Write},
 };
-use httparse::EMPTY_HEADER;
 use pin_project::pin_project;
 use reqwest::RequestBuilder;
 #[cfg(unix)]
@@ -19,8 +20,8 @@ use tokio::net::UnixStream;
 #[cfg(windows)]
 use tokio::net::windows::named_pipe::{ClientOptions, NamedPipeClient};
 use tokio::{
-    io::{AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader},
-    sync::{Mutex, Semaphore, SemaphorePermit},
+    io::{AsyncRead, AsyncWrite},
+    sync::{Semaphore, SemaphorePermit},
     time::timeout,
 };
 #[cfg(windows)]
@@ -42,24 +43,30 @@ impl WrapStream {
         match self {
             #[cfg(unix)]
             WrapStream::Unix(s) => {
-                use std::io::ErrorKind;
-
                 let mut buf = [0u8; 1];
-                match s.try_read(&mut buf) {
-                    Ok(n) => Ok(n != 0),
-                    Err(e) if e.kind() == ErrorKind::WouldBlock => Ok(true),
-                    Err(_) => Err(Error::ConnectionLost),
+                match s.try_io(tokio::io::Interest::READABLE, || {
+                    let raw_fd = std::os::unix::io::AsRawFd::as_raw_fd(s);
+                    let n = unsafe { libc::recv(raw_fd, buf.as_mut_ptr() as *mut libc::c_void, 1, libc::MSG_PEEK) };
+                    if n == 0 {
+                        return Err(std::io::Error::new(std::io::ErrorKind::ConnectionAborted, "Closed"));
+                    }
+                    if n < 0 {
+                        return Err(std::io::Error::last_os_error());
+                    }
+                    Ok(n)
+                }) {
+                    Ok(_) => Ok(true),
+                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => Ok(true),
+                    Err(_) => Ok(false),
                 }
             }
             #[cfg(windows)]
             WrapStream::NamedPipe(s) => {
-                use std::io::ErrorKind;
-
-                let mut buf = [0u8; 1];
-                match s.try_read(&mut buf) {
-                    Ok(n) => Ok(n != 0),
-                    Err(e) if e.kind() == ErrorKind::WouldBlock => Ok(true),
-                    Err(_) => Err(Error::ConnectionLost),
+                let mut buffer = [];
+                match s.try_read(&mut buffer) {
+                    Ok(_) => Ok(true),
+                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => Ok(true),
+                    Err(_) => Ok(false),
                 }
             }
         }
@@ -128,6 +135,37 @@ impl AsyncWrite for WrapStream {
             #[cfg(windows)]
             WrapStreamProj::NamedPipe(s) => s.poll_shutdown(cx),
         }
+    }
+}
+
+impl Read for WrapStream {
+    fn poll_read(self: Pin<&mut Self>, cx: &mut Context<'_>, mut buf: ReadBufCursor<'_>) -> Poll<std::io::Result<()>> {
+        let n = unsafe {
+            let mut t_buf = tokio::io::ReadBuf::uninit(buf.as_mut());
+            match tokio::io::AsyncRead::poll_read(self, cx, &mut t_buf) {
+                Poll::Ready(Ok(())) => t_buf.filled().len(),
+                Poll::Ready(Err(e)) => return Poll::Ready(Err(e)),
+                Poll::Pending => return Poll::Pending,
+            }
+        };
+        unsafe {
+            buf.advance(n);
+        }
+        Poll::Ready(Ok(()))
+    }
+}
+
+impl Write for WrapStream {
+    fn poll_write(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<std::io::Result<usize>> {
+        tokio::io::AsyncWrite::poll_write(self, cx, buf)
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
+        tokio::io::AsyncWrite::poll_flush(self, cx)
+    }
+
+    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
+        tokio::io::AsyncWrite::poll_shutdown(self, cx)
     }
 }
 
@@ -207,127 +245,6 @@ pub async fn connect_to_socket(socket_path: &str) -> Result<WrapStream> {
         };
         Ok(WrapStream::NamedPipe(client))
     }
-}
-
-#[inline]
-fn generate_socket_request(req: reqwest::Request) -> Result<String> {
-    let method = req.method().as_str();
-    let mut path = req.url().path().to_string();
-    if let Some(query) = req.url().query() {
-        path.push_str(&format!("?{query}"));
-    }
-    let request_line = format!("{method} {path} HTTP/1.1\r\n");
-
-    // 添加头部信息
-    let mut headers = String::new();
-    let missing_content_length =
-        req.headers().contains_key(CONTENT_TYPE) && !req.headers().contains_key(CONTENT_LENGTH);
-    let body = req
-        .body()
-        .and_then(|b| b.as_bytes())
-        .map(|b| String::from_utf8_lossy(b).to_string())
-        .unwrap_or_default();
-    for (name, value) in req.headers() {
-        if let Ok(value) = value.to_str() {
-            headers.push_str(&format!("{name}: {value}\r\n"));
-            if name == CONTENT_TYPE && missing_content_length {
-                headers.push_str(&format!("{}: {}\r\n", CONTENT_LENGTH, body.len()));
-            }
-        }
-    }
-
-    // 拼接完整请求, 格式: 请求行 + 头部 + 空行 + Body
-    let raw = format!("{request_line}{headers}\r\n{body}");
-
-    Ok(raw)
-}
-
-#[inline]
-fn generate_socket_response(header: String, body: String) -> Result<reqwest::Response> {
-    log::trace!("parsing socket response");
-    let mut headers = [EMPTY_HEADER; 16];
-    let mut res = httparse::Response::new(&mut headers);
-    let response_str = format!("{header}{body}");
-    let raw_response = response_str.as_bytes();
-    match res.parse(raw_response) {
-        Ok(httparse::Status::Complete(_)) => {
-            let mut res_builder = http::Response::builder()
-                .version(Version::HTTP_11)
-                .status(res.code.unwrap_or(400));
-            for header in res.headers.iter() {
-                let header_name = header.name;
-                let header_value = str::from_utf8(header.value).unwrap_or_default();
-                res_builder = res_builder.header(header_name, header_value);
-            }
-            // {
-            //     use std::io::Write;
-            //     let mut file = std::fs::File::create("body.json")?;
-            //     file.write_all(body.as_bytes())?;
-            // }
-            let response = res_builder.body(body)?;
-            Ok(reqwest::Response::from(response))
-        }
-        Ok(httparse::Status::Partial) => {
-            log::error!("Partial response, need more data");
-            Err(Error::HttpParseError("Partial response, need more data".to_string()))
-        }
-        Err(e) => {
-            log::error!("Failed to parse response: {e}");
-            Err(Error::HttpParseError(format!("Failed to parse response: {e}")))
-        }
-    }
-}
-
-async fn read_header(reader: &mut BufReader<&mut WrapStream>) -> Result<String> {
-    let mut header = String::new();
-    loop {
-        let mut line = String::new();
-        if let Ok(size) = reader.read_line(&mut line).await
-            && size == 0
-        {
-            return Err(Error::HttpParseError("no response".to_string()));
-        }
-        header.push_str(&line);
-        if line == "\r\n" {
-            break;
-        }
-    }
-    log::trace!("read header done: {header:?}");
-
-    Ok(header)
-}
-
-async fn read_chunked_data(reader: &mut BufReader<&mut WrapStream>) -> Result<String> {
-    let mut body = Vec::new();
-    loop {
-        // 读 chunk size
-        let mut size_line = String::new();
-        reader.read_line(&mut size_line).await?;
-        let size_line = size_line.trim();
-        if size_line.is_empty() {
-            continue;
-        }
-        let chunk_size = usize::from_str_radix(size_line, 16)
-            .map_err(|e| Error::HttpParseError(format!("Failed to parse chunk size: {e}")))?;
-
-        if chunk_size == 0 {
-            // 读掉最后的 CRLF
-            let mut end = String::new();
-            reader.read_line(&mut end).await?;
-            break;
-        }
-
-        // 读 chunk data
-        let mut chunk_data = vec![0u8; chunk_size];
-        reader.read_exact(&mut chunk_data).await?;
-        body.extend_from_slice(&chunk_data);
-
-        // 读掉结尾 CRLF
-        let mut crlf = String::new();
-        reader.read_line(&mut crlf).await?;
-    }
-    log::trace!("read chunked data done");
-    Ok(String::from_utf8(body)?)
 }
 
 // ----------------------------------------------------------------
@@ -472,7 +389,7 @@ impl IpcConnection {
 // IPC 连接池
 #[derive(Clone)]
 pub struct IpcConnectionPool {
-    connections: Arc<Mutex<VecDeque<IpcConnection>>>,
+    connections: Arc<SegQueue<IpcConnection>>,
     semaphore: Arc<Semaphore>,
     config: IpcPoolConfig,
 }
@@ -485,7 +402,7 @@ impl IpcConnectionPool {
         let pool = IpcConnectionPool {
             semaphore: Arc::new(Semaphore::new(config.max_connections)),
             config,
-            connections: Arc::new(Mutex::new(VecDeque::new())),
+            connections: Arc::new(SegQueue::new()),
         };
         // 启动清理空闲连接的任务线程
         pool.start_clear_idle_conns_task();
@@ -514,104 +431,88 @@ impl IpcConnectionPool {
             let mut interval = tokio::time::interval(pool.config.health_check_interval);
             loop {
                 interval.tick().await;
-                pool.cleanup_idle_connections().await;
+                pool.cleanup_idle_connections();
             }
         });
     }
 
     // 清理空闲连接
     #[inline]
-    async fn cleanup_idle_connections(&self) {
-        log::debug!("cleanup idle connections");
+    fn cleanup_idle_connections(&self) {
         let now = Instant::now();
-
-        // 移除超时空闲连接，但保留最小连接数
         let min_to_keep = self.config.min_connections;
 
-        let mut connections = self.connections.lock().await;
-        let before = connections.len();
-        if before < min_to_keep {
-            log::debug!("connections less than min_to_keep, skip cleanup");
-            return;
-        }
+        let mut total_checked = 0;
+        let mut kept = 0;
 
-        let mut kept_connections = 0;
-        connections.retain(|conn| {
-            if kept_connections < min_to_keep || now.duration_since(conn.last_used) <= self.config.idle_timeout {
-                kept_connections += 1;
-                true
+        let approx_len = self.connections.len();
+
+        for _ in 0..approx_len {
+            if let Some(conn) = self.connections.pop() {
+                total_checked += 1;
+                let is_idle_timeout = now.duration_since(conn.last_used) > self.config.idle_timeout;
+
+                if kept < min_to_keep || !is_idle_timeout {
+                    self.connections.push(conn);
+                    kept += 1;
+                }
             } else {
-                false
+                break;
             }
-        });
-        log::debug!(
-            "cleanup connections done, before: {}, after: {}",
-            before,
-            connections.len()
-        );
-        drop(connections);
+        }
+        log::debug!("Cleanup done: checked {}, kept {}", total_checked, kept);
     }
 
     #[inline]
-    async fn get_connection<'a>(&'a self, socket_path: &str) -> Result<(IpcConnection, SemaphorePermit<'a>)> {
+    async fn get_connection<'a>(&'a self, socket_path: &str) -> Result<(IpcConnection, Option<SemaphorePermit<'a>>)> {
         log::debug!("get connection from pool");
-        // 确保获取 semaphore permit
+        // 获取并发 permit（overflow 时为 None）
         let permit = self.acquire_permit().await?;
         // 开始创建连接
         let conn = self.acquire_or_create_connection(socket_path).await?;
         Ok((conn, permit))
     }
 
-    async fn acquire_permit<'a>(&'a self) -> Result<SemaphorePermit<'a>> {
+    /// 获取并发 permit。
+    ///
+    /// 返回 `None` 表示在 `RejectPolicy::New` 下池已满、允许本次作为临时超额连接（不持 permit）。
+    /// 旧实现用 `add_permits(1)` 临时扩容却从不回收，导致 permit 数随竞争**永久膨胀**、
+    /// `max_connections` 上限失效；此处改为不膨胀。
+    async fn acquire_permit<'a>(&'a self) -> Result<Option<SemaphorePermit<'a>>> {
         log::debug!("acquire permit");
         match self.semaphore.try_acquire() {
-            Ok(permit) => Ok(permit),
+            Ok(permit) => Ok(Some(permit)),
             Err(_) => match self.config.reject_policy {
-                RejectPolicy::New => {
-                    log::debug!("max permit has acquire, add permit");
-                    self.semaphore.add_permits(1);
-                    match self.semaphore.acquire().await {
-                        Ok(permit) => Ok(permit),
-                        Err(e) => {
-                            log::error!("failed to acquire permit, forget permit");
-                            self.semaphore.forget_permits(1);
-                            Err(Error::ConnectionFailed(e.to_string()))
-                        }
-                    }
-                }
+                // 不等待、不膨胀 permit：本次请求作为临时超额连接（无 permit）
+                RejectPolicy::New => Ok(None),
                 RejectPolicy::Reject => Err(Error::ConnectionPoolFull),
                 RejectPolicy::Timeout(timeout_duration) => {
-                    let acquire_future = self.semaphore.acquire();
-                    match timeout(timeout_duration, acquire_future).await {
-                        Ok(Ok(permit)) => Ok(permit),
+                    match timeout(timeout_duration, self.semaphore.acquire()).await {
+                        Ok(Ok(permit)) => Ok(Some(permit)),
                         Ok(Err(_)) => Err(Error::ConnectionPoolFull),
                         Err(e) => Err(Error::Timeout(e)),
                     }
                 }
-                RejectPolicy::Wait => {
-                    let acquire_future = self.semaphore.acquire().await;
-                    match acquire_future {
-                        Ok(permit) => Ok(permit),
-                        Err(_) => Err(Error::ConnectionPoolFull),
-                    }
-                }
+                RejectPolicy::Wait => match self.semaphore.acquire().await {
+                    Ok(permit) => Ok(Some(permit)),
+                    Err(_) => Err(Error::ConnectionPoolFull),
+                },
             },
         }
     }
 
     async fn acquire_or_create_connection(&self, socket_path: &str) -> Result<IpcConnection> {
         // 从池中获取连接并检查其有效性
-        let Some(conn) = self.connections.lock().await.pop_front() else {
-            log::warn!("connection from pool is not available, drop it and create new connection");
-            return Self::create_connection(socket_path).await;
-        };
-
-        log::debug!("get connection from pool successfully");
-        // 如果连接失效，则重新建立连接
-        if !conn.is_valid() {
-            return Self::create_connection(socket_path).await;
+        while let Some(conn) = self.connections.pop() {
+            log::debug!("Attempting to reuse connection from pool");
+            if conn.is_valid() {
+                return Ok(conn);
+            }
+            // log::debug!("Pooled connection is invalid, dropping...");
         }
-        Ok(conn)
+
+        log::trace!("Pool empty, creating new connection");
+        Self::create_connection(socket_path).await
     }
 
     async fn create_connection(socket_path: &str) -> Result<IpcConnection> {
@@ -625,36 +526,16 @@ impl IpcConnectionPool {
         }
     }
 
-    async fn release_connection(&self, mut connection: IpcConnection) {
-        let mut connections = self.connections.lock().await;
-        log::trace!(
-            "release connections, pool length: {}, available permits: {}",
-            connections.len(),
-            self.semaphore.available_permits()
-        );
-        connection.last_used = Instant::now();
-
-        if self.semaphore.available_permits() >= self.config.max_connections {
-            self.semaphore.forget_permits(1);
-            drop(connection);
-        } else {
-            log::trace!("push connection to pool");
-            connections.push_back(connection);
-        }
-    }
-
-    pub async fn clear_pool(&self) {
-        let mut connections = self.connections.lock().await;
-        connections.retain(|_conn| false);
+    pub fn clear_pool(&self) {
+        while self.connections.pop().is_some() {}
+        log::debug!("IpcConnectionPool cleared");
     }
 }
 
 impl Drop for IpcConnectionPool {
     fn drop(&mut self) {
-        tauri::async_runtime::block_on(async move {
-            log::debug!("IpcConnectionPool is being dropped");
-            self.clear_pool().await;
-        });
+        log::debug!("IpcConnectionPool is being dropped");
+        self.clear_pool();
     }
 }
 
@@ -664,67 +545,60 @@ pub trait LocalSocket {
 
 impl LocalSocket for RequestBuilder {
     async fn send_by_local_socket(self, socket_path: &str) -> Result<reqwest::Response> {
-        let request = self.build()?;
-        let timeout = request.timeout().cloned();
+        let reqwest_req = self.build()?;
+        let timeout_dur = reqwest_req.timeout();
 
         let pool = IpcConnectionPool::global()?;
-        let (mut conn, _permit) = pool.get_connection(socket_path).await?;
+        let (conn, _permit) = pool.get_connection(socket_path).await?;
 
-        let process = async move {
-            log::trace!("building socket request");
-            let req_str = generate_socket_request(request)?;
-            log::trace!("request string: {req_str:?}");
-            conn.writable().await?;
-            log::trace!("send request");
-            conn.write_all(req_str.as_bytes()).await?;
-            log::trace!("wait for response");
-            conn.readable().await?;
+        let method = reqwest_req.method();
+        let url = reqwest_req.url();
+        let headers = reqwest_req.headers().clone();
 
-            let mut reader = BufReader::new(&mut conn.stream);
-
-            // 读取解析 header
-            log::debug!("read headers");
-            let header = read_header(&mut reader).await?;
-            // 解析 Content-Length, 判断是否是 chunked 响应
-            let mut content_length: Option<usize> = None;
-            let mut is_chunked = false;
-            for line in header.lines() {
-                if let Some(v) = line.to_lowercase().strip_prefix("content-length: ") {
-                    content_length = Some(v.trim().parse()?);
-                }
-                if line.to_lowercase().contains("transfer-encoding: chunked") {
-                    is_chunked = true;
-                }
-            }
-
-            // 读取 body
-            log::debug!("read body");
-            let body = if is_chunked {
-                log::trace!("parse chunked data");
-                read_chunked_data(&mut reader).await?
-            } else if let Some(content_length) = content_length {
-                log::trace!("content length: {content_length}");
-                let mut body_buf = vec![0u8; content_length];
-                reader.read_exact(&mut body_buf).await?;
-                String::from_utf8_lossy(&body_buf).to_string()
-            } else {
-                // 使用空的 body
-                String::new()
-            };
-            log::debug!("receive and parse response success");
-            pool.release_connection(conn).await;
-            generate_socket_response(header, body)
+        let body_bytes = if let Some(body) = reqwest_req.body() {
+            body.as_bytes().map(Bytes::copy_from_slice).unwrap_or_else(Bytes::new)
+        } else {
+            Bytes::new()
         };
 
-        match timeout {
-            Some(duration) => {
-                log::debug!("Timeout duration: {:?}", duration);
-                tokio::time::timeout(duration, process).await?
-            }
-            None => {
-                log::debug!("No timeout specified");
-                process.await
-            }
+        let mut builder = http::Request::builder().method(method).uri(url.as_str());
+
+        if let Some(h) = builder.headers_mut() {
+            *h = headers;
+        }
+        let hyper_req = builder.body(Full::new(body_bytes))?;
+
+        let process = async move {
+            let (mut sender, conn_driver) = http1::handshake(conn.stream)
+                .await
+                .map_err(|e| Error::HttpParseError(e.to_string()))?;
+
+            tauri::async_runtime::spawn(async move {
+                if let Err(err) = conn_driver.await {
+                    log::error!("IPC Connection Error: {:?}", err);
+                }
+            });
+
+            let hyper_res = sender
+                .send_request(hyper_req)
+                .await
+                .map_err(|e| Error::HttpParseError(e.to_string()))?;
+
+            let (res_parts, res_body) = hyper_res.into_parts();
+            let collected_body = res_body
+                .collect()
+                .await
+                .map_err(|e| Error::HttpParseError(e.to_string()))?
+                .to_bytes();
+
+            let final_res = http::Response::from_parts(res_parts, collected_body);
+
+            Ok(reqwest::Response::from(final_res))
+        };
+
+        match timeout_dur {
+            Some(d) => timeout(*d, process).await?,
+            None => process.await,
         }
     }
 }

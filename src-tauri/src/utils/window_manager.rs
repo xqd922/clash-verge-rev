@@ -218,6 +218,25 @@ impl WindowManager {
     fn activate_window(window: &WebviewWindow<Wry>) -> WindowOperationResult {
         logging!(info, Type::Window, "开始激活窗口");
 
+        #[allow(unused_mut)]
+        let mut defer_show_to_page_load = false;
+        #[cfg(target_os = "macos")]
+        if crate::utils::resolve::window::take_webview_needs_reload() {
+            logging!(
+                info,
+                Type::Window,
+                "WebView render process terminated; reloading before showing window"
+            );
+            match window.reload() {
+                Ok(()) => defer_show_to_page_load = true,
+                Err(err) => logging!(
+                    warn,
+                    Type::Window,
+                    "Failed to reload main window, showing it directly: {err}"
+                ),
+            }
+        }
+
         let mut operations_successful = true;
 
         // 1. 如果窗口最小化，先取消最小化
@@ -229,16 +248,16 @@ impl WindowManager {
             }
         }
 
-        // 2. 显示窗口
-        if let Err(e) = window.show() {
-            logging!(warn, Type::Window, "显示窗口失败: {}", e);
-            operations_successful = false;
-        }
-
-        // 3. 设置焦点
-        if let Err(e) = window.set_focus() {
-            logging!(warn, Type::Window, "设置窗口焦点失败: {}", e);
-            operations_successful = false;
+        // 2/3. 重载成功时由 on_page_load 在内容就绪后显示并聚焦。
+        if !defer_show_to_page_load {
+            if let Err(e) = window.show() {
+                logging!(warn, Type::Window, "显示窗口失败: {}", e);
+                operations_successful = false;
+            }
+            if let Err(e) = window.set_focus() {
+                logging!(warn, Type::Window, "设置窗口焦点失败: {}", e);
+                operations_successful = false;
+            }
         }
 
         // 4. 平台特定的激活策略

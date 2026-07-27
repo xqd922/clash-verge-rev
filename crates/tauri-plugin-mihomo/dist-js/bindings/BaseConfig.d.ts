@@ -37,8 +37,7 @@ export type BaseConfig = {
     tcpConcurrent: boolean;
     findProcessMode: FindProcessMode;
     sniffing: boolean;
-    globalClientFingerprint?: string;
-    globalUa?: string;
+    globalUa: string;
     etagSupport: boolean;
     keepAliveInterval: number;
     keepAliveIdle: number;

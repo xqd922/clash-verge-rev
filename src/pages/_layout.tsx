@@ -122,8 +122,6 @@ const Layout = () => {
   const { pathname } = useLocation()
   const isProxyPage = pathname === '/'
   const isLogsPage = pathname === '/logs'
-  const logsPageMountedRef = useRef(false)
-  if (isLogsPage) logsPageMountedRef.current = true
   const themeReady = useMemo(() => Boolean(theme), [theme])
 
   const [menuUnlocked, setMenuUnlocked] = useState(false)
@@ -454,7 +452,7 @@ const Layout = () => {
                   <Outlet />
                 </BaseErrorBoundary>
               )}
-              {logsPageMountedRef.current && (
+              {isLogsPage && (
                 <div
                   style={{
                     position: 'absolute',
@@ -462,7 +460,6 @@ const Layout = () => {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    display: isLogsPage ? undefined : 'none',
                   }}
                 >
                   <LogsPage />

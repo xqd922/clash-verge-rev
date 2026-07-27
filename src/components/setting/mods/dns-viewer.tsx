@@ -31,7 +31,6 @@ import { useClash } from '@/hooks/use-clash'
 import { showNotice } from '@/services/notice-service'
 import { useThemeMode } from '@/services/states'
 import type { MonacoEditorInstance } from '@/types/monaco'
-import { debugLog } from '@/utils/debug'
 import getSystem from '@/utils/get-system'
 
 const Item = styled(ListItem)(() => ({
@@ -583,18 +582,6 @@ export function DnsViewer({ ref }: { ref?: Ref<DialogRef> }) {
   // YAML编辑器内容变更处理
   const handleYamlChange = (value?: string) => {
     setYamlContent(value || '')
-
-    // 允许YAML编辑后立即分析和更新表单值
-    try {
-      const config = yaml.load(value || '') as any
-      if (config && typeof config === 'object') {
-        setTimeout(() => {
-          updateValuesFromConfig(config)
-        }, 300)
-      }
-    } catch (err) {
-      debugLog('YAML解析错误，忽略自动更新', err)
-    }
   }
 
   // 处理表单值变化

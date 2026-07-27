@@ -24,13 +24,13 @@ export declare function flushFakeIp(): Promise<void>;
  */
 export declare function flushDNS(): Promise<void>;
 /**
- * 获取 Smart 代理组权重 (仅 Smart 核心)
+ * 获取 Smart 代理组权重（仅 Smart 核心）
  * @param groupName Smart 代理组名称
  * @returns 权重数据
  */
-export declare function getSmartWeights(groupName: string): Promise<Record<string, any>>;
+export declare function getSmartWeights(groupName: string): Promise<Record<string, unknown>>;
 /**
- * 清除 Smart 缓存数据 (仅 Smart 核心)
+ * 清除 Smart 缓存数据（仅 Smart 核心）
  */
 export declare function flushSmartCache(): Promise<void>;
 /**
@@ -201,11 +201,7 @@ export interface MessageKind<T, D> {
     type: T;
     data: D;
 }
-export interface CloseFrame {
-    code: number;
-    reason: string;
-}
-export type Message = MessageKind<"Text", string> | MessageKind<"Binary", number[]> | MessageKind<"Ping", number[]> | MessageKind<"Pong", number[]> | MessageKind<"Close", CloseFrame | null>;
+export type Message = MessageKind<"Text", string>;
 export declare class MihomoWebSocket {
     id: number;
     private readonly listeners;

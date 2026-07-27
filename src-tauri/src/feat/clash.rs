@@ -1,5 +1,5 @@
 use crate::{
-    config::Config,
+    config::{Config, ConfigType, IClashTemp},
     core::{CoreManager, handle, tray},
     feat::clean_async,
     process::AsyncHandler,
@@ -79,43 +79,99 @@ fn after_change_clash_mode() {
     });
 }
 
+async fn restore_clash_mode_files(committed_clash: &IClashTemp) -> Vec<std::string::String> {
+    let mut rollback_errors = Vec::new();
+    if let Err(rollback_err) = committed_clash.save_config().await {
+        rollback_errors.push(format!("failed to restore Clash config file: {rollback_err}"));
+    }
+    if let Err(rollback_err) = Config::generate_file(ConfigType::Run).await {
+        rollback_errors.push(format!("failed to restore runtime config file: {rollback_err}"));
+    }
+    rollback_errors
+}
+
+fn with_rollback_failures(err: anyhow::Error, rollback_errors: Vec<std::string::String>) -> anyhow::Error {
+    if rollback_errors.is_empty() {
+        err
+    } else {
+        anyhow::anyhow!("{err}; rollback failed: {}", rollback_errors.join("; "))
+    }
+}
+
 /// Change Clash mode (rule/global/direct/script)
 pub async fn change_clash_mode(mode: String) -> anyhow::Result<()> {
+    let manager = CoreManager::global();
+    let Some(_config_permit) = manager.try_acquire_config_update() else {
+        return Err(anyhow::anyhow!("A configuration update is already running"));
+    };
+
+    let previous_mode = {
+        let mihomo = handle::Handle::mihomo().await;
+        mihomo.get_base_config().await?.mode.to_string()
+    };
+
     let mut mapping = Mapping::new();
     mapping.insert(Value::from("mode"), Value::from(mode.as_str()));
-    // Convert YAML mapping to JSON Value
-    let json_value = serde_json::json!({
-        "mode": mode
-    });
+    let json_value = serde_json::json!({ "mode": mode.as_str() });
     logging!(debug, Type::Core, "change clash mode to {mode}");
-    match handle::Handle::mihomo().await.patch_base_config(&json_value).await {
-        Ok(_) => {
-            // 更新订阅
-            let clash = Config::clash().await;
-            clash.edit_draft(|d| d.patch_config(&mapping));
-            clash.apply();
 
-            // 同步模式到运行时配置
-            let runtime = Config::runtime().await;
-            runtime.edit_draft(|d| d.patch_config(&mapping));
-            runtime.apply();
+    let clash = Config::clash().await;
+    let runtime = Config::runtime().await;
+    let committed_clash = clash.data_arc();
 
-            // 分离数据获取和异步调用
-            let clash_data = clash.data_arc();
-            if clash_data.save_config().await.is_ok() {
-                handle::Handle::refresh_clash();
-                tray::Tray::global().update_menu_and_icon().await;
-            }
+    clash.edit_draft(|draft| draft.patch_config(&mapping));
+    let runtime_has_config = runtime.edit_draft(|draft| {
+        let has_config = draft.config.is_some();
+        draft.patch_config(&mapping);
+        has_config
+    });
+    if !runtime_has_config {
+        clash.discard();
+        runtime.discard();
+        return Err(anyhow::anyhow!("Runtime config is not initialized"));
+    }
 
-            let is_auto_close_connection = Config::verge().await.data_arc().auto_close_connection.unwrap_or(false);
-            if is_auto_close_connection {
-                after_change_clash_mode();
-            }
+    if let Err(err) = clash.latest_arc().save_config().await {
+        clash.discard();
+        runtime.discard();
+        return match committed_clash.save_config().await {
+            Ok(()) => Err(err),
+            Err(rollback_err) => Err(anyhow::anyhow!(
+                "{err}; failed to restore Clash config file: {rollback_err}"
+            )),
+        };
+    }
+
+    if let Err(err) = Config::generate_file(ConfigType::Run).await {
+        clash.discard();
+        runtime.discard();
+        let rollback_errors = restore_clash_mode_files(&committed_clash).await;
+        return Err(with_rollback_failures(err, rollback_errors));
+    }
+
+    if let Err(err) = handle::Handle::mihomo().await.patch_base_config(&json_value).await {
+        clash.discard();
+        runtime.discard();
+
+        let mut rollback_errors = Vec::new();
+        let rollback_json = serde_json::json!({ "mode": previous_mode });
+        if let Err(rollback_err) = handle::Handle::mihomo().await.patch_base_config(&rollback_json).await {
+            rollback_errors.push(format!("failed to restore core mode: {rollback_err}"));
         }
-        Err(err) => {
-            logging!(error, Type::Core, "{err}");
-            return Err(anyhow::anyhow!("{err}"));
-        }
+        rollback_errors.extend(restore_clash_mode_files(&committed_clash).await);
+
+        logging!(error, Type::Core, "{err}");
+        return Err(with_rollback_failures(anyhow::anyhow!("{err}"), rollback_errors));
+    }
+
+    clash.apply();
+    runtime.apply();
+    handle::Handle::refresh_clash();
+    tray::Tray::global().update_menu_and_icon().await;
+
+    let is_auto_close_connection = Config::verge().await.data_arc().auto_close_connection.unwrap_or(false);
+    if is_auto_close_connection {
+        after_change_clash_mode();
     }
     Ok(())
 }

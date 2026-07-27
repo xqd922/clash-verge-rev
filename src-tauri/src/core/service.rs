@@ -3,20 +3,24 @@ use crate::{
     core::{logger::Logger, tray::Tray},
     utils::dirs,
 };
-use anyhow::{Context as _, Result, anyhow, bail};
+use anyhow::{Context as _, Result, bail};
 use backon::{ConstantBuilder, Retryable as _};
-use clash_verge_logging::{Type, logging, logging_error};
+use clash_verge_logging::{Type, logging};
 use clash_verge_service_ipc::CoreConfig;
 use compact_str::CompactString;
 use once_cell::sync::Lazy;
+use parking_lot::Mutex;
+use scopeguard::defer;
 use std::{
     borrow::Cow,
     env::current_exe,
+    future::Future,
     path::{Path, PathBuf},
     process::Command as StdCommand,
+    sync::atomic::{AtomicBool, Ordering},
     time::Duration,
 };
-use tokio::sync::Mutex;
+use tokio::sync::Notify;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ServiceStatus {
@@ -29,8 +33,11 @@ pub enum ServiceStatus {
     Unavailable(String),
 }
 
-#[derive(Clone)]
-pub struct ServiceManager(ServiceStatus);
+pub struct ServiceManager {
+    status: Mutex<ServiceStatus>,
+    operation_running: AtomicBool,
+    operation_done: Notify,
+}
 
 #[cfg(target_os = "windows")]
 fn uninstall_service() -> Result<()> {
@@ -121,17 +128,11 @@ fn uninstall_service() -> Result<()> {
         bail!(format!("uninstaller not found: {uninstall_path:?}"));
     }
 
-    let uninstall_shell: String = uninstall_path.to_string_lossy().replace(" ", "\\ ");
-
     let elevator = crate::utils::help::linux_elevator();
     let status = if linux_running_as_root() {
         StdCommand::new(&uninstall_path).status()?
     } else {
-        let result = StdCommand::new(&elevator)
-            .arg("sh")
-            .arg("-c")
-            .arg(&uninstall_shell)
-            .status()?;
+        let result = StdCommand::new(&elevator).arg(&uninstall_path).status()?;
 
         // 如果 pkexec 执行失败，回退到 sudo
         if !result.success() && elevator.contains("pkexec") {
@@ -141,11 +142,7 @@ fn uninstall_service() -> Result<()> {
                 "pkexec failed with code {}, falling back to sudo",
                 result.code().unwrap_or(-1)
             );
-            StdCommand::new("sudo")
-                .arg("sh")
-                .arg("-c")
-                .arg(&uninstall_shell)
-                .status()?
+            StdCommand::new("sudo").arg(&uninstall_path).status()?
         } else {
             result
         }
@@ -177,17 +174,11 @@ fn install_service() -> Result<()> {
         bail!(format!("installer not found: {install_path:?}"));
     }
 
-    let install_shell: String = install_path.to_string_lossy().replace(" ", "\\ ");
-
     let elevator = crate::utils::help::linux_elevator();
     let output = if linux_running_as_root() {
         StdCommand::new(&install_path).output()?
     } else {
-        let result = StdCommand::new(&elevator)
-            .arg("sh")
-            .arg("-c")
-            .arg(&install_shell)
-            .output()?;
+        let result = StdCommand::new(&elevator).arg(&install_path).output()?;
 
         // 如果 pkexec 执行失败，回退到 sudo
         if !result.status.success() && elevator.contains("pkexec") {
@@ -197,11 +188,7 @@ fn install_service() -> Result<()> {
                 "pkexec failed with code {}, falling back to sudo",
                 result.status.code().unwrap_or(-1)
             );
-            StdCommand::new("sudo")
-                .arg("sh")
-                .arg("-c")
-                .arg(&install_shell)
-                .output()?
+            StdCommand::new("sudo").arg(&install_path).output()?
         } else {
             result
         }
@@ -230,6 +217,35 @@ fn linux_running_as_root() -> bool {
 }
 
 #[cfg(target_os = "macos")]
+fn macos_force_stop_core_shell() -> String {
+    use crate::config::IVerge;
+
+    let mut parts: Vec<String> = IVerge::VALID_CLASH_CORES
+        .iter()
+        .map(|core| format!("/usr/bin/pkill -U root -x {core} 2>/dev/null || true"))
+        .collect();
+
+    if let Ok(ipc) = dirs::ipc_path()
+        && let Ok(ipc_str) = dirs::path_to_str(&ipc)
+    {
+        let escaped = ipc_str.replace('\'', r"'\''");
+        parts.push(format!("/bin/rm -f '{escaped}' 2>/dev/null || true"));
+    }
+
+    parts.join("; ")
+}
+
+#[cfg(target_os = "macos")]
+fn escape_osascript_double_quoted_string(value: &str) -> String {
+    value.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+#[cfg(target_os = "macos")]
+fn shell_single_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', r"'\''"))
+}
+
+#[cfg(target_os = "macos")]
 fn uninstall_service() -> Result<()> {
     logging!(info, Type::Service, "uninstall service");
 
@@ -245,8 +261,10 @@ fn uninstall_service() -> Result<()> {
     // clash_verge_i18n::sync_locale(Config::verge().await.latest_arc().language.as_deref());
 
     let prompt = clash_verge_i18n::t!("service.adminUninstallPrompt");
-    let command =
-        format!(r#"do shell script "sudo '{uninstall_shell}'" with administrator privileges with prompt "{prompt}""#);
+    let uninstall_quoted = shell_single_quote(&uninstall_shell);
+    let shell = format!("{}; sudo {uninstall_quoted}", macos_force_stop_core_shell());
+    let shell = escape_osascript_double_quoted_string(&shell);
+    let command = format!(r#"do shell script "{shell}" with administrator privileges with prompt "{prompt}""#);
 
     // logging!(debug, Type::Service, "uninstall command: {}", command);
 
@@ -279,9 +297,10 @@ fn install_service() -> Result<()> {
 
     let gid = tauri_plugin_clash_verge_sysinfo::current_gid();
     let prompt = clash_verge_i18n::t!("service.adminInstallPrompt");
-    let command = format!(
-        r#"do shell script "sudo CLASH_VERGE_SERVICE_GID={gid} '{install_shell}'" with administrator privileges with prompt "{prompt}""#
-    );
+    let install_quoted = shell_single_quote(&install_shell);
+    let shell = format!("sudo CLASH_VERGE_SERVICE_GID={gid} {install_quoted}");
+    let shell = escape_osascript_double_quoted_string(&shell);
+    let command = format!(r#"do shell script "{shell}" with administrator privileges with prompt "{prompt}""#);
 
     let output = StdCommand::new("osascript").args(vec!["-e", &command]).output()?;
     if let Some((code, err)) = check_output_error(&output) {
@@ -379,14 +398,7 @@ pub(super) async fn start_with_existing_service(config_file: &PathBuf) -> Result
 pub(super) async fn run_core_by_service(config_file: &PathBuf) -> Result<()> {
     logging!(info, Type::Service, "正在尝试通过服务启动核心");
 
-    // 只在服务未就绪时才 refresh，避免重复重装
-    let needs_refresh = {
-        let manager = SERVICE_MANAGER.lock().await;
-        !matches!(manager.current(), ServiceStatus::Ready)
-    };
-    if needs_refresh {
-        SERVICE_MANAGER.lock().await.refresh().await?;
-    }
+    SERVICE_MANAGER.refresh().await?;
 
     logging!(info, Type::Service, "服务已运行且版本匹配，直接使用");
     start_with_existing_service(config_file).await
@@ -442,24 +454,7 @@ pub async fn is_service_available() -> Result<()> {
     Ok(())
 }
 
-pub async fn wait_and_check_service_available(status: &mut ServiceManager) -> Result<()> {
-    wait_for_service_ipc(status, "Waiting for service to be available").await
-}
-
-async fn wait_and_check_service_version(status: &mut ServiceManager) -> Result<()> {
-    wait_and_check_service_available(status).await?;
-
-    if clash_verge_service_ipc::is_reinstall_service_needed().await {
-        logging!(info, Type::Service, "服务版本不匹配，执行重装流程");
-        reinstall_service()?;
-        wait_and_check_service_available(status).await?;
-    }
-
-    Ok(())
-}
-
-async fn wait_for_service_ipc(status: &mut ServiceManager, reason: &str) -> Result<()> {
-    status.0 = ServiceStatus::Unavailable(reason.into());
+async fn wait_for_service_ipc(manager: &ServiceManager) -> Result<()> {
     let config = ServiceManager::config();
 
     let backoff = ConstantBuilder::default()
@@ -467,18 +462,18 @@ async fn wait_for_service_ipc(status: &mut ServiceManager, reason: &str) -> Resu
         .with_max_times(config.max_retries);
 
     let result = (|| async {
-        if Path::new(clash_verge_service_ipc::IPC_PATH).exists() {
-            clash_verge_service_ipc::connect().await?;
-            Ok(())
-        } else {
-            Err(anyhow!("IPC path not ready"))
+        if !is_service_ipc_path_exists() {
+            bail!("IPC path not ready");
         }
+        clash_verge_service_ipc::connect().await.map(drop)
     })
     .retry(backoff)
     .await;
 
     if result.is_ok() {
-        status.0 = ServiceStatus::Ready;
+        manager.set_status(ServiceStatus::Ready);
+    } else {
+        manager.set_status(ServiceStatus::Unavailable("Waiting for service to be available".into()));
     }
 
     result
@@ -489,10 +484,6 @@ pub fn is_service_ipc_path_exists() -> bool {
 }
 
 impl ServiceManager {
-    pub fn default() -> Self {
-        Self(ServiceStatus::Unavailable("Need Checks".into()))
-    }
-
     pub const fn config() -> clash_verge_service_ipc::IpcConfig {
         clash_verge_service_ipc::IpcConfig {
             default_timeout: Duration::from_millis(150),
@@ -501,72 +492,112 @@ impl ServiceManager {
         }
     }
 
-    pub async fn init(&mut self) -> Result<()> {
+    pub async fn init(&self) -> Result<()> {
         if let Err(e) = clash_verge_service_ipc::connect().await {
-            self.0 = ServiceStatus::Unavailable("服务连接失败: {e}".to_string());
+            self.set_status(ServiceStatus::Unavailable("服务连接失败: {e}".to_string()));
             return Err(e);
         }
         Ok(())
     }
 
-    pub fn current(&self) -> ServiceStatus {
-        self.0.clone()
+    pub async fn current(&self) -> ServiceStatus {
+        loop {
+            let notified = self.operation_done.notified();
+            if !self.operation_running.load(Ordering::Acquire) {
+                let status = self.status.lock().clone();
+                if !self.operation_running.load(Ordering::Acquire) {
+                    return status;
+                }
+            }
+            notified.await;
+        }
     }
 
-    pub async fn refresh(&mut self) -> Result<()> {
-        let status = self.check_service_comprehensive().await;
-        self.0 = status.clone();
-        logging_error!(Type::Service, self.handle_service_status(&status).await);
+    fn set_status(&self, status: ServiceStatus) {
+        *self.status.lock() = status;
+    }
+
+    async fn run_operation(&self, operation: impl Future<Output = Result<()>>) -> Result<()> {
+        {
+            if self.operation_running.swap(true, Ordering::AcqRel) {
+                bail!("service operation already running");
+            }
+            defer! {
+                self.operation_running.store(false, Ordering::Release);
+                self.operation_done.notify_waiters();
+            }
+
+            operation.await?;
+        }
+
+        if let Err(err) = Tray::global().update_menu().await {
+            logging!(warn, Type::Service, "服务操作已完成，但更新托盘菜单失败: {err}");
+        }
         Ok(())
     }
 
-    /// 综合服务状态检查（一次性完成所有检查）
-    pub async fn check_service_comprehensive(&self) -> ServiceStatus {
-        if clash_verge_service_ipc::is_reinstall_service_needed().await {
-            ServiceStatus::NeedsReinstall
-        } else {
-            ServiceStatus::Ready
-        }
+    pub async fn refresh(&self) -> Result<()> {
+        self.run_operation(async {
+            self.apply_service_status(if clash_verge_service_ipc::is_reinstall_service_needed().await {
+                ServiceStatus::NeedsReinstall
+            } else {
+                ServiceStatus::Ready
+            })
+            .await
+        })
+        .await
     }
 
-    /// 根据服务状态执行相应操作
-    pub async fn handle_service_status(&mut self, status: &ServiceStatus) -> Result<()> {
+    pub async fn handle_service_status(&self, status: ServiceStatus) -> Result<()> {
+        self.run_operation(self.apply_service_status(status)).await
+    }
+
+    async fn apply_service_status(&self, status: ServiceStatus) -> Result<()> {
+        self.set_status(status.clone());
         match status {
-            ServiceStatus::Ready => {
-                logging!(info, Type::Service, "服务就绪，直接启动");
-                self.0 = ServiceStatus::Ready;
-            }
+            ServiceStatus::Ready => logging!(info, Type::Service, "服务就绪，直接启动"),
             ServiceStatus::NeedsReinstall | ServiceStatus::ReinstallRequired => {
                 logging!(info, Type::Service, "服务需要重装，执行重装流程");
-                reinstall_service()?;
-                wait_and_check_service_available(self).await?;
+                run_service_command(reinstall_service, "reinstall service")?;
+                wait_for_service_ipc(self).await?;
             }
             ServiceStatus::ForceReinstallRequired => {
                 logging!(info, Type::Service, "服务需要强制重装，执行强制重装流程");
-                force_reinstall_service()?;
-                wait_and_check_service_available(self).await?;
+                run_service_command(force_reinstall_service, "force reinstall service")?;
+                wait_for_service_ipc(self).await?;
             }
             ServiceStatus::InstallRequired => {
                 logging!(info, Type::Service, "需要安装服务，执行安装流程");
-                install_service()?;
-                wait_and_check_service_version(self).await?;
+                run_service_command(install_service, "install service")?;
+                wait_for_service_ipc(self).await?;
+                if clash_verge_service_ipc::is_reinstall_service_needed().await {
+                    logging!(info, Type::Service, "服务版本不匹配，执行重装流程");
+                    self.set_status(ServiceStatus::NeedsReinstall);
+                    run_service_command(reinstall_service, "reinstall service")?;
+                    wait_for_service_ipc(self).await?;
+                }
             }
             ServiceStatus::UninstallRequired => {
                 logging!(info, Type::Service, "服务需要卸载，执行卸载流程");
-                uninstall_service()?;
-                self.0 = ServiceStatus::Unavailable("Service Uninstalled".into());
+                run_service_command(uninstall_service, "uninstall service")?;
+                self.set_status(ServiceStatus::Unavailable("Service Uninstalled".into()));
             }
             ServiceStatus::Unavailable(reason) => {
                 logging!(info, Type::Service, "服务不可用: {}，将使用Sidecar模式", reason);
-                self.0 = ServiceStatus::Unavailable(reason.clone());
-                return Err(anyhow::anyhow!("服务不可用: {}", reason));
+                bail!("服务不可用: {}", reason);
             }
         }
 
-        // 防止服务安装成功后，内核未完全启动导致系统托盘无法获取代理节点信息
-        Tray::global().update_menu().await?;
         Ok(())
     }
 }
 
-pub static SERVICE_MANAGER: Lazy<Mutex<ServiceManager>> = Lazy::new(|| Mutex::new(ServiceManager::default()));
+fn run_service_command(operation: impl FnOnce() -> Result<()>, label: &'static str) -> Result<()> {
+    tokio::task::block_in_place(operation).with_context(|| format!("{label} failed"))
+}
+
+pub static SERVICE_MANAGER: Lazy<ServiceManager> = Lazy::new(|| ServiceManager {
+    status: Mutex::new(ServiceStatus::Unavailable("Need Checks".into())),
+    operation_running: AtomicBool::new(false),
+    operation_done: Notify::new(),
+});

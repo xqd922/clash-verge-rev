@@ -6,6 +6,8 @@ export type TuicServer = {
     users?: {
         [key in string]?: string;
     };
+    clientAuthType?: string;
+    clientAuthCert?: string;
     certificate: string;
     privateKey: string;
     echKey: string;
@@ -16,5 +18,6 @@ export type TuicServer = {
     maxUdpRelayPacketSize?: number;
     maxDatagramFrameSize?: number;
     cwnd?: number;
+    bbrProfile?: string;
     muxOption?: MuxOption;
 };

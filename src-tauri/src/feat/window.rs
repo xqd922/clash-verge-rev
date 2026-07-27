@@ -102,10 +102,24 @@ pub async fn clean_async() -> bool {
         let stop_timeout = Duration::from_secs(3);
 
         logging!(info, Type::System, "stop core");
-        match timeout(stop_timeout, CoreManager::global().stop_core()).await {
-            Ok(_) => {
+        let stop_task = tokio::task::spawn(async {
+            let manager = CoreManager::global();
+            let config_permit = manager.acquire_config_update().await;
+            manager.stop_core_with_permit(&config_permit).await
+        });
+        // Dropping the join handle detaches the owned task, so a timeout only stops waiting for shutdown.
+        match timeout(stop_timeout, stop_task).await {
+            Ok(Ok(Ok(()))) => {
                 logging!(info, Type::Window, "core已停止");
                 true
+            }
+            Ok(Ok(Err(err))) => {
+                logging!(warn, Type::Window, "Warning: 停止core失败: {err}");
+                false
+            }
+            Ok(Err(err)) => {
+                logging!(warn, Type::Window, "Warning: 停止core任务失败: {err}");
+                false
             }
             Err(_) => {
                 logging!(

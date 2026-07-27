@@ -6,6 +6,7 @@ export type Connection = {
     download: number;
     start: string;
     chains: Array<string>;
+    providerChains: Array<string> | null;
     rule: string;
     rulePayload: string;
 };

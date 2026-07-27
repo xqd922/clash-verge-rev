@@ -308,23 +308,22 @@ async fn collect_profile_items() -> Result<ProfileItems> {
 
 async fn process_global_items(
     mut config: Mapping,
+    mut exists_keys: Vec<String>,
+    mut result_map: HashMap<String, ResultLog>,
     global_merge: ChainItem,
     global_script: ChainItem,
     profile_name: &String,
 ) -> (Mapping, Vec<String>, HashMap<String, ResultLog>) {
-    let mut result_map = HashMap::new();
-    let mut exists_keys = use_keys(&config).collect::<Vec<_>>();
-
     if let ChainType::Merge(merge) = global_merge.data {
         exists_keys.extend(use_keys(&merge));
-        config = use_merge(&merge, config.to_owned());
+        config = use_merge(&merge, config);
     }
 
     if let ChainType::Script(script) = global_script.data {
         let mut logs = vec![];
         match use_script(script, config.clone(), profile_name.clone()).await {
             Ok((res_config, res_logs)) => {
-                exists_keys.extend(use_keys(&res_config));
+                extend_changed_keys(&mut exists_keys, &config, &res_config);
                 config = res_config;
                 logs.extend(res_logs);
             }
@@ -336,40 +335,159 @@ async fn process_global_items(
     (config, exists_keys, result_map)
 }
 
+fn process_seq_items(
+    mut config: Mapping,
+    rules_item: ChainItem,
+    proxies_item: ChainItem,
+    groups_item: ChainItem,
+) -> Mapping {
+    if let ChainType::Rules(rules) = rules_item.data {
+        config = use_seq(rules, config, "rules");
+    }
+
+    if let ChainType::Proxies(proxies) = proxies_item.data {
+        config = use_seq(proxies, config, "proxies");
+    }
+
+    if let ChainType::Groups(groups) = groups_item.data {
+        config = use_seq(groups, config, "proxy-groups");
+    }
+
+    config
+}
+
+fn extend_changed_keys(exists_keys: &mut Vec<String>, config: &Mapping, res_config: &Mapping) {
+    exists_keys.extend(res_config.iter().filter_map(|(key, value)| {
+        if config.get(key) == Some(value) {
+            return None;
+        }
+
+        key.as_str().map(|key| {
+            let mut key: String = key.into();
+            key.make_ascii_lowercase();
+            key
+        })
+    }));
+}
+
+const CONTROL_PLANE_KEYS: &[&str] = &[
+    "external-controller",
+    #[cfg(unix)]
+    "external-controller-unix",
+    #[cfg(windows)]
+    "external-controller-pipe",
+    "external-controller-cors",
+    "secret",
+    "mixed-port",
+    "socks-port",
+    "port",
+    #[cfg(not(target_os = "windows"))]
+    "redir-port",
+    #[cfg(target_os = "linux")]
+    "tproxy-port",
+    "mode",
+    "allow-lan",
+    "log-level",
+    "ipv6",
+    "unified-delay",
+];
+
+fn snapshot_control_plane(config: &Mapping) -> Mapping {
+    let mut snapshot = Mapping::new();
+    for &key in CONTROL_PLANE_KEYS {
+        let key = Value::from(key);
+        if let Some(value) = config.get(&key) {
+            snapshot.insert(key, value.clone());
+        }
+    }
+    snapshot
+}
+
+fn enforce_control_plane(mut config: Mapping, snapshot: Mapping) -> Mapping {
+    for &key in CONTROL_PLANE_KEYS {
+        let key = Value::from(key);
+        if !snapshot.contains_key(&key) {
+            config.remove(&key);
+        }
+    }
+    config.extend(snapshot);
+    config
+}
+
+fn snapshot_dns_ipv6(config: &Mapping) -> Option<Value> {
+    config.get("dns")?.get("ipv6").cloned()
+}
+
+fn enforce_dns_ipv6(mut config: Mapping, dns_ipv6: Option<Value>) -> Mapping {
+    if let Some(dns_ipv6) = dns_ipv6
+        && let Some(Value::Mapping(dns)) = config.get_mut("dns")
+    {
+        dns.insert(Value::from("ipv6"), dns_ipv6);
+    }
+    config
+}
+
+fn is_loopback_bind_address(addr: &str) -> bool {
+    let addr = addr.trim();
+    let addr = addr
+        .strip_prefix('[')
+        .and_then(|addr| addr.strip_suffix(']'))
+        .unwrap_or(addr);
+
+    addr.eq_ignore_ascii_case("localhost")
+        || addr.parse::<std::net::IpAddr>().is_ok_and(|addr| addr.is_loopback())
+        || is_ipv4_shorthand_loopback(addr)
+}
+
+fn is_ipv4_shorthand_loopback(addr: &str) -> bool {
+    let parts = addr.split('.').map(str::parse::<u32>).collect::<Result<Vec<_>, _>>();
+
+    let Ok(parts) = parts else {
+        return false;
+    };
+
+    match parts.as_slice() {
+        [first, rest] => *first == 127 && *rest <= 0x00ff_ffff,
+        [first, second, rest] => *first == 127 && *second <= 0xff && *rest <= 0xffff,
+        [first, second, third, fourth] => *first == 127 && *second <= 0xff && *third <= 0xff && *fourth <= 0xff,
+        _ => false,
+    }
+}
+
+fn ensure_lan_bind_address(mut config: Mapping) -> Mapping {
+    let allow_lan = config.get("allow-lan").and_then(Value::as_bool).unwrap_or(false);
+
+    if allow_lan
+        && config
+            .get("bind-address")
+            .and_then(Value::as_str)
+            .is_some_and(is_loopback_bind_address)
+    {
+        config.insert(Value::from("bind-address"), Value::from("*"));
+    }
+
+    config
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn process_profile_items(
     mut config: Mapping,
     mut exists_keys: Vec<String>,
     mut result_map: HashMap<String, ResultLog>,
-    rules_item: ChainItem,
-    proxies_item: ChainItem,
-    groups_item: ChainItem,
     merge_item: ChainItem,
     script_item: ChainItem,
     profile_name: &String,
 ) -> (Mapping, Vec<String>, HashMap<String, ResultLog>) {
-    if let ChainType::Rules(rules) = rules_item.data {
-        config = use_seq(rules, config.to_owned(), "rules");
-    }
-
-    if let ChainType::Proxies(proxies) = proxies_item.data {
-        config = use_seq(proxies, config.to_owned(), "proxies");
-    }
-
-    if let ChainType::Groups(groups) = groups_item.data {
-        config = use_seq(groups, config.to_owned(), "proxy-groups");
-    }
-
     if let ChainType::Merge(merge) = merge_item.data {
         exists_keys.extend(use_keys(&merge));
-        config = use_merge(&merge, config.to_owned());
+        config = use_merge(&merge, config);
     }
 
     if let ChainType::Script(script) = script_item.data {
         let mut logs = vec![];
         match use_script(script, config.clone(), profile_name.clone()).await {
             Ok((res_config, res_logs)) => {
-                exists_keys.extend(use_keys(&res_config));
+                extend_changed_keys(&mut exists_keys, &config, &res_config);
                 config = res_config;
                 logs.extend(res_logs);
             }
@@ -634,10 +752,14 @@ async fn apply_dns_settings(mut config: Mapping, enable_dns_settings: bool) -> M
 
             if let Some(dns_value) = dns_config.get("dns") {
                 if let Some(dns_mapping) = dns_value.as_mapping() {
-                    config.insert("dns".into(), dns_mapping.clone().into());
+                    let mut dns_mapping = dns_mapping.clone();
+                    ensure_fake_ip_range6(&mut dns_mapping);
+                    config.insert("dns".into(), dns_mapping.into());
                     logging!(info, Type::Core, "apply dns_config.yaml (dns section)");
                 }
             } else {
+                let mut dns_config = dns_config;
+                ensure_fake_ip_range6(&mut dns_config);
                 config.insert("dns".into(), dns_config.into());
                 logging!(info, Type::Core, "apply dns_config.yaml");
             }
@@ -645,6 +767,24 @@ async fn apply_dns_settings(mut config: Mapping, enable_dns_settings: bool) -> M
     }
 
     config
+}
+
+fn ensure_fake_ip_range6(dns: &mut Mapping) {
+    let ipv6_enabled = dns.get("ipv6").and_then(|v| v.as_bool()).unwrap_or(false);
+    let is_fake_ip = dns
+        .get("enhanced-mode")
+        .and_then(|v| v.as_str())
+        .map(|m| m == "fake-ip")
+        .unwrap_or(true);
+    let range6_missing = dns
+        .get("fake-ip-range6")
+        .and_then(|v| v.as_str())
+        .map(|s| s.trim().is_empty())
+        .unwrap_or(true);
+
+    if ipv6_enabled && is_fake_ip && range6_missing {
+        dns.insert(Value::from("fake-ip-range6"), Value::from("fdfe:dcba:9876::1/64"));
+    }
 }
 
 /// Enhance mode
@@ -680,23 +820,10 @@ pub async fn enhance() -> Result<(Mapping, HashSet<String>, HashMap<String, Resu
     let global_script = profile.global_script;
     let profile_name = profile.profile_name;
 
-    // process globals
-    let (config, exists_keys, result_map) =
-        process_global_items(config, global_merge, global_script, &profile_name).await;
+    let result_map = HashMap::new();
 
-    // process profile-specific items
-    let (config, exists_keys, result_map) = process_profile_items(
-        config,
-        exists_keys,
-        result_map,
-        rules_item,
-        proxies_item,
-        groups_item,
-        merge_item,
-        script_item,
-        &profile_name,
-    )
-    .await;
+    let config = process_seq_items(config, rules_item, proxies_item, groups_item);
+    let exists_keys = use_keys(&config).collect::<Vec<_>>();
 
     // merge default clash config
     let config = merge_default_config(
@@ -711,22 +838,39 @@ pub async fn enhance() -> Result<(Mapping, HashSet<String>, HashMap<String, Resu
         tproxy_enabled,
     );
 
-    // builtin scripts
-    let mut config = apply_builtin_scripts(config, clash_core.clone(), enable_builtin, enable_smart_convert).await;
+    let config = apply_builtin_scripts(config, clash_core.clone(), enable_builtin, enable_smart_convert).await;
+    let config = use_tun(config, enable_tun);
+    let config = apply_dns_settings(config, enable_dns_settings).await;
 
-    // Revert smart groups to url-test when not using Smart core
-    config = revert_smart_groups(config, &clash_core);
+    let control_plane = snapshot_control_plane(&config);
+    let dns_ipv6 = if enable_dns_settings {
+        snapshot_dns_ipv6(&config)
+    } else {
+        None
+    };
 
-    config = cleanup_proxy_groups(config);
+    let (config, exists_keys, result_map) = process_global_items(
+        config,
+        exists_keys,
+        result_map,
+        global_merge,
+        global_script,
+        &profile_name,
+    )
+    .await;
 
-    config = use_tun(config, enable_tun);
-    config = use_sort(config);
+    let (config, exists_keys, result_map) =
+        process_profile_items(config, exists_keys, result_map, merge_item, script_item, &profile_name).await;
+
+    let config = revert_smart_groups(config, &clash_core);
+    let config = enforce_control_plane(config, control_plane);
+    let config = enforce_dns_ipv6(config, dns_ipv6);
+    let config = ensure_lan_bind_address(config);
+    let config = cleanup_proxy_groups(config);
+    let config = use_sort(config);
 
     let mut exists_keys_set = HashSet::new();
     exists_keys_set.extend(exists_keys);
-
-    // dns settings
-    let config = apply_dns_settings(config, enable_dns_settings).await;
 
     Ok((config, exists_keys_set, result_map))
 }

@@ -1,6 +1,6 @@
 use super::{IClashTemp, IProfiles, IVerge};
 use crate::{
-    config::{PrfItem, profiles_append_item_safe, runtime::IRuntime},
+    config::{PrfItem, profiles, profiles_append_item_safe, runtime::IRuntime},
     constants::{files, timing},
     core::{
         CoreManager,
@@ -233,6 +233,8 @@ impl Config {
     // 仅在应用退出、重启、关机监听事件启用
     pub async fn apply_all_and_save_file() {
         logging!(info, Type::Config, "save all draft data");
+        let _profile_transaction = profiles::lock_profile_transaction().await;
+        let _config_permit = CoreManager::global().acquire_config_update().await;
         let save_clash_task = AsyncHandler::spawn(|| async {
             let clash = Self::clash().await;
             clash.apply();

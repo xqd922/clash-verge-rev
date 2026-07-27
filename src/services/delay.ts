@@ -1,4 +1,7 @@
-import { delayProxyByName } from 'tauri-plugin-mihomo-api'
+import {
+  delayProxyByName,
+  healthcheckNodeInProvider,
+} from 'tauri-plugin-mihomo-api'
 
 // 使用节点名作为缓存键，统一延迟显示（符合 mihomo 内核设计）
 const hashKey = (name: string) => name
@@ -160,10 +163,22 @@ class DelayManager {
     return -1
   }
 
+  unifiedDelayCheck(
+    name: string,
+    url: string,
+    timeout: number,
+    providerName?: string,
+  ) {
+    return providerName
+      ? healthcheckNodeInProvider(providerName, name, url, timeout)
+      : delayProxyByName(name, url, timeout)
+  }
+
   async checkDelay(
     name: string,
     group: string,
     timeout: number,
+    providerName?: string,
   ): Promise<DelayUpdate> {
     // 先将状态设置为测试中
     this.setDelay(name, group, -2)
@@ -174,7 +189,12 @@ class DelayManager {
       const url = this.getUrl(group)
 
       // 直接调用 mihomo API，超时由 mihomo 内核控制（timeout + 5s）
-      const result = await delayProxyByName(name, url, timeout)
+      const result = await this.unifiedDelayCheck(
+        name,
+        url,
+        timeout,
+        providerName,
+      )
 
       const delay = result.delay
       const elapsed = Date.now() - startTime
@@ -208,27 +228,34 @@ class DelayManager {
   }
 
   async checkListDelay(
-    nameList: string[],
+    items: Array<string | IProxyItem>,
     group: string,
     timeout: number,
     concurrency = 36,
     signal?: AbortSignal,
   ) {
-    const names = nameList.filter(Boolean)
+    const proxies: Array<{ name: string; provider?: string }> = items
+      .filter(Boolean)
+      .map((item) =>
+        typeof item === 'string'
+          ? { name: item }
+          : { name: item.name, provider: item.provider },
+      )
     // 批量设置正在延迟测试中
-    for (const name of names) {
-      this.setDelay(name, group, -2)
+    for (const proxy of proxies) {
+      this.setDelay(proxy.name, group, -2)
     }
 
     let index = 0
 
     const help = async (): Promise<void> => {
       if (signal?.aborted) return
-      const currName = names[index++]
-      if (!currName) return
+      const currProxy = proxies[index++]
+      if (!currProxy) return
+      const currName = currProxy.name
 
       try {
-        await this.checkDelay(currName, group, timeout)
+        await this.checkDelay(currName, group, timeout, currProxy.provider)
       } catch (ignoreError) {
         // 设置为错误状态
         this.setDelay(currName, group, 1e6)
@@ -237,7 +264,7 @@ class DelayManager {
       return help()
     }
 
-    const actualConcurrency = Math.min(concurrency, names.length)
+    const actualConcurrency = Math.min(concurrency, proxies.length)
 
     const promiseList: Promise<void>[] = []
     for (let i = 0; i < actualConcurrency; i++) {

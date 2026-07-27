@@ -1,6 +1,6 @@
 use super::CmdResult;
 use crate::feat;
-use crate::utils::dirs;
+use crate::utils::{dirs, yaml_emitter};
 use crate::{
     cmd::StringifyErr as _,
     config::{ClashInfo, Config},
@@ -10,7 +10,7 @@ use crate::{
         validate::{CoreConfigValidator, ValidationOutcome},
     },
 };
-use clash_verge_logging::{Type, logging, logging_error};
+use clash_verge_logging::{Type, logging};
 use compact_str::CompactString;
 use serde_yaml_ng::Mapping;
 use smartstring::alias::String;
@@ -48,8 +48,6 @@ pub async fn change_clash_core(clash_core: String) -> CmdResult<Option<String>> 
 
     match CoreManager::global().change_core(&clash_core).await {
         Ok(_) => {
-            logging_error!(Type::Core, Config::profiles().await.data_arc().save_file().await);
-
             logging!(info, Type::Core, "core changed and restarted to {clash_core}");
             handle::Handle::notice_message("config_core::change_success", clash_core);
             handle::Handle::refresh_clash();
@@ -77,7 +75,6 @@ pub async fn start_core() -> CmdResult {
 /// 关闭核心
 #[tauri::command]
 pub async fn stop_core() -> CmdResult {
-    logging_error!(Type::Core, Config::profiles().await.data_arc().save_file().await);
     let result = CoreManager::global().stop_core().await.stringify_err();
     if result.is_ok() {
         handle::Handle::refresh_clash();
@@ -88,7 +85,6 @@ pub async fn stop_core() -> CmdResult {
 /// 重启核心
 #[tauri::command]
 pub async fn restart_core() -> CmdResult {
-    logging_error!(Type::Core, Config::profiles().await.data_arc().save_file().await);
     let result = CoreManager::global().restart_core().await.stringify_err();
     if result.is_ok() {
         handle::Handle::refresh_clash();
@@ -113,14 +109,17 @@ pub async fn test_delay(url: String) -> CmdResult<u32> {
 #[tauri::command]
 pub async fn save_dns_config(dns_config: Mapping) -> CmdResult {
     use crate::utils::dirs;
-    use serde_yaml_ng;
     use tokio::fs;
+
+    let Some(_config_permit) = CoreManager::global().try_acquire_config_update() else {
+        return Err("A configuration update is already running".into());
+    };
 
     // 获取DNS配置文件路径
     let dns_path = dirs::app_home_dir().stringify_err()?.join(constants::files::DNS_CONFIG);
 
     // 保存DNS配置到文件
-    let yaml_str = serde_yaml_ng::to_string(&dns_config).stringify_err()?;
+    let yaml_str = yaml_emitter::to_mihomo_config_string(&dns_config).stringify_err()?;
     fs::write(&dns_path, yaml_str).await.stringify_err()?;
     logging!(info, Type::Config, "DNS config saved to {dns_path:?}");
 
@@ -131,6 +130,11 @@ pub async fn save_dns_config(dns_config: Mapping) -> CmdResult {
 #[tauri::command]
 pub async fn apply_dns_config(apply: bool) -> CmdResult {
     if apply {
+        let manager = CoreManager::global();
+        let Some(config_permit) = manager.try_acquire_config_update() else {
+            return Err("A configuration update is already running".into());
+        };
+
         // 读取DNS配置文件
         let dns_path = dirs::app_home_dir().stringify_err()?.join(constants::files::DNS_CONFIG);
 
@@ -154,19 +158,20 @@ pub async fn apply_dns_config(apply: bool) -> CmdResult {
         let mut patch = serde_yaml_ng::Mapping::new();
         patch.insert("dns".into(), patch_config.into());
 
-        // 应用DNS配置到运行时配置
-        Config::runtime().await.edit_draft(|d| {
-            d.patch_config(&patch);
-        });
-
-        // 应用新配置
-        CoreManager::global()
-            .update_config_checked()
+        // Reuse the permit held across file read and parsing when creating the
+        // runtime draft, so DNS save/apply cannot observe a partial file.
+        let outcome = manager
+            .update_runtime_config_with_permit(&config_permit, |runtime| runtime.patch_config(&patch))
             .await
             .stringify_err_log(|err| {
                 let err = format!("Failed to apply config with DNS: {err}");
                 logging!(error, Type::Config, "{err}");
             })?;
+        if !outcome.is_valid() {
+            let err = format!("Failed to apply config with DNS: {outcome}");
+            logging!(error, Type::Config, "{err}");
+            return Err(err.into());
+        }
 
         logging!(info, Type::Config, "DNS config successfully applied");
     } else {

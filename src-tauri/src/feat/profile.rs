@@ -1,10 +1,13 @@
 use crate::{
     cmd,
-    config::{Config, PrfItem, PrfOption, profiles::profiles_draft_update_item_safe},
+    config::{
+        Config, IProfiles, PrfItem, PrfOption,
+        profiles::{self, profile_file_path, profiles_draft_update_item_safe, profiles_restore_snapshot_safe},
+    },
     core::{CoreManager, handle, tray, validate::ValidationOutcome},
     utils::help::{mask_err, mask_url},
 };
-use anyhow::{Result, bail};
+use anyhow::{Result, anyhow, bail};
 use clash_verge_logging::{Type, logging, logging_error};
 use smartstring::alias::String;
 use tauri::Emitter as _;
@@ -183,7 +186,59 @@ async fn perform_profile_update(
     if is_mannual_trigger {
         handle::Handle::notice_message("update_failed_even_with_clash", format!("{profile_name} - {last_err}"));
     }
-    Ok(is_current)
+    Err(last_err.context("all subscription update attempts failed"))
+}
+
+struct ProfileUpdateSnapshot {
+    profiles: IProfiles,
+    file: Option<(std::path::PathBuf, Option<Vec<u8>>)>,
+}
+
+impl ProfileUpdateSnapshot {
+    async fn capture(uid: &String) -> Result<Self> {
+        let profiles = (*Config::profiles().await.data_arc()).clone();
+        let file = profiles.get_item(uid)?.file.clone();
+        let file = match file {
+            Some(file) => {
+                let path = profile_file_path(file.as_str())?;
+                let content = if tokio::fs::try_exists(&path).await? {
+                    Some(tokio::fs::read(&path).await?)
+                } else {
+                    None
+                };
+                Some((path, content))
+            }
+            None => None,
+        };
+        Ok(Self { profiles, file })
+    }
+
+    async fn rollback(self, primary_error: impl std::fmt::Display) -> anyhow::Error {
+        let primary_error = primary_error.to_string();
+        let file_restore = match self.file {
+            Some((path, Some(content))) => tokio::fs::write(path, content).await.map_err(anyhow::Error::from),
+            Some((path, None)) => match tokio::fs::remove_file(path).await {
+                Ok(()) => Ok(()),
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
+                Err(err) => Err(err.into()),
+            },
+            None => Ok(()),
+        };
+        let metadata_restore = profiles_restore_snapshot_safe(self.profiles).await;
+
+        match (file_restore, metadata_restore) {
+            (Ok(()), Ok(())) => anyhow!("{primary_error}; active profile update state was rolled back"),
+            (Err(file_err), Ok(())) => {
+                anyhow!("{primary_error}; subscription file rollback failed: {file_err:#}")
+            }
+            (Ok(()), Err(metadata_err)) => {
+                anyhow!("{primary_error}; profile metadata rollback failed: {metadata_err:#}")
+            }
+            (Err(file_err), Err(metadata_err)) => anyhow!(
+                "{primary_error}; subscription file rollback failed: {file_err:#}; profile metadata rollback failed: {metadata_err:#}"
+            ),
+        }
+    }
 }
 
 pub async fn update_profile(
@@ -193,35 +248,60 @@ pub async fn update_profile(
     ignore_auto_update: bool,
     is_mannual_trigger: bool,
 ) -> Result<()> {
+    let _profile_transaction = profiles::lock_profile_transaction().await;
     logging!(info, Type::Config, "[订阅更新] 开始更新订阅 {}", uid);
     let url_opt = should_update_profile(uid, ignore_auto_update).await?;
+    let update_snapshot = ProfileUpdateSnapshot::capture(uid).await?;
+    let is_current = Config::profiles().await.latest_arc().is_current_profile_index(uid);
+    let config_permit = if auto_refresh && is_current {
+        match CoreManager::global().try_acquire_config_update() {
+            Some(permit) => Some(permit),
+            None if is_mannual_trigger => bail!("configuration update is already running"),
+            None => {
+                logging!(
+                    info,
+                    Type::Config,
+                    "[订阅更新] 配置更新正在进行，本次自动更新未产生任何修改"
+                );
+                return Ok(());
+            }
+        }
+    } else {
+        None
+    };
 
     let should_refresh = match url_opt {
-        Some((url, opt)) => {
-            perform_profile_update(uid, &url, opt.as_ref(), option, is_mannual_trigger).await? && auto_refresh
-        }
-        None => auto_refresh,
+        Some((url, opt)) => match perform_profile_update(uid, &url, opt.as_ref(), option, is_mannual_trigger).await {
+            Ok(updated_current) => updated_current && auto_refresh,
+            Err(err) => return Err(update_snapshot.rollback(err).await),
+        },
+        None => auto_refresh && is_current,
     };
 
     if should_refresh {
+        let Some(config_permit) = config_permit.as_ref() else {
+            bail!("missing configuration update permit for active profile refresh");
+        };
         logging!(info, Type::Config, "[订阅更新] 更新内核配置");
-        match CoreManager::global().update_config_with_force(is_mannual_trigger).await {
+        match CoreManager::global()
+            .update_config_forced_with_permit(config_permit)
+            .await
+        {
             Ok(outcome) if outcome.is_valid() => {
                 logging!(info, Type::Config, "[订阅更新] 更新成功");
                 handle::Handle::refresh_clash();
-            }
-            Ok(outcome @ (ValidationOutcome::Skipped { .. } | ValidationOutcome::Busy)) if !is_mannual_trigger => {
-                logging!(info, Type::Config, "[订阅更新] 本次配置刷新已跳过: {}", outcome);
             }
             Ok(outcome) => {
                 let message = outcome.to_string();
                 logging!(error, Type::Config, "[订阅更新] 更新失败: {}", message);
                 handle::Handle::notice_message("update_failed", message);
+                return Err(update_snapshot.rollback(outcome).await);
             }
             Err(err) => {
                 logging!(error, Type::Config, "[订阅更新] 更新失败: {}", err);
                 handle::Handle::notice_message("update_failed", format!("{err}"));
                 logging!(error, Type::Config, "{err}");
+                return Err(update_snapshot.rollback(err).await);
             }
         }
     }

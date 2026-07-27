@@ -4,6 +4,7 @@
 WixTools
 frontend
 node_modules
+/bindings/
 
 Cargo.lock
 

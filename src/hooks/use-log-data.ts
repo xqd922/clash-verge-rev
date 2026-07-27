@@ -1,11 +1,11 @@
-import { useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useEffect, useRef } from 'react'
 import { MihomoWebSocket, type LogLevel } from 'tauri-plugin-mihomo-api'
 
 import { getClashLogs } from '@/services/cmds'
+import { setCacheData } from '@/services/query-client'
 
-import { useClashLog } from './use-clash-log'
+import { type StoredLogLevel, useClashLog } from './use-clash-log'
 import { useMihomoWsSubscription } from './use-mihomo-ws-subscription'
 
 const MAX_LOG_NUM = 1000
@@ -14,11 +14,25 @@ type LogType = ILogItem['type']
 
 const DEFAULT_LOG_TYPES: LogType[] = ['debug', 'info', 'warning', 'error']
 const LOG_LEVEL_FILTERS: Record<LogLevel, LogType[]> = {
-  debug: DEFAULT_LOG_TYPES,
-  info: ['info', 'warning', 'error'],
-  warning: ['warning', 'error'],
-  error: ['error'],
-  silent: [],
+  DEBUG: DEFAULT_LOG_TYPES,
+  INFO: ['info', 'warning', 'error'],
+  WARNING: ['warning', 'error'],
+  ERROR: ['error'],
+  SILENT: [],
+}
+
+const API_LOG_LEVELS: Record<StoredLogLevel, LogLevel> = {
+  debug: 'DEBUG',
+  info: 'INFO',
+  warn: 'WARNING',
+  warning: 'WARNING',
+  error: 'ERROR',
+  silent: 'SILENT',
+}
+
+const normalizeLogLevel = (value: string): LogLevel => {
+  const normalized = value.toLowerCase() === 'warn' ? 'warning' : value
+  return API_LOG_LEVELS[normalized.toLowerCase() as StoredLogLevel] ?? 'INFO'
 }
 
 const clampLogs = (logs: ILogItem[]): ILogItem[] =>
@@ -48,11 +62,10 @@ const appendLogs = (
 }
 
 export const useLogData = () => {
-  const queryClient = useQueryClient()
   const [clashLog] = useClashLog()
   const enableLog = clashLog.enable
-  const logLevel = clashLog.logLevel
-  const allowedTypes = LOG_LEVEL_FILTERS[logLevel] ?? DEFAULT_LOG_TYPES
+  const logLevel = normalizeLogLevel(clashLog.logLevel)
+  const allowedTypes = LOG_LEVEL_FILTERS[logLevel]
   const hasLoadedInitialLogsRef = useRef(false)
 
   const { response, refresh, subscriptionCacheKey } = useMihomoWsSubscription<
@@ -95,10 +108,7 @@ export const useLogData = () => {
 
           try {
             const parsed = JSON.parse(data) as ILogItem
-            if (
-              allowedTypes.length > 0 &&
-              !allowedTypes.includes(parsed.type)
-            ) {
+            if (!allowedTypes.includes(parsed.type)) {
               return
             }
             if (flushTimeStr === null) {
@@ -156,7 +166,7 @@ export const useLogData = () => {
   const refreshGetClashLog = (clear = false) => {
     if (clear) {
       if (subscriptionCacheKey) {
-        queryClient.setQueryData<ILogItem[]>([subscriptionCacheKey], [])
+        setCacheData<ILogItem[]>([subscriptionCacheKey], [])
       }
     } else {
       hasLoadedInitialLogsRef.current = false

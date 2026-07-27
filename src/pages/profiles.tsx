@@ -57,6 +57,12 @@ import { queryClient } from '@/services/query-client'
 import { useSetLoadingCache } from '@/services/states'
 import { debugLog } from '@/utils/debug'
 
+interface ProfileSwitchRequest {
+  profile: string
+  notifySuccess: boolean
+  force: boolean
+}
+
 const ProfilePage = () => {
   const { t } = useTranslation()
   const location = useLocation()
@@ -72,8 +78,12 @@ const ProfilePage = () => {
     () => new Set(),
   )
 
-  // 防止重复切换
   const switchingProfileRef = useRef<string | null>(null)
+  const latestSwitchTargetRef = useRef<string | null>(null)
+  const queuedSwitchRef = useRef<ProfileSwitchRequest | null>(null)
+  const switchRunnerRef = useRef<Promise<void> | null>(null)
+  const currentProfileRef = useRef<string | undefined>(undefined)
+  const profilePageMountedRef = useRef(true)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -87,12 +97,15 @@ const ProfilePage = () => {
 
   const {
     profiles = {},
-    activateSelected,
     patchProfiles,
     mutateProfiles,
     error,
     isStale,
   } = useProfiles()
+
+  useEffect(() => {
+    currentProfileRef.current = profiles.current
+  }, [profiles])
 
   useEffect(() => {
     const handleFileDrop = async () => {
@@ -292,65 +305,119 @@ const ProfilePage = () => {
     }
   }
 
-  const activateProfile = useCallback(
-    async (profile: string, notifySuccess: boolean) => {
-      if (switchingProfileRef.current === profile) return
-      if (profiles.current === profile && !notifySuccess) return
+  const executeProfileSwitch = useCallback(
+    async ({ profile, notifySuccess, force }: ProfileSwitchRequest) => {
+      if (!force && currentProfileRef.current === profile) return
 
       switchingProfileRef.current = profile
-      setActivatings((prev) =>
-        prev.includes(profile) ? prev : [...prev, profile],
-      )
 
       try {
-        const success = await patchProfiles({ current: profile })
-        // 立即清理 activating 状态，不等后续操作
-        setActivatings((prev) => prev.filter((id) => id !== profile))
+        const outcome = await patchProfiles({ current: profile })
+        if (outcome.status === 'busy') {
+          debugLog(`[Profile] 配置切换繁忙，忽略请求: ${profile}`)
+          return
+        }
+        if (outcome.status !== 'valid') return
 
-        // 后台执行：恢复节点选择、关闭连接（不阻塞 UI）
-        // 传入目标 profile UID，避免闭包中的 profiles.current 仍是旧值
-        activateSelected(profiles, profile).catch(() => {})
-        mutateLogs()
-        closeAllConnections()
+        currentProfileRef.current = profile
+        void mutateLogs().catch(() => {})
+        void closeAllConnections().catch(() => {})
 
-        if (notifySuccess && success) {
+        if (
+          notifySuccess &&
+          latestSwitchTargetRef.current === profile &&
+          queuedSwitchRef.current === null
+        ) {
           showNotice.success(
             'profiles.page.feedback.notifications.profileSwitched',
             1000,
           )
         }
       } catch (err: any) {
-        setActivatings((prev) => prev.filter((id) => id !== profile))
         console.error(`[Profile] 切换失败:`, err)
         showNotice.error(err, 4000)
       } finally {
         switchingProfileRef.current = null
+        if (profilePageMountedRef.current) {
+          setActivatings((prev) => prev.filter((id) => id !== profile))
+        }
       }
     },
-    [profiles, patchProfiles, activateSelected, mutateLogs],
+    [mutateLogs, patchProfiles],
   )
+
+  const runProfileSwitchQueue = useCallback(async () => {
+    while (profilePageMountedRef.current && queuedSwitchRef.current) {
+      const request = queuedSwitchRef.current
+      queuedSwitchRef.current = null
+      await executeProfileSwitch(request)
+    }
+  }, [executeProfileSwitch])
+
+  const activateProfile = useCallback(
+    (profile: string, notifySuccess: boolean, force = false) => {
+      if (!profilePageMountedRef.current) return Promise.resolve()
+      if (
+        !force &&
+        currentProfileRef.current === profile &&
+        switchRunnerRef.current === null
+      ) {
+        return Promise.resolve()
+      }
+      if (
+        latestSwitchTargetRef.current === profile &&
+        switchRunnerRef.current
+      ) {
+        return switchRunnerRef.current
+      }
+
+      const replacedProfile = queuedSwitchRef.current?.profile
+      latestSwitchTargetRef.current = profile
+      queuedSwitchRef.current = { profile, notifySuccess, force }
+      setActivatings((prev) => {
+        const next = replacedProfile
+          ? prev.filter((id) => id !== replacedProfile)
+          : [...prev]
+        if (!next.includes(profile)) next.push(profile)
+        return next
+      })
+
+      if (switchRunnerRef.current) return switchRunnerRef.current
+
+      const runner = runProfileSwitchQueue().finally(() => {
+        if (switchRunnerRef.current === runner) {
+          switchRunnerRef.current = null
+          latestSwitchTargetRef.current = null
+        }
+      })
+      switchRunnerRef.current = runner
+      return runner
+    },
+    [runProfileSwitchQueue],
+  )
+
   const onSelect = async (current: string, force: boolean) => {
-    // 阻止重复点击或已激活的profile
-    if (switchingProfileRef.current === current) return
-
-    if (!force && current === profiles.current) return
-
-    await activateProfile(current, true)
+    await activateProfile(current, true, force)
   }
 
   useEffect(() => {
-    ;(async () => {
+    let cancelled = false
+    void (async () => {
       if (current) {
-        mutateProfiles()
+        await mutateProfiles()
+        if (cancelled) return
         await activateProfile(current, false)
       }
     })()
+    return () => {
+      cancelled = true
+    }
   }, [current, activateProfile, mutateProfiles])
 
   const onEnhance = useLockFn(async (notifySuccess: boolean) => {
-    if (switchingProfileRef.current) {
+    if (switchRunnerRef.current) {
       debugLog(
-        `[Profile] 有profile正在切换中(${switchingProfileRef.current})，跳过enhance操作`,
+        `[Profile] 有profile正在切换中(${latestSwitchTargetRef.current})，跳过enhance操作`,
       )
       return
     }
@@ -384,9 +451,6 @@ const ProfilePage = () => {
       await deleteProfile(uid)
       mutateProfiles()
       mutateLogs()
-      if (current) {
-        await onEnhance(false)
-      }
     } catch (err: any) {
       showNotice.error(err)
     } finally {
@@ -495,11 +559,6 @@ const ProfilePage = () => {
       await mutateProfiles()
       await mutateLogs()
 
-      // If any deleted profile was current, enhance profiles
-      if (currentActivating.length > 0) {
-        await onEnhance(false)
-      }
-
       // Clear selections and exit batch mode
       setSelectedProfiles(new Set())
       setBatchMode(false)
@@ -564,6 +623,15 @@ const ProfilePage = () => {
       unlistenPromise?.then((unlisten) => unlisten()).catch(console.error)
     }
   }, [mutateProfiles])
+
+  useEffect(() => {
+    profilePageMountedRef.current = true
+    return () => {
+      profilePageMountedRef.current = false
+      queuedSwitchRef.current = null
+      latestSwitchTargetRef.current = null
+    }
+  }, [])
 
   return (
     <BasePage

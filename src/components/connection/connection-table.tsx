@@ -198,9 +198,9 @@ const getConnectionCellValue = (field: ColumnField, each: IConnectionsItem) => {
 
   switch (field) {
     case 'host':
-      return metadata.host
-        ? `${metadata.host}:${metadata.destinationPort}`
-        : `${metadata.remoteDestination}:${metadata.destinationPort}`
+      return `${
+        metadata.host || metadata.destinationIP || metadata.remoteDestination
+      }:${metadata.destinationPort}`
     case 'download':
       return each.download
     case 'upload':

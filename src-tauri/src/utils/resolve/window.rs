@@ -4,6 +4,8 @@ use tauri::webview::PageLoadEvent;
 use tauri::{Theme, WebviewWindow};
 
 use crate::{config::Config, core::handle, utils::resolve::window_script::build_window_initial_script};
+#[cfg(target_os = "macos")]
+use clash_verge_logging::logging;
 use clash_verge_logging::{Type, logging_error};
 
 const DARK_BACKGROUND_COLOR: Color = Color(46, 48, 61, 255); // #2E303D
@@ -84,8 +86,79 @@ pub async fn build_new_window() -> Result<WebviewWindow, String> {
     match builder.build() {
         Ok(window) => {
             logging_error!(Type::Window, window.set_background_color(Some(background_color)));
+            #[cfg(target_os = "macos")]
+            take_webview_needs_reload();
             Ok(window)
         }
         Err(e) => Err(e.to_string()),
+    }
+}
+
+#[cfg(target_os = "macos")]
+static WEBVIEW_NEEDS_RELOAD: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+#[cfg(target_os = "macos")]
+pub fn take_webview_needs_reload() -> bool {
+    WEBVIEW_NEEDS_RELOAD.swap(false, std::sync::atomic::Ordering::SeqCst)
+}
+
+#[cfg(target_os = "macos")]
+pub fn on_web_content_process_terminated(webview: &tauri::Webview) {
+    if handle::Handle::global().is_exiting() {
+        return;
+    }
+
+    logging!(
+        warn,
+        Type::Window,
+        "WebView render process terminated (label={}), starting recovery",
+        webview.label()
+    );
+
+    let window = webview.window();
+    let is_user_visible = window.is_visible().unwrap_or(false) && !window.is_minimized().unwrap_or(false);
+    let reload_now = is_user_visible || webview.label() != "main";
+
+    if !reload_now {
+        WEBVIEW_NEEDS_RELOAD.store(true, std::sync::atomic::Ordering::SeqCst);
+        logging!(info, Type::Window, "Main window will reload the next time it is shown");
+    }
+
+    // Keep cleanup and immediate reload ordered so old-page cleanup cannot remove
+    // subscriptions opened by the newly loaded page.
+    let webview = webview.clone();
+    crate::process::AsyncHandler::spawn(move || async move {
+        if let Err(err) = handle::Handle::mihomo().await.clear_all_ws_connections().await {
+            logging!(
+                warn,
+                Type::Window,
+                "Failed to clear Mihomo WebSocket connections: {err}"
+            );
+        } else {
+            logging!(info, Type::Window, "Cleared Mihomo WebSocket connections");
+        }
+
+        if reload_now {
+            logging_error!(Type::Window, webview.reload());
+        }
+    });
+}
+
+#[cfg(target_os = "macos")]
+pub fn reload_main_window_if_needed() {
+    if !take_webview_needs_reload() {
+        return;
+    }
+
+    let Some(window) = crate::utils::window_manager::WindowManager::get_main_window() else {
+        return;
+    };
+    logging!(
+        info,
+        Type::Window,
+        "Reloading main window after WebView render process termination"
+    );
+    if let Err(err) = window.reload() {
+        logging!(warn, Type::Window, "Failed to reload main window: {err}");
     }
 }

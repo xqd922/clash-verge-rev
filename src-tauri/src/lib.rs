@@ -167,6 +167,7 @@ mod app_init {
             cmd::patch_clash_mode,
             cmd::change_clash_core,
             cmd::get_runtime_config,
+            cmd::get_runtime_proxy_group_order,
             cmd::get_runtime_yaml,
             cmd::get_runtime_exists,
             cmd::get_runtime_logs,
@@ -262,6 +263,9 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(app_init::generate_handlers());
+
+    #[cfg(target_os = "macos")]
+    let builder = builder.on_web_content_process_terminate(resolve::window::on_web_content_process_terminated);
 
     mod event_handlers {
         #[cfg(target_os = "macos")]
@@ -400,9 +404,12 @@ pub fn run() {
                 event_handlers::handle_reopen(has_visible_windows).await;
             });
         }
-        tauri::RunEvent::Exit => {
+        tauri::RunEvent::Exit => AsyncHandler::block_on(async {
+            if !handle::Handle::global().is_exiting() {
+                feat::quit().await;
+            }
             logging!(info, Type::System, "Application exited");
-        }
+        }),
         #[allow(unused_variables)]
         tauri::RunEvent::ExitRequested { api, code, .. } => {
             if module::lightweight::is_in_lightweight_mode() && !handle::Handle::global().is_exiting() {
@@ -410,7 +417,7 @@ pub fn run() {
             } else if code.is_none() {
                 api.prevent_exit();
                 if !handle::Handle::global().is_exiting() {
-                    AsyncHandler::spawn(|| async {
+                    AsyncHandler::block_on(async {
                         feat::quit().await;
                     });
                 }
@@ -421,6 +428,10 @@ pub fn run() {
                 event_handlers::handle_window_close(&event);
             }
             tauri::WindowEvent::Focused(focused) => {
+                #[cfg(target_os = "macos")]
+                if focused {
+                    resolve::window::reload_main_window_if_needed();
+                }
                 event_handlers::handle_window_focus(focused);
             }
             #[cfg(target_os = "macos")]

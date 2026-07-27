@@ -139,6 +139,8 @@ interface IRuleProviderItem {
 interface ITrafficItem {
   up: number
   down: number
+  upTotal: number
+  downTotal: number
   up_rate?: number
   down_rate?: number
   last_updated?: number
@@ -395,6 +397,12 @@ interface H2Options {
   host?: string
 }
 
+interface XHttpOptions {
+  path?: string
+  host?: string
+  mode?: string
+}
+
 interface GrpcOptions {
   'grpc-service-name'?: string
 }
@@ -413,7 +421,7 @@ type ClientFingerprint =
   | '360'
   | 'qq'
   | 'random'
-type NetworkType = 'ws' | 'http' | 'h2' | 'grpc' | 'tcp'
+type NetworkType = 'ws' | 'http' | 'h2' | 'grpc' | 'tcp' | 'xhttp'
 type CipherType =
   | 'none'
   | 'auto'
@@ -645,6 +653,7 @@ interface IProxyVlessConfig extends IProxyBaseConfig {
   'h2-opts'?: H2Options
   'grpc-opts'?: GrpcOptions
   'ws-opts'?: WsOptions
+  'xhttp-opts'?: XHttpOptions
   'ws-path'?: string
   'ws-headers'?: {
     [key: string]: string
@@ -654,6 +663,7 @@ interface IProxyVlessConfig extends IProxyBaseConfig {
   servername?: string
   'client-fingerprint'?: ClientFingerprint
   smux?: boolean
+  encryption?: string
 }
 // vmess
 interface IProxyVmessConfig extends IProxyBaseConfig {

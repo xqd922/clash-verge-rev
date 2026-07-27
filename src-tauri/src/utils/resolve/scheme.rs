@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use anyhow::Result;
 use percent_encoding::percent_decode_str;
 use smartstring::alias::String;
@@ -7,7 +5,7 @@ use tauri::Url;
 
 use crate::{
     config::{Config, PrfItem, profiles},
-    core::{CoreManager, handle},
+    core::{CoreManager, handle, manager::ConfigUpdatePermit, timer::Timer},
     utils::help,
 };
 use clash_verge_logging::{Type, logging, logging_error};
@@ -82,78 +80,97 @@ fn decode_subscription_url(raw_url: &str) -> std::string::String {
 }
 
 async fn import_subscription(url: &str, name: Option<&String>) {
+    let profile_transaction = profiles::lock_profile_transaction().await;
+    let previous_profiles = (*Config::profiles().await.data_arc()).clone();
     let had_current_profile = {
         let profiles = Config::profiles().await;
         profiles.latest_arc().current.is_some()
     };
+    let config_permit = if had_current_profile {
+        None
+    } else {
+        let Some(permit) = CoreManager::global().try_acquire_config_update() else {
+            handle::Handle::notice_message("import_sub_url::error", "configuration update is already running");
+            return;
+        };
+        Some(permit)
+    };
 
-    let Some(mut item) = fetch_profile_item(url, name).await else {
-        return;
+    let mut item = match PrfItem::from_url(url, name, None, None).await {
+        Ok(item) => item,
+        Err(err) => {
+            rollback_deep_link_import(previous_profiles, err).await;
+            return;
+        }
     };
 
     let uid = item.uid.clone().unwrap_or_default();
     if let Err(e) = profiles::profiles_append_item_safe(&mut item).await {
         logging!(error, Type::Config, "failed to import subscription url: {:?}", e);
-        Config::profiles().await.discard();
-        handle::Handle::notice_message("import_sub_url::error", e.to_string());
+        rollback_deep_link_import(previous_profiles, e).await;
         return;
     }
 
-    Config::profiles().await.apply();
-    logging_error!(Type::Config, Config::profiles().await.data_arc().save_file().await);
+    if let Err(e) = profiles::profiles_save_file_safe().await {
+        logging!(error, Type::Config, "failed to save imported subscription: {}", e);
+        rollback_deep_link_import(previous_profiles, e).await;
+        return;
+    }
+
+    let should_update_core =
+        !uid.is_empty() && !had_current_profile && Config::profiles().await.latest_arc().is_current_profile_index(&uid);
+    if should_update_core {
+        let Some(config_permit) = config_permit.as_ref() else {
+            rollback_deep_link_import(
+                previous_profiles,
+                "missing configuration update permit for imported active profile",
+            )
+            .await;
+            return;
+        };
+        if let Err(err) = refresh_core_config(config_permit).await {
+            rollback_deep_link_import(previous_profiles, err).await;
+            return;
+        }
+    }
+
+    drop(config_permit);
+    drop(profile_transaction);
+    logging_error!(Type::Timer, Timer::global().refresh().await);
     handle::Handle::notice_message(
         "import_sub_url::ok",
         "", // 空 msg 传入，我们不希望导致 后端-前端-后端 死循环，这里只做提醒。
     );
 
-    post_import_updates(&uid, had_current_profile).await;
-}
-
-async fn fetch_profile_item(url: &str, name: Option<&String>) -> Option<PrfItem> {
-    match PrfItem::from_url(url, name, None, None).await {
-        Ok(item) => Some(item),
-        Err(e) => {
-            logging!(error, Type::Config, "failed to parse profile from url: {:?}", e);
-            handle::Handle::notice_message("import_sub_url::error", e.to_string());
-            None
-        }
-    }
-}
-
-async fn post_import_updates(uid: &String, had_current_profile: bool) {
     handle::Handle::refresh_verge();
-    handle::Handle::notify_profile_changed(uid);
-    tokio::time::sleep(Duration::from_millis(100)).await;
-
-    let should_update_core = if uid.is_empty() || had_current_profile {
-        false
-    } else {
-        let profiles = Config::profiles().await;
-        profiles.latest_arc().is_current_profile_index(uid)
-    };
-    handle::Handle::notify_profile_changed(uid);
-
-    if should_update_core {
-        refresh_core_config().await;
-    }
+    handle::Handle::notify_profile_changed(&uid);
 }
 
-async fn refresh_core_config() {
+async fn rollback_deep_link_import(snapshot: crate::config::IProfiles, primary_error: impl std::fmt::Display) {
+    let primary_error = primary_error.to_string();
+    let message = match profiles::profiles_restore_snapshot_safe(snapshot).await {
+        Ok(()) => format!("{primary_error}; active profile state was rolled back"),
+        Err(rollback_err) => format!("{primary_error}; profile rollback failed: {rollback_err:#}"),
+    };
+    logging!(error, Type::Config, "deep-link import failed: {message}");
+    handle::Handle::notice_message("import_sub_url::error", message);
+}
+
+async fn refresh_core_config(config_permit: &ConfigUpdatePermit<'_>) -> Result<()> {
     logging!(
         info,
         Type::Config,
         "Deep link import set current profile; refreshing core config"
     );
-    match CoreManager::global().update_config_forced().await {
-        Ok(outcome) if outcome.is_valid() => handle::Handle::refresh_clash(),
-        Ok(outcome) => {
-            let message = outcome.to_string();
-            logging!(warn, Type::Config, "Apply config failed: {}", message);
-            handle::Handle::notice_message("config_validate::error", message);
+    match CoreManager::global()
+        .update_config_forced_with_permit(config_permit)
+        .await
+    {
+        Ok(outcome) if outcome.is_valid() => {
+            handle::Handle::refresh_clash();
+            Ok(())
         }
-        Err(err) => {
-            logging!(error, Type::Config, "Apply config error: {}", err);
-            handle::Handle::notice_message("update_failed", format!("{err}"));
-        }
+        Ok(outcome) => Err(anyhow::anyhow!("Apply config failed: {outcome}")),
+        Err(err) => Err(err.context("Apply imported profile config")),
     }
 }

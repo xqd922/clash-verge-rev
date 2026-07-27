@@ -31,6 +31,7 @@
     "i18n:check": "node scripts/cleanup-unused-i18n.mjs",
     "i18n:format": "node scripts/cleanup-unused-i18n.mjs --align --apply",
     "i18n:types": "node scripts/generate-i18n-keys.mjs",
+    "ui:check": "node scripts/check-personal-ui-regression.mjs && node scripts/check-titlebar-regression.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

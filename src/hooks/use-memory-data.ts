@@ -1,6 +1,7 @@
 import { MihomoWebSocket } from 'tauri-plugin-mihomo-api'
 
 import { useMihomoWsSubscription } from './use-mihomo-ws-subscription'
+import { useVisibility } from './use-visibility'
 
 export interface IMemoryUsageItem {
   inuse: number
@@ -29,10 +30,13 @@ const shouldSkipDuplicateMemory = (memory: IMemoryUsageItem) => {
   return false
 }
 
-export const useMemoryData = () => {
+export const useMemoryData = (options?: { enabled?: boolean }) => {
+  const visible = useVisibility()
+  const enabled = (options?.enabled ?? true) && visible
+
   const { response, refresh } = useMihomoWsSubscription<IMemoryUsageItem>({
     storageKey: 'mihomo_memory_date',
-    buildSubscriptKey: (date) => `getClashMemory-${date}`,
+    buildSubscriptKey: (date) => (enabled ? `getClashMemory-${date}` : null),
     fallbackData: FALLBACK_MEMORY_USAGE,
     connect: () => MihomoWebSocket.connect_memory(),
     throttleMs: 500,
