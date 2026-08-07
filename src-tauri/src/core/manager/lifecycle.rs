@@ -12,6 +12,11 @@ use std::time::{Duration, Instant};
 use tauri_plugin_clash_verge_sysinfo;
 
 const CORE_READY_MAX_WAIT: Duration = Duration::from_secs(20);
+
+#[cfg(any(target_os = "windows", test))]
+const fn should_wait_for_service(tun_enabled: bool, service_ready: bool, is_admin: bool) -> bool {
+    tun_enabled && !service_ready && !is_admin
+}
 const SMART_CORE_READY_MAX_WAIT: Duration = Duration::from_secs(180);
 const CORE_READY_POLL_INTERVAL: Duration = Duration::from_millis(100);
 const CORE_STARTUP_LOG_TAIL_LINES: usize = 8;
@@ -290,16 +295,20 @@ impl CoreManager {
     async fn wait_for_service_if_needed(&self) {
         use crate::{config::Config, constants::timing, core::service};
         use backon::{ConstantBuilder, Retryable as _};
+        use tauri_plugin_clash_verge_sysinfo::is_current_app_handle_admin;
 
-        let needs_service = Config::verge().await.latest_arc().enable_tun_mode.unwrap_or(false);
+        let tun_enabled = Config::verge().await.latest_arc().enable_tun_mode.unwrap_or(false);
+        let service_ready = matches!(SERVICE_MANAGER.lock().await.current(), ServiceStatus::Ready);
+        let is_admin = is_current_app_handle_admin(Handle::app_handle());
 
-        if !needs_service {
-            return;
-        }
-
-        // service IPC path 一开始就不存在时，跳过等待直接 fallback 到 sidecar
-        if !service::is_service_ipc_path_exists() {
-            logging!(info, Type::Core, "Service IPC path not found, skipping service wait");
+        if !should_wait_for_service(tun_enabled, service_ready, is_admin) {
+            if tun_enabled && !service_ready && is_admin {
+                logging!(
+                    info,
+                    Type::Core,
+                    "service unavailable while app is elevated; starting sidecar immediately"
+                );
+            }
             return;
         }
 
@@ -402,6 +411,14 @@ mod tests {
     fn core_ready_wait_budget_allows_smart_core_startup() {
         assert!(super::CORE_READY_MAX_WAIT >= Duration::from_secs(20));
         assert!(super::SMART_CORE_READY_MAX_WAIT >= Duration::from_secs(180));
+    }
+
+    #[test]
+    fn service_wait_is_only_required_for_non_admin_tun() {
+        assert!(super::should_wait_for_service(true, false, false));
+        assert!(!super::should_wait_for_service(true, false, true));
+        assert!(!super::should_wait_for_service(true, true, false));
+        assert!(!super::should_wait_for_service(false, false, false));
     }
 
     #[test]

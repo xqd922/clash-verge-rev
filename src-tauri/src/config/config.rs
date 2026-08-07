@@ -71,10 +71,25 @@ impl Config {
         // init Tun mode
         let handle = Handle::app_handle();
         let is_admin = is_current_app_handle_admin(handle);
+        let tun_enabled = verge.enable_tun_mode.unwrap_or(false);
+        // 仅当"非管理员 + TUN 开启"时，服务才是必需依赖：
+        // 开机自启时服务可能仍在启动/重装中，直接检查会误判为不可用，
+        // 进而把 TUN 临时关闭导致无法开机自启，因此这里先等待服务 IPC 就绪。
+        #[cfg(target_os = "windows")]
+        let is_service_available = if is_admin || !tun_enabled {
+            service::is_service_available().await.is_ok()
+        } else {
+            service::wait_for_service_available().await
+        };
+        #[cfg(not(target_os = "windows"))]
         let is_service_available = service::is_service_available().await.is_ok();
         if !is_admin && !is_service_available {
-            // 仅在内存中临时关闭 TUN，不写入配置文件
-            // 这样下次管理员启动时 TUN 仍然是开启状态
+            logging!(
+                warn,
+                Type::Service,
+                "service unavailable, temporarily disabling TUN for this session"
+            );
+            // 仅在内存中临时关闭 TUN，不写入配置文件，下次管理员启动时 TUN 仍保持开启
             let verge = Self::verge().await;
             verge.edit_draft(|d| {
                 d.enable_tun_mode = Some(false);

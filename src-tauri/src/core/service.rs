@@ -442,6 +442,14 @@ pub async fn is_service_available() -> Result<()> {
     Ok(())
 }
 
+/// 等待服务 IPC 就绪（带重试），用于启动早期判断服务是否可用。
+/// 开机自启时服务可能仍在启动/重装中，直接检查会误判为不可用。
+pub async fn wait_for_service_available() -> bool {
+    let mut status = ServiceManager::default();
+    wait_for_service_ipc(&mut status, "Waiting for service to be available")
+        .await
+        .is_ok()
+}
 pub async fn wait_and_check_service_available(status: &mut ServiceManager) -> Result<()> {
     wait_for_service_ipc(status, "Waiting for service to be available").await
 }
