@@ -44,6 +44,10 @@ impl Handle {
         Self::send_event(FrontendEvent::RefreshVerge);
     }
 
+    pub fn refresh_proxy_config() {
+        Self::send_event(FrontendEvent::RefreshProxyConfig);
+    }
+
     pub fn notify_profile_changed(profile_id: &String) {
         Self::send_event(FrontendEvent::ProfileChanged {
             current_profile_id: profile_id,

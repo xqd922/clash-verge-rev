@@ -9,6 +9,7 @@ use tauri::{Emitter as _, WebviewWindow};
 pub enum FrontendEvent<'a> {
     RefreshClash,
     RefreshVerge,
+    RefreshProxyConfig,
     NoticeMessage { status: &'a str, message: String },
     ProfileChanged { current_profile_id: &'a String },
     TimerUpdated { profile_index: &'a String },
@@ -34,6 +35,7 @@ impl NotificationSystem {
         match event {
             FrontendEvent::RefreshClash => ("verge://refresh-clash-config", Ok(json!("yes"))),
             FrontendEvent::RefreshVerge => ("verge://refresh-verge-config", Ok(json!("yes"))),
+            FrontendEvent::RefreshProxyConfig => ("verge://refresh-proxy-config", Ok(serde_json::Value::Null)),
             FrontendEvent::NoticeMessage { status, message } => {
                 ("verge://notice-message", serde_json::to_value((status, message)))
             }

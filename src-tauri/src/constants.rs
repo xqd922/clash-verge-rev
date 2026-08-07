@@ -25,8 +25,10 @@ pub mod timing {
     pub const CONFIG_UPDATE_DEBOUNCE: Duration = Duration::from_millis(300);
     pub const STARTUP_ERROR_DELAY: Duration = Duration::from_secs(2);
 
+    // Windows 服务冷启动较慢(重启电脑后开机自启时尤其明显),等待过短会误判
+    // 服务不可用并临时关闭 TUN,导致 TUN 无法开机自启;参考上游 v2.5.2 提升到 30s。
     #[cfg(target_os = "windows")]
-    pub const SERVICE_WAIT_MAX: Duration = Duration::from_millis(3000);
+    pub const SERVICE_WAIT_MAX: Duration = Duration::from_millis(30000);
     #[cfg(target_os = "windows")]
     pub const SERVICE_WAIT_INTERVAL: Duration = Duration::from_millis(200);
 }
