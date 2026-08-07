@@ -444,11 +444,29 @@ pub async fn is_service_available() -> Result<()> {
 
 /// 等待服务 IPC 就绪（带重试），用于启动早期判断服务是否可用。
 /// 开机自启时服务可能仍在启动/重装中，直接检查会误判为不可用。
+/// Windows 服务冷启动较慢,这里按 timing::SERVICE_WAIT_MAX 的预算等待,
+/// 避免重启电脑后 TUN 模式被过早判定不可用而无法开机自启。
+#[cfg(target_os = "windows")]
 pub async fn wait_for_service_available() -> bool {
-    let mut status = ServiceManager::default();
-    wait_for_service_ipc(&mut status, "Waiting for service to be available")
-        .await
-        .is_ok()
+    use crate::constants::timing;
+
+    let max_times = timing::SERVICE_WAIT_MAX.as_millis() / timing::SERVICE_WAIT_INTERVAL.as_millis();
+    let backoff = ConstantBuilder::default()
+        .with_delay(timing::SERVICE_WAIT_INTERVAL)
+        .with_max_times(max_times as usize);
+
+    let result = (|| async {
+        if Path::new(clash_verge_service_ipc::IPC_PATH).exists() {
+            clash_verge_service_ipc::connect().await?;
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!("IPC path not ready"))
+        }
+    })
+    .retry(backoff)
+    .await;
+
+    result.is_ok()
 }
 pub async fn wait_and_check_service_available(status: &mut ServiceManager) -> Result<()> {
     wait_for_service_ipc(status, "Waiting for service to be available").await
