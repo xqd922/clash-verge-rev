@@ -336,6 +336,48 @@ async fn process_global_items(
     (config, exists_keys, result_map)
 }
 
+fn is_loopback_bind_address(addr: &str) -> bool {
+    let addr = addr.trim();
+    let addr = addr
+        .strip_prefix('[')
+        .and_then(|addr| addr.strip_suffix(']'))
+        .unwrap_or(addr);
+
+    addr.eq_ignore_ascii_case("localhost")
+        || addr.parse::<std::net::IpAddr>().is_ok_and(|addr| addr.is_loopback())
+        || is_ipv4_shorthand_loopback(addr)
+}
+
+fn is_ipv4_shorthand_loopback(addr: &str) -> bool {
+    let parts = addr.split('.').map(str::parse::<u32>).collect::<Result<Vec<_>, _>>();
+
+    let Ok(parts) = parts else {
+        return false;
+    };
+
+    match parts.as_slice() {
+        [first, rest] => *first == 127 && *rest <= 0x00ff_ffff,
+        [first, second, rest] => *first == 127 && *second <= 0xff && *rest <= 0xffff,
+        [first, second, third, fourth] => *first == 127 && *second <= 0xff && *third <= 0xff && *fourth <= 0xff,
+        _ => false,
+    }
+}
+
+fn ensure_lan_bind_address(mut config: Mapping) -> Mapping {
+    let allow_lan = config.get("allow-lan").and_then(Value::as_bool).unwrap_or(false);
+
+    if allow_lan
+        && config
+            .get("bind-address")
+            .and_then(Value::as_str)
+            .is_some_and(is_loopback_bind_address)
+    {
+        config.insert(Value::from("bind-address"), Value::from("*"));
+    }
+
+    config
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn process_profile_items(
     mut config: Mapping,
@@ -728,13 +770,16 @@ pub async fn enhance() -> Result<(Mapping, HashSet<String>, HashMap<String, Resu
     // dns settings
     let config = apply_dns_settings(config, enable_dns_settings).await;
 
+    // 局域网访问: allow-lan 开启时,把订阅/合并/脚本带来的回环 bind-address 放宽为 *
+    let config = ensure_lan_bind_address(config);
+
     Ok((config, exists_keys_set, result_map))
 }
 
 #[allow(clippy::expect_used)]
 #[cfg(test)]
 mod tests {
-    use super::{apply_builtin_scripts, builtin_script_uids_for_core, cleanup_proxy_groups};
+    use super::{apply_builtin_scripts, builtin_script_uids_for_core, cleanup_proxy_groups, ensure_lan_bind_address};
     use serde_yaml_ng::Value;
 
     #[test]
@@ -743,6 +788,48 @@ mod tests {
 
         assert!(uids.iter().any(|uid| uid == "verge_meta_guard"));
         assert!(!uids.iter().any(|uid| uid == "verge_smart_convert"));
+    }
+
+    #[test]
+    fn lan_bind_address_loopback_is_widened() {
+        let mapping = |yaml: &str| serde_yaml_ng::from_str::<serde_yaml_ng::Mapping>(yaml).expect("parse");
+
+        for bind_address in [
+            "localhost",
+            "127.0.0.1",
+            "127.0.0.2",
+            "127.1",
+            "::1",
+            "[::1]",
+            "0:0:0:0:0:0:0:1",
+        ] {
+            let result = ensure_lan_bind_address(mapping(&format!(
+                r#"{{allow-lan: true, bind-address: "{bind_address}"}}"#
+            )));
+
+            assert_eq!(
+                result.get("bind-address").and_then(serde_yaml_ng::Value::as_str),
+                Some("*"),
+                "bind-address {bind_address} should be widened"
+            );
+        }
+    }
+
+    #[test]
+    fn lan_bind_address_preserves_custom_or_disabled() {
+        let mapping = |yaml: &str| serde_yaml_ng::from_str::<serde_yaml_ng::Mapping>(yaml).expect("parse");
+
+        let custom = ensure_lan_bind_address(mapping(r#"{allow-lan: true, bind-address: "192.168.1.2"}"#));
+        assert_eq!(
+            custom.get("bind-address").and_then(serde_yaml_ng::Value::as_str),
+            Some("192.168.1.2")
+        );
+
+        let disabled = ensure_lan_bind_address(mapping(r#"{allow-lan: false, bind-address: "127.0.0.1"}"#));
+        assert_eq!(
+            disabled.get("bind-address").and_then(serde_yaml_ng::Value::as_str),
+            Some("127.0.0.1")
+        );
     }
 
     #[test]
