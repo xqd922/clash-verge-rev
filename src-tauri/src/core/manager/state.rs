@@ -1,7 +1,7 @@
 use super::{CoreManager, RunningMode};
 use crate::{
     AsyncHandler,
-    config::{Config, IClashTemp},
+    config::Config,
     core::{handle, logger::Logger, manager::CLASH_LOGGER, service},
     logging,
     utils::dirs,
@@ -12,6 +12,7 @@ use compact_str::CompactString;
 use log::Level;
 use scopeguard::defer;
 use std::time::{Duration, Instant};
+use tauri_plugin_mihomo::MihomoExt as _;
 use tauri_plugin_shell::ShellExt as _;
 
 #[cfg(target_os = "windows")]
@@ -41,6 +42,12 @@ impl CoreManager {
     pub(super) async fn start_core_by_sidecar(&self) -> Result<()> {
         logging!(info, Type::Core, "Starting core in sidecar mode");
 
+        let sidecar_ipc = dirs::sidecar_ipc_path()?;
+        handle::Handle::app_handle()
+            .mihomo()
+            .write()
+            .await
+            .update_socket_path(dirs::path_to_str(&sidecar_ipc)?.to_owned())?;
         let config_file = Config::generate_file(crate::config::ConfigType::Run).await?;
         let app_handle = handle::Handle::app_handle();
         let clash_core = Config::verge().await.latest_arc().get_valid_clash_core();
@@ -61,7 +68,7 @@ impl CoreManager {
                 } else {
                     "-ext-ctl-unix"
                 },
-                &IClashTemp::guard_external_controller_ipc(),
+                dirs::path_to_str(&sidecar_ipc)?,
             ])
             .spawn()?;
         #[cfg(target_os = "windows")]
@@ -160,7 +167,7 @@ impl CoreManager {
     }
 
     async fn wait_for_sidecar_ipc_release(&self, pid: u32) {
-        let ipc = match dirs::ipc_path() {
+        let ipc = match dirs::sidecar_ipc_path() {
             Ok(p) => p,
             Err(_) => return,
         };
@@ -207,6 +214,12 @@ impl CoreManager {
 
     pub(super) async fn start_core_by_service(&self) -> Result<()> {
         logging!(info, Type::Core, "Starting core in service mode");
+        let service_ipc = dirs::ipc_path()?;
+        handle::Handle::app_handle()
+            .mihomo()
+            .write()
+            .await
+            .update_socket_path(dirs::path_to_str(&service_ipc)?.to_owned())?;
         let config_file = Config::generate_file(crate::config::ConfigType::Run).await?;
         service::run_core_by_service(&config_file).await?;
         self.set_running_mode(RunningMode::Service);

@@ -1,22 +1,47 @@
 use crate::{
-    config::{Config, IClashTemp},
-    core::{logger::Logger, tray::Tray},
+    config::Config,
+    core::{owner_identity::current_owner_credentials, runtime_bundle::collect_runtime_bundle, tray::Tray},
     utils::dirs,
 };
 use anyhow::{Context as _, Result, anyhow, bail};
 use backon::{ConstantBuilder, Retryable as _};
 use clash_verge_logging::{Type, logging, logging_error};
-use clash_verge_service_ipc::CoreConfig;
+use clash_verge_service_ipc::{OwnerSessionProof, RuntimeBundle, StartClashRequest, WriterConfig};
 use compact_str::CompactString;
 use once_cell::sync::Lazy;
-use std::{
-    borrow::Cow,
-    env::current_exe,
-    path::{Path, PathBuf},
-    process::Command as StdCommand,
-    time::Duration,
-};
+use std::{borrow::Cow, env::current_exe, path::Path, process::Command as StdCommand, time::Duration};
 use tokio::sync::Mutex;
+
+static ACTIVE_SERVICE_SESSION: Lazy<Mutex<Option<ActiveServiceSession>>> = Lazy::new(|| Mutex::new(None));
+
+/// The Service session that owns the running Core.
+///
+/// The Service derives every authenticated operation (stopping the core, updating the writer)
+/// from this session, so it must be kept for as long as the core is running under the Service
+/// and discarded when the core is stopped.
+#[derive(Clone)]
+struct ActiveServiceSession {
+    proof: OwnerSessionProof,
+}
+
+fn generate_service_session_token() -> Result<String> {
+    let mut bytes = [0_u8; 32];
+    getrandom::fill(&mut bytes).context("failed to generate service owner session")?;
+    Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
+}
+
+pub(crate) async fn active_service_session() -> Result<OwnerSessionProof> {
+    ACTIVE_SERVICE_SESSION
+        .lock()
+        .await
+        .as_ref()
+        .map(|session| session.proof.clone())
+        .context("service owner session is not active")
+}
+
+pub(crate) async fn clear_active_service_session() {
+    ACTIVE_SERVICE_SESSION.lock().await.take();
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ServiceStatus {
@@ -340,28 +365,32 @@ fn force_reinstall_service() -> Result<()> {
     })
 }
 
-/// 尝试使用服务启动core
-pub(super) async fn start_with_existing_service(config_file: &PathBuf) -> Result<()> {
-    logging!(info, Type::Service, "尝试使用现有服务启动核心");
-
+/// Describe what the Service should hold, for the Core binary this app would start.
+async fn collect_service_runtime_bundle(config_file: &Path) -> Result<RuntimeBundle> {
     let verge_config = Config::verge().await;
     let clash_core = verge_config.latest_arc().get_valid_clash_core();
     drop(verge_config);
 
     let bin_ext = if cfg!(windows) { ".exe" } else { "" };
     let bin_path = current_exe()?.with_file_name(format!("{clash_core}{bin_ext}"));
+    collect_runtime_bundle(config_file, &bin_path).await
+}
 
-    let payload = clash_verge_service_ipc::ClashConfig {
-        core_config: CoreConfig {
-            config_path: dirs::path_to_str(config_file)?.into(),
-            core_path: dirs::path_to_str(&bin_path)?.into(),
-            core_ipc_path: IClashTemp::guard_external_controller_ipc(),
-            config_dir: dirs::path_to_str(&dirs::app_home_dir()?)?.into(),
-        },
-        log_config: Logger::global().service_writer_config()?,
+/// 尝试使用服务启动core
+pub(super) async fn start_with_existing_service(config_file: &Path) -> Result<()> {
+    logging!(info, Type::Service, "尝试使用现有服务启动核心");
+    clear_active_service_session().await;
+
+    let credentials = current_owner_credentials()?;
+    let runtime = collect_service_runtime_bundle(config_file).await?;
+    let proposed_session_token = generate_service_session_token()?;
+    let request = StartClashRequest {
+        runtime,
+        proposed_session_token: proposed_session_token.clone(),
+        macos_proxy: None,
     };
 
-    let response = clash_verge_service_ipc::start_clash(&payload)
+    let response = clash_verge_service_ipc::start_clash(&credentials, &request)
         .await
         .context("无法连接到Clash Verge Service")?;
 
@@ -371,12 +400,20 @@ pub(super) async fn start_with_existing_service(config_file: &PathBuf) -> Result
         bail!(err_msg);
     }
 
+    let result = response.data.context("Clash Verge Service 未返回会话信息")?;
+    *ACTIVE_SERVICE_SESSION.lock().await = Some(ActiveServiceSession {
+        proof: OwnerSessionProof {
+            generation: result.session.generation,
+            token: proposed_session_token,
+        },
+    });
+
     logging!(info, Type::Service, "服务成功启动核心");
     Ok(())
 }
 
 // 以服务启动core
-pub(super) async fn run_core_by_service(config_file: &PathBuf) -> Result<()> {
+pub(super) async fn run_core_by_service(config_file: &Path) -> Result<()> {
     logging!(info, Type::Service, "正在尝试通过服务启动核心");
 
     // 只在服务未就绪时才 refresh，避免重复重装
@@ -395,7 +432,8 @@ pub(super) async fn run_core_by_service(config_file: &PathBuf) -> Result<()> {
 pub(super) async fn get_clash_logs_by_service() -> Result<Vec<CompactString>> {
     logging!(info, Type::Service, "正在获取服务模式下的 Clash 日志");
 
-    let response = clash_verge_service_ipc::get_clash_logs()
+    let credentials = current_owner_credentials()?;
+    let response = clash_verge_service_ipc::get_clash_logs(&credentials)
         .await
         .context("无法连接到Clash Verge Service")?;
 
@@ -413,7 +451,9 @@ pub(super) async fn get_clash_logs_by_service() -> Result<Vec<CompactString>> {
 pub(super) async fn stop_core_by_service() -> Result<()> {
     logging!(info, Type::Service, "通过服务停止核心 (IPC)");
 
-    let response = clash_verge_service_ipc::stop_clash()
+    let credentials = current_owner_credentials()?;
+    let session = active_service_session().await?;
+    let response = clash_verge_service_ipc::stop_clash(&credentials, &session)
         .await
         .context("无法连接到Clash Verge Service")?;
 
@@ -423,7 +463,21 @@ pub(super) async fn stop_core_by_service() -> Result<()> {
         bail!(err_msg);
     }
 
+    clear_active_service_session().await;
     logging!(info, Type::Service, "服务成功停止核心");
+    Ok(())
+}
+
+/// 通过服务更新核心日志配置
+pub(crate) async fn update_writer_by_service(writer: &WriterConfig) -> Result<()> {
+    let credentials = current_owner_credentials()?;
+    let session = active_service_session().await?;
+    let response = clash_verge_service_ipc::update_writer(&credentials, &session, writer)
+        .await
+        .context("无法连接到Clash Verge Service")?;
+    if response.code > 0 {
+        bail!(response.message);
+    }
     Ok(())
 }
 
