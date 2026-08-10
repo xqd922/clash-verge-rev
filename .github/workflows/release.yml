@@ -28,19 +28,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check if tag is from main branch
+      - name: Check if tag is from an allowed branch
         run: |
           TAG_REF="${GITHUB_REF##*/}"
-          echo "Checking if tag $TAG_REF is from main branch..."
+          echo "Checking if tag $TAG_REF is from an allowed branch..."
 
           TAG_COMMIT=$(git rev-list -n 1 $TAG_REF)
           MAIN_COMMITS=$(git rev-list origin/main)
+          PERSONAL_COMMITS=$(git rev-list origin/personal)
 
-          if echo "$MAIN_COMMITS" | grep -q "$TAG_COMMIT"; then
-            echo "✅ Tag $TAG_REF is from main branch"
+          if echo "$MAIN_COMMITS" | grep -q "$TAG_COMMIT" || echo "$PERSONAL_COMMITS" | grep -q "$TAG_COMMIT"; then
+            echo "✅ Tag $TAG_REF is from main or personal branch"
           else
-            echo "❌ Tag $TAG_REF is not from main branch"
-            echo "This release workflow only accepts tags from main branch."
+            echo "❌ Tag $TAG_REF is not from main or personal branch"
+            echo "This release workflow only accepts tags from main or personal branches."
             exit 1
           fi
 
