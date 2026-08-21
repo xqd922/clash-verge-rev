@@ -108,6 +108,7 @@ jobs:
           pnpm run prebuild ${{ matrix.target }}
         env:
           MIHOMO_VERSION: ${{ github.event.inputs.core_version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set app version
         run: |
@@ -225,6 +226,7 @@ jobs:
           pnpm run prebuild ${{ matrix.target }}
         env:
           MIHOMO_VERSION: ${{ github.event.inputs.core_version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set app version
         run: |
@@ -348,6 +350,7 @@ jobs:
           pnpm run prebuild ${{ matrix.target }}
         env:
           MIHOMO_VERSION: ${{ github.event.inputs.core_version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set app version
         run: |

@@ -326,18 +326,32 @@ async function getLatestSmartVersion() {
   try {
     const smartName = META_SMART_MAP[`${platform}-${arch}`]
     const smartExt = platform === 'win32' ? '.zip' : '.gz'
-    const response = await fetch(META_SMART_RELEASE_API, {
-      ...options,
-      method: 'GET',
-      headers: {
-        Accept: 'application/vnd.github+json',
-        'User-Agent': 'clash-verge-prebuild',
-      },
-    })
-    if (!response.ok)
+    const headers = {
+      Accept: 'application/vnd.github+json',
+      'User-Agent': 'clash-verge-prebuild',
+    }
+    if (process.env.GITHUB_TOKEN) {
+      headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`
+    }
+    let response
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      response = await fetch(META_SMART_RELEASE_API, {
+        ...options,
+        method: 'GET',
+        headers,
+      })
+      if (response.ok) break
+      if (attempt < 3 && (response.status === 403 || response.status === 429)) {
+        log_info(
+          `API rate limited (${response.status}), retrying in 10s (attempt ${attempt}/3)...`,
+        )
+        await new Promise((resolve) => setTimeout(resolve, 10000))
+        continue
+      }
       throw new Error(
         `Failed to fetch ${META_SMART_RELEASE_API}: ${response.status}`,
       )
+    }
     const release = await response.json()
     const asset = release.assets?.find(
       (item) =>
