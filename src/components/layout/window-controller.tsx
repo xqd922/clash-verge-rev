@@ -106,6 +106,33 @@ export const WindowControls = forwardRef(function WindowControls(props, ref) {
     color: 'text.primary',
     ':hover': { bgcolor: 'action.hover' },
   } as const
+
+  // Windows 11 原生规格：46×全高、Segoe Fluent 发丝字形（10px）、
+  // 关闭键悬停系统红 C42B1C（Win10 老红 E81123 已弃用），按压降为 90%
+  const winGlyph = {
+    fontFamily: '"Segoe Fluent Icons", "Segoe MDL2 Assets"',
+    fontSize: 12,
+    lineHeight: 1,
+  } as const
+  const winCaption = {
+    height: '100%',
+    width: 46,
+    borderRadius: 0,
+    color: 'text.primary',
+    ':hover': { bgcolor: 'action.hover' },
+    ':active': { bgcolor: 'action.selected' },
+  } as const
+  const winClose = {
+    ...winCaption,
+    ':hover': { bgcolor: '#C42B1C', color: '#fff' },
+    ':active': { bgcolor: '#C42B1CE6', color: 'rgba(255, 255, 255, 0.7)' },
+  } as const
+
+  // Segoe Fluent Icons 的 Chrome 系字形位于 PUA 区，用码点显式生成
+  const GLYPH_MINIMIZE = String.fromCharCode(0xe921)
+  const GLYPH_MAXIMIZE = String.fromCharCode(0xe922)
+  const GLYPH_RESTORE = String.fromCharCode(0xe923)
+  const GLYPH_CLOSE = String.fromCharCode(0xe8bb)
   const closeButton = {
     ...captionButton,
     ':hover': { bgcolor: '#e81123', color: '#fff' },
@@ -148,19 +175,33 @@ export const WindowControls = forwardRef(function WindowControls(props, ref) {
 
       {OS === 'windows' && (
         <>
-          {/* Windows 风格：最小化 → 最大化 → 关闭 */}
-          <IconButton size="small" sx={captionButton} onClick={minimize}>
-            <Minimize fontSize="inherit" color="inherit" />
+          {/* Windows 原生风格：最小化 → 最大化 → 关闭（微软官方字形名 ChromeMinimize/ChromeClose 中的 Chrome 指窗口镶边 window chrome，与浏览器无关） */}
+          <IconButton
+            size="small"
+            disableRipple
+            sx={[winCaption, winGlyph]}
+            aria-label="Minimize"
+            onClick={minimize}
+          >
+            {GLYPH_MINIMIZE}
           </IconButton>
-          <IconButton size="small" sx={captionButton} onClick={toggleMaximize}>
-            {maximized ? (
-              <FilterNone fontSize="inherit" color="inherit" />
-            ) : (
-              <CropSquare fontSize="inherit" color="inherit" />
-            )}
+          <IconButton
+            size="small"
+            disableRipple
+            sx={[winCaption, winGlyph]}
+            aria-label={maximized ? 'Restore' : 'Maximize'}
+            onClick={toggleMaximize}
+          >
+            {maximized ? GLYPH_RESTORE : GLYPH_MAXIMIZE}
           </IconButton>
-          <IconButton size="small" sx={closeButton} onClick={close}>
-            <Close fontSize="inherit" color="inherit" />
+          <IconButton
+            size="small"
+            disableRipple
+            sx={[winClose, winGlyph]}
+            aria-label="Close"
+            onClick={close}
+          >
+            {GLYPH_CLOSE}
           </IconButton>
         </>
       )}
