@@ -195,11 +195,17 @@ const ProfilePage = () => {
       return
     }
     setLoading(true)
+    // 首个订阅导入后会被设为当前 profile，但运行时配置尚未生成，
+    // 需要触发 enhance，否则代理页面无节点可用
+    const hadCurrentProfile = Boolean(profiles.current)
 
     const handleImportSuccess = async (noticeKey: string) => {
       showNotice.success(noticeKey)
       setUrl('')
       await performRobustRefresh()
+      if (!hadCurrentProfile) {
+        await onEnhance(false)
+      }
     }
 
     try {
@@ -232,8 +238,10 @@ const ProfilePage = () => {
     }
   }
 
-  // 导入后刷新策略：只刷新 profile 列表，不触发 onEnhance
-  // 导入新订阅不会改变当前活跃 profile，无需重新增强（否则会触发 activating 遮罩导致当前订阅变灰）
+  // 导入后刷新策略：常规导入只刷新 profile 列表，不触发 onEnhance，
+  // 避免 activating 遮罩导致当前订阅变灰；但首个订阅会成为当前
+  // profile（后端自动设置），此时必须 enhance 生成运行时配置，
+  // 否则代理页面无节点（见 onImport 中的处理）
   const performRobustRefresh = async () => {
     let retryCount = 0
     const maxRetries = 1
