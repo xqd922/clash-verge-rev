@@ -2,6 +2,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 
 import debounce from '@/utils/debounce'
+import getSystem from '@/utils/get-system'
 
 import { WindowContext } from './window-context'
 
@@ -9,7 +10,10 @@ export const WindowProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const currentWindow = useMemo(() => getCurrentWindow(), [])
-  const [decorated, setDecorated] = useState<boolean | null>(null)
+  // 按平台默认值乐观初始化，避免首帧无标题栏、IPC 返回后内容整体下移
+  const [decorated, setDecorated] = useState<boolean | null>(
+    () => getSystem() === 'macos',
+  )
   const [maximized, setMaximized] = useState<boolean | null>(null)
 
   const close = useCallback(async () => {
