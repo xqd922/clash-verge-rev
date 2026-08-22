@@ -223,6 +223,12 @@
       padding-bottom: 16px;
     }
 
+    /* Windows 自定义标题栏下 .the-logo 有额外 margin/padding，文字行相对
+       macOS 更靠上，徽标需同步上移才能与 macOS 一样不遮挡文字 */
+    .layout-content__left .the-logo .the-newbtn {
+      top: -9px;
+    }
+
     .layout-content__right .the-content {
       top: 5px;
     }
