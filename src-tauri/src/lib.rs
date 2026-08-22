@@ -119,9 +119,17 @@ mod app_init {
     /// Setup window state management
     pub fn setup_window_state(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         logging!(info, Type::Setup, "初始化窗口状态管理...");
+        // Windows 不持久化/恢复窗口装饰状态，始终以自定义标题栏启动
+        // （历史 window_state.json 中 serde 默认的 decorated:true 会把
+        // 原生标题栏带回来），macOS/Linux 保持记忆用户的选择
+        #[cfg(target_os = "windows")]
+        let state_flags = tauri_plugin_window_state::StateFlags::all()
+            - tauri_plugin_window_state::StateFlags::DECORATIONS;
+        #[cfg(not(target_os = "windows"))]
+        let state_flags = tauri_plugin_window_state::StateFlags::default();
         let window_state_plugin = tauri_plugin_window_state::Builder::new()
             .with_filename(files::WINDOW_STATE)
-            .with_state_flags(tauri_plugin_window_state::StateFlags::default())
+            .with_state_flags(state_flags)
             .build();
         app.handle().plugin(window_state_plugin)?;
         Ok(())
