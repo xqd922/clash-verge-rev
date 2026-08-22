@@ -33,7 +33,7 @@ export function useProxyDelayState(
   const isPreset = PRESET_PROXY_NAMES.includes(proxy.name)
   const [delayState, setDelayState] = useReducer(identity, INITIAL_DELAY)
   const { verge } = useVerge()
-  const timeout = verge?.default_latency_timeout || 10000
+  const timeout = verge?.default_latency_timeout || 2000
 
   useEffect(() => {
     if (isPreset) return

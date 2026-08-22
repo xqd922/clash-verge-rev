@@ -14,7 +14,7 @@ const CACHE_TTL = 30 * 60 * 1000
 class DelayManager {
   private cache = new Map<string, DelayUpdate>()
   // 全局默认测速 URL + 每组可覆盖
-  private globalUrl: string = 'http://www.gstatic.com/generate_204'
+  private globalUrl: string = 'https://www.gstatic.com/generate_204'
   private groupUrls = new Map<string, string>()
 
   // 每个节点的监听（一个节点可能有多个监听器，来自不同组）
@@ -40,7 +40,7 @@ class DelayManager {
     // 同时更新全局 URL（第一次设置时生效）
     if (
       !this.groupUrls.size ||
-      this.globalUrl === 'http://www.gstatic.com/generate_204'
+      this.globalUrl === 'https://www.gstatic.com/generate_204'
     ) {
       this.globalUrl = trimmed
     }
@@ -247,7 +247,7 @@ class DelayManager {
     await Promise.all(promiseList)
   }
 
-  formatDelay(delay: number, timeout = 10000) {
+  formatDelay(delay: number, timeout = 2000) {
     if (delay === -1) return '-'
     if (delay === -2) return 'testing'
     if (delay === 0 || (delay >= timeout && delay <= 1e5)) return 'Timeout'
@@ -255,10 +255,10 @@ class DelayManager {
     return `${delay}`
   }
 
-  formatDelayColor(delay: number, timeout = 10000) {
+  formatDelayColor(delay: number, timeout = 2000) {
     if (delay < 0) return ''
     if (delay === 0 || delay >= timeout) return 'error.main'
-    if (delay >= 10000) return 'error.main'
+    if (delay >= 2000) return 'error.main'
     if (delay >= 400) return 'warning.main'
     if (delay >= 250) return 'primary.main'
     return 'success.main'

@@ -186,7 +186,7 @@ function sortProxies(
   const effectiveTimeout =
     typeof latencyTimeout === 'number' && latencyTimeout > 0
       ? latencyTimeout
-      : 10000
+      : 2000
 
   if (sortType === 1) {
     const categorizeDelay = (delay: number): [number, number] => {

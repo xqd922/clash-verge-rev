@@ -32,7 +32,7 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
     autoDelayDetectionIntervalMinutes: 5,
     defaultLatencyTest: '',
     autoLogClean: 2,
-    defaultLatencyTimeout: 10000,
+    defaultLatencyTimeout: '' as number | '',
   })
 
   useImperativeHandle(ref, () => ({
@@ -51,7 +51,8 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
           verge?.auto_delay_detection_interval_minutes ?? 5,
         defaultLatencyTest: verge?.default_latency_test || '',
         autoLogClean: verge?.auto_log_clean || 0,
-        defaultLatencyTimeout: verge?.default_latency_timeout || 10000,
+        // 未设置时留空展示灰色占位符，与上方 URL 输入框行为一致
+        defaultLatencyTimeout: verge?.default_latency_timeout ?? '',
       })
     },
     close: () => setOpen(false),
@@ -71,7 +72,11 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
         auto_delay_detection_interval_minutes:
           values.autoDelayDetectionIntervalMinutes,
         default_latency_test: values.defaultLatencyTest,
-        default_latency_timeout: values.defaultLatencyTimeout,
+        // 留空时省略字段（undefined 序列化后被忽略），保持后端原值
+        default_latency_timeout:
+          values.defaultLatencyTimeout === ''
+            ? undefined
+            : values.defaultLatencyTimeout,
         auto_log_clean: values.autoLogClean as any,
       })
       setOpen(false)
@@ -383,7 +388,7 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
             spellCheck="false"
             sx={{ width: 250, marginLeft: 'auto' }}
             value={values.defaultLatencyTest}
-            placeholder="http://www.gstatic.com/generate_204"
+            placeholder="https://www.gstatic.com/generate_204"
             onChange={(e) =>
               setValues((v) => ({ ...v, defaultLatencyTest: e.target.value }))
             }
@@ -403,13 +408,15 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
             spellCheck="false"
             sx={{ width: 250 }}
             value={values.defaultLatencyTimeout}
-            placeholder="10000"
-            onChange={(e) =>
-              setValues((v) => ({
-                ...v,
-                defaultLatencyTimeout: parseInt(e.target.value),
+            placeholder="2000"
+            onChange={(e) => {
+              const v = e.target.value
+              setValues((prev) => ({
+                ...prev,
+                // 清空输入时回退为空，交由占位符展示默认值
+                defaultLatencyTimeout: v === '' ? '' : parseInt(v),
               }))
-            }
+            }}
             slotProps={{
               input: {
                 endAdornment: (

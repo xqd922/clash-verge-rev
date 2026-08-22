@@ -66,7 +66,8 @@ export const ProxyHead = ({
 
   const { verge } = useVerge()
   const defaultLatencyUrl =
-    verge?.default_latency_test?.trim() || 'http://www.gstatic.com/generate_204'
+    verge?.default_latency_test?.trim() ||
+    'https://www.gstatic.com/generate_204'
 
   useEffect(() => {
     // 优先级: 自定义测试URL > 组配置URL > 用户全局设置 > 默认值
@@ -74,7 +75,7 @@ export const ProxyHead = ({
       testUrl?.trim() ||
       url ||
       defaultLatencyUrl ||
-      'http://www.gstatic.com/generate_204'
+      'https://www.gstatic.com/generate_204'
     delayManager.setUrl(groupName, effectiveUrl)
   }, [groupName, testUrl, url, defaultLatencyUrl])
 
