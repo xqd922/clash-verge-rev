@@ -700,6 +700,10 @@ const SERVICE_LATEST_URL =
   'https://github.com/clash-verge-rev/clash-verge-service-ipc/releases/latest'
 const SERVICE_URL_PREFIX =
   'https://github.com/clash-verge-rev/clash-verge-service-ipc/releases/download'
+// 服务端二进制必须与 app 内置的 clash_verge_service_ipc 客户端
+// (src-tauri/Cargo.toml 锁定 2.3.0 / rev 21e661f) 协议匹配，
+// 追踪 latest 会因协议漂移导致服务模式安装/连接失败。
+const PINNED_SERVICE_VERSION = 'v2.3.0'
 let SERVICE_VERSION
 
 const SERVICE_BINARIES = [
@@ -723,6 +727,13 @@ function parseServiceVersionFromUrl(url) {
 }
 
 async function getLatestServiceVersion() {
+  if (PINNED_SERVICE_VERSION) {
+    SERVICE_VERSION = PINNED_SERVICE_VERSION
+    log_info(`Pinned service version: ${SERVICE_VERSION}`)
+    await setCachedVersion('SERVICE_VERSION', SERVICE_VERSION)
+    return
+  }
+
   if (!FORCE) {
     const cached = await getCachedVersion('SERVICE_VERSION')
     if (cached) {
