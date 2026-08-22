@@ -226,6 +226,7 @@
       "layout": {
         "title": "Configuración de la interfaz",
         "fields": {
+          "preferSystemTitlebar": "Prefer System Titlebar",
           "trafficGraph": "Gráfico de tráfico",
           "memoryUsage": "Uso de memoria del núcleo",
           "proxyGroupIcon": "Icono del grupo de proxy",

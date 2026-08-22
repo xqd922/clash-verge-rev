@@ -119,13 +119,9 @@ mod app_init {
     /// Setup window state management
     pub fn setup_window_state(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         logging!(info, Type::Setup, "初始化窗口状态管理...");
-        // 不持久化/恢复窗口装饰状态，始终使用自定义标题栏，
-        // 避免历史 window_state.json 中遗留的 decorated:true 覆盖 decorations(false)
-        let state_flags =
-            tauri_plugin_window_state::StateFlags::all() - tauri_plugin_window_state::StateFlags::DECORATIONS;
         let window_state_plugin = tauri_plugin_window_state::Builder::new()
             .with_filename(files::WINDOW_STATE)
-            .with_state_flags(state_flags)
+            .with_state_flags(tauri_plugin_window_state::StateFlags::default())
             .build();
         app.handle().plugin(window_state_plugin)?;
         Ok(())

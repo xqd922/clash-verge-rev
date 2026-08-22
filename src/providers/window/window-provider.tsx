@@ -9,6 +9,7 @@ export const WindowProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const currentWindow = useMemo(() => getCurrentWindow(), [])
+  const [decorated, setDecorated] = useState<boolean | null>(null)
   const [maximized, setMaximized] = useState<boolean | null>(null)
 
   const close = useCallback(async () => {
@@ -64,13 +65,29 @@ export const WindowProvider: React.FC<{ children: React.ReactNode }> = ({
     await currentWindow.setFullscreen(!(await currentWindow.isFullscreen()))
   }, [currentWindow])
 
-  useEffect(() => {
-    currentWindow.setMinimizable?.(true)
+  const refreshDecorated = useCallback(async () => {
+    const val = await currentWindow.isDecorated()
+    setDecorated(val)
+    return val
   }, [currentWindow])
+
+  const toggleDecorations = useCallback(async () => {
+    const currentVal = await currentWindow.isDecorated()
+    await currentWindow.setDecorations(!currentVal)
+    setDecorated(!currentVal)
+  }, [currentWindow])
+
+  useEffect(() => {
+    refreshDecorated()
+    currentWindow.setMinimizable?.(true)
+  }, [currentWindow, refreshDecorated])
 
   const contextValue = useMemo(
     () => ({
+      decorated,
       maximized,
+      toggleDecorations,
+      refreshDecorated,
       minimize,
       close,
       toggleMaximize,
@@ -78,7 +95,10 @@ export const WindowProvider: React.FC<{ children: React.ReactNode }> = ({
       currentWindow,
     }),
     [
+      decorated,
       maximized,
+      toggleDecorations,
+      refreshDecorated,
       minimize,
       close,
       toggleMaximize,
