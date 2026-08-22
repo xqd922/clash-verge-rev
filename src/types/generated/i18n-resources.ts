@@ -437,20 +437,6 @@ export interface TranslationResources {
           connect: string
           connecting: string
           disconnect: string
-          toggleChain: string
-        }
-        chain: {
-          connectFailed: string
-          disconnectFailed: string
-          duplicateNode: string
-          empty: string
-          entryNode: string
-          exitNode: string
-          header: string
-          instruction: string
-          minimumNodes: string
-          minimumNodesHint: string
-          warning: string
         }
         labels: {
           delayCheckReset: string
@@ -484,7 +470,6 @@ export interface TranslationResources {
           title: string
         }
         title: {
-          chainMode: string
           default: string
         }
         tooltips: {

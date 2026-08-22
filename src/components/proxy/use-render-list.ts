@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 
-import { useRuntimeConfig } from '@/hooks/use-clash'
 import { useVerge } from '@/hooks/use-verge'
 import { useAppRefreshers, useProxiesData } from '@/providers/app-data-context'
-import delayManager from '@/services/delay'
-import { debugLog } from '@/utils/debug'
 
 import { filterSort } from './use-filter-sort'
 import {
@@ -103,11 +100,7 @@ const groupProxies = <T = any>(list: T[], size: number): T[][] => {
   }, [] as T[][])
 }
 
-export const useRenderList = (
-  mode: string,
-  isChainMode?: boolean,
-  selectedGroup?: string | null,
-) => {
+export const useRenderList = (mode: string) => {
   // 使用全局数据提供者
   const { proxies: proxiesData } = useProxiesData()
   const { refreshProxy } = useAppRefreshers()
@@ -115,9 +108,6 @@ export const useRenderList = (
   const { width } = useWindowWidth()
   const [headStates, setHeadState] = useHeadStateNew()
   const latencyTimeout = verge?.default_latency_timeout
-
-  // 获取运行时配置用于链式代理模式
-  const { data: runtimeConfig } = useRuntimeConfig(!!isChainMode)
 
   // 计算列数
   const col = useMemo(
@@ -139,244 +129,12 @@ export const useRenderList = (
     }
   }, [proxiesData, mode, refreshProxy])
 
-  // 链式代理模式节点自动计算延迟
-  useEffect(() => {
-    if (!isChainMode || !runtimeConfig) return
-
-    const allProxies: IProxyItem[] = Object.values(
-      (runtimeConfig as any).proxies || {},
-    )
-    if (allProxies.length === 0) return
-
-    // 设置组监听器，当有延迟更新时自动刷新
-    const groupListener = () => {
-      debugLog('[ChainMode] 延迟更新，刷新UI')
-      refreshProxy()
-    }
-
-    delayManager.setGroupListener('chain-mode', groupListener)
-
-    const calculateDelays = async () => {
-      try {
-        const timeout = verge?.default_latency_timeout || 10000
-        const proxyNames = allProxies.map((proxy) => proxy.name)
-
-        debugLog(`[ChainMode] 开始计算 ${proxyNames.length} 个节点的延迟`)
-
-        // 使用 delayManager 计算延迟，每个节点计算完成后会自动触发监听器刷新界面
-        delayManager.checkListDelay(proxyNames, 'chain-mode', timeout)
-      } catch (error) {
-        console.error('Failed to calculate delays for chain mode:', error)
-      }
-    }
-
-    // 延迟执行避免阻塞
-    const handle = setTimeout(calculateDelays, 100)
-
-    return () => {
-      clearTimeout(handle)
-      // 清理组监听器
-      delayManager.removeGroupListener('chain-mode')
-    }
-  }, [isChainMode, runtimeConfig, verge?.default_latency_timeout, refreshProxy])
-
   const groupCacheRef = useRef<Map<string, GroupCache>>(new Map())
   const prevListRef = useRef<IRenderItem[]>([])
 
   // 处理渲染列表
   const renderList: IRenderItem[] = useMemo(() => {
     if (!proxiesData) return []
-
-    // 链式代理模式下，显示代理组和其节点
-    if (isChainMode && runtimeConfig && mode === 'rule') {
-      // 使用正常的规则模式代理组
-      const allGroups = proxiesData.groups.length
-        ? proxiesData.groups
-        : [proxiesData.global!]
-
-      // 如果选择了特定代理组，只显示该组的节点
-      if (selectedGroup) {
-        const targetGroup = allGroups.find((g: any) => g.name === selectedGroup)
-        if (targetGroup) {
-          const proxies = filterSort(
-            targetGroup.all,
-            targetGroup.name,
-            '',
-            0,
-            latencyTimeout,
-          )
-
-          if (col > 1) {
-            return groupProxies(proxies, col).map((proxyCol, colIndex) => ({
-              type: 4,
-              key: `chain-col-${selectedGroup}-${colIndex}`,
-              group: targetGroup,
-              headState: DEFAULT_STATE,
-              col,
-              proxyCol,
-              provider: proxyCol[0]?.provider,
-            }))
-          } else {
-            return proxies.map((proxy) => ({
-              type: 2,
-              key: `chain-${selectedGroup}-${proxy!.name}`,
-              group: targetGroup,
-              proxy,
-              headState: DEFAULT_STATE,
-              provider: proxy.provider,
-            }))
-          }
-        }
-        return []
-      }
-
-      // 如果没有选择特定组，显示第一个组的节点（如果有组的话）
-      if (allGroups.length > 0) {
-        const firstGroup = allGroups[0]
-        const proxies = filterSort(
-          firstGroup.all,
-          firstGroup.name,
-          '',
-          0,
-          latencyTimeout,
-        )
-
-        if (col > 1) {
-          return groupProxies(proxies, col).map((proxyCol, colIndex) => ({
-            type: 4,
-            key: `chain-col-first-${colIndex}`,
-            group: firstGroup,
-            headState: DEFAULT_STATE,
-            col,
-            proxyCol,
-            provider: proxyCol[0]?.provider,
-          }))
-        } else {
-          return proxies.map((proxy) => ({
-            type: 2,
-            key: `chain-first-${proxy!.name}`,
-            group: firstGroup,
-            proxy,
-            headState: DEFAULT_STATE,
-            provider: proxy.provider,
-          }))
-        }
-      }
-
-      // 如果没有组，显示所有节点
-      const allProxies: IProxyItem[] = allGroups.flatMap(
-        (group: any) => group.all,
-      )
-
-      // 为每个节点获取延迟信息
-      const proxiesWithDelay = allProxies.map((proxy) => {
-        const delay = delayManager.getDelay(proxy.name, 'chain-mode')
-        return {
-          ...proxy,
-          // 如果delayManager有延迟数据，更新history
-          history:
-            delay >= 0
-              ? [{ time: new Date().toISOString(), delay }]
-              : proxy.history || [],
-        }
-      })
-
-      // 创建一个虚拟的组来容纳所有节点
-      const virtualGroup: ProxyGroup = {
-        name: 'All Proxies',
-        type: 'Selector',
-        udp: false,
-        xudp: false,
-        tfo: false,
-        mptcp: false,
-        smux: false,
-        history: [],
-        now: '',
-        all: proxiesWithDelay,
-      }
-
-      if (col > 1) {
-        return groupProxies(proxiesWithDelay, col).map(
-          (proxyCol, colIndex) => ({
-            type: 4,
-            key: `chain-col-all-${colIndex}`,
-            group: virtualGroup,
-            headState: DEFAULT_STATE,
-            col,
-            proxyCol,
-            provider: proxyCol[0]?.provider,
-          }),
-        )
-      } else {
-        return proxiesWithDelay.map((proxy) => ({
-          type: 2,
-          key: `chain-all-${proxy.name}`,
-          group: virtualGroup,
-          proxy,
-          headState: DEFAULT_STATE,
-          provider: proxy.provider,
-        }))
-      }
-    }
-
-    // 链式代理模式下的其他模式（如global）仍显示所有节点
-    if (isChainMode && runtimeConfig) {
-      // 从运行时配置直接获取 proxies 列表 (需要类型断言)
-      const allProxies: IProxyItem[] = Object.values(
-        (runtimeConfig as any).proxies || {},
-      )
-
-      // 为每个节点获取延迟信息
-      const proxiesWithDelay = allProxies.map((proxy) => {
-        const delay = delayManager.getDelay(proxy.name, 'chain-mode')
-        return {
-          ...proxy,
-          // 如果delayManager有延迟数据，更新history
-          history:
-            delay >= 0
-              ? [{ time: new Date().toISOString(), delay }]
-              : proxy.history || [],
-        }
-      })
-
-      // 创建一个虚拟的组来容纳所有节点
-      const virtualGroup: ProxyGroup = {
-        name: 'All Proxies',
-        type: 'Selector',
-        udp: false,
-        xudp: false,
-        tfo: false,
-        mptcp: false,
-        smux: false,
-        history: [],
-        now: '',
-        all: proxiesWithDelay,
-      }
-
-      // 返回节点列表（不显示组头）
-      if (col > 1) {
-        return groupProxies(proxiesWithDelay, col).map(
-          (proxyCol, colIndex) => ({
-            type: 4,
-            key: `chain-col-${colIndex}`,
-            group: virtualGroup,
-            headState: DEFAULT_STATE,
-            col,
-            proxyCol,
-            provider: proxyCol[0]?.provider,
-          }),
-        )
-      } else {
-        return proxiesWithDelay.map((proxy) => ({
-          type: 2,
-          key: `chain-${proxy.name}`,
-          group: virtualGroup,
-          proxy,
-          headState: DEFAULT_STATE,
-          provider: proxy.provider,
-        }))
-      }
-    }
 
     // 正常模式的渲染逻辑
     const useRule = mode === 'rule' || mode === 'script'
@@ -489,16 +247,7 @@ export const useRenderList = (
     }
     prevListRef.current = filtered
     return filtered
-  }, [
-    headStates,
-    proxiesData,
-    mode,
-    col,
-    isChainMode,
-    runtimeConfig,
-    selectedGroup,
-    latencyTimeout,
-  ])
+  }, [headStates, proxiesData, mode, col, latencyTimeout])
 
   return {
     renderList,

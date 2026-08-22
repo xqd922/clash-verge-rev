@@ -4,7 +4,7 @@ use crate::{
     constants::timing,
     core::{
         handle,
-        validate::{CoreConfigValidator, ValidationOutcome, ValidationSkipReason},
+        validate::{ValidationOutcome, ValidationSkipReason},
     },
     utils::{dirs, help},
 };
@@ -94,25 +94,6 @@ impl CoreManager {
         let run_path = Config::generate_file(ConfigType::Run).await?;
         self.apply_config(run_path).await?;
         Ok(ValidationOutcome::Valid)
-    }
-
-    /// 带验证的配置应用（供 runtime.rs 等需要验证的场景使用）
-    pub async fn apply_generate_config(&self) -> Result<ValidationOutcome> {
-        match CoreConfigValidator::global().validate_config_outcome().await {
-            Ok(outcome) if outcome.is_valid() => {
-                let run_path = Config::generate_file(ConfigType::Run).await?;
-                self.apply_config(run_path).await?;
-                Ok(ValidationOutcome::Valid)
-            }
-            Ok(outcome) => {
-                Config::runtime().await.discard();
-                Ok(outcome)
-            }
-            Err(e) => {
-                Config::runtime().await.discard();
-                Err(e)
-            }
-        }
     }
 
     async fn apply_config(&self, path: PathBuf) -> Result<()> {

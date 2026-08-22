@@ -123,8 +123,8 @@ mod app_init {
         // （历史 window_state.json 中 serde 默认的 decorated:true 会把
         // 原生标题栏带回来），macOS/Linux 保持记忆用户的选择
         #[cfg(target_os = "windows")]
-        let state_flags = tauri_plugin_window_state::StateFlags::all()
-            - tauri_plugin_window_state::StateFlags::DECORATIONS;
+        let state_flags =
+            tauri_plugin_window_state::StateFlags::all() - tauri_plugin_window_state::StateFlags::DECORATIONS;
         #[cfg(not(target_os = "windows"))]
         let state_flags = tauri_plugin_window_state::StateFlags::default();
         let window_state_plugin = tauri_plugin_window_state::Builder::new()
@@ -174,8 +174,6 @@ mod app_init {
             cmd::get_runtime_yaml,
             cmd::get_runtime_exists,
             cmd::get_runtime_logs,
-            cmd::get_runtime_proxy_chain_config,
-            cmd::update_proxy_chain_config_in_runtime,
             cmd::invoke_uwp_tool,
             cmd::copy_clash_env,
             cmd::sync_tray_proxy_selection,
