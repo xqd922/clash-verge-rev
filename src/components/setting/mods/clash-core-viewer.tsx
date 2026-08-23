@@ -18,7 +18,6 @@ import { useImperativeHandle, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   closeAllConnections,
-  flushSmartCache,
   getProxies,
   unfixedProxy,
 } from 'tauri-plugin-mihomo-api'
@@ -26,7 +25,12 @@ import {
 import { BaseDialog, DialogRef } from '@/components/base'
 import { useClash, useClashInfo } from '@/hooks/use-clash'
 import { useVerge } from '@/hooks/use-verge'
-import { changeClashCore, restartCore, upgradeClashCore } from '@/services/cmds'
+import {
+  changeClashCore,
+  flushSmartCache,
+  restartCore,
+  upgradeClashCore,
+} from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
 import { revalidateQuery } from '@/services/query-client'
 
@@ -52,7 +56,7 @@ async function resetSmartGroups() {
   try {
     const proxiesData = await getProxies()
     const groups = Object.values(proxiesData.proxies).filter(
-      (p) => p?.type === 'Smart' && p?.all,
+      (p) => (p?.type as string) === 'Smart' && p?.all,
     )
     await Promise.allSettled(groups.map((g) => unfixedProxy(g!.name)))
     void revalidateQuery(['getProxyView'])

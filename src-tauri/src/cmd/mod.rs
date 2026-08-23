@@ -104,6 +104,8 @@ pub mod proxy;
 pub mod runtime;
 pub mod save_profile;
 pub mod service;
+pub mod smart;
+pub use smart::*;
 pub mod system;
 pub mod uwp;
 pub mod validate;

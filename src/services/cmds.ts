@@ -129,6 +129,15 @@ export async function getProxyView(): Promise<ProxyViewV1> {
   return view
 }
 
+// Smart 核心专属接口（通过应用层转发 mihomo API）
+export const getSmartWeights = async (groupName: string) => {
+  return invoke<Record<string, any>>('get_smart_weights', { groupName })
+}
+
+export const flushSmartCache = async () => {
+  return invoke<void>('flush_smart_cache')
+}
+
 export async function getClashLogs() {
   const regex = /time="(.+?)"\s+level=(.+?)\s+msg="(.+?)"/
   const newRegex = /(.+?)\s+(.+?)\s+(.+)/

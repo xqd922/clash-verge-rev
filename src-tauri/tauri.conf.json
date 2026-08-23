@@ -28,7 +28,7 @@
     "beforeBuildCommand": "pnpm run web:build",
     "frontendDist": "../dist",
     "beforeDevCommand": "pnpm run web:dev",
-    "devUrl": "http://localhost:3000/",
+    "devUrl": "http://localhost:1420/",
     "removeUnusedCommands": true
   },
   "productName": "Clash Verge",

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { getSmartWeights } from 'tauri-plugin-mihomo-api'
 
+import { getSmartWeights } from '@/services/cmds'
 import { getCacheData, useQuery } from '@/services/query-client'
 
 interface RawNodeRankItem {

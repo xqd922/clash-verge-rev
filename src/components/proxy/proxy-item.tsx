@@ -71,6 +71,14 @@ export const ProxyItem = (props: Props) => {
   const unresolved = member.kind === 'unresolved'
   const name = member.ref.name
   const type = unresolved ? member.ref.reason : (details?.type ?? '')
+  // provider 节点不支持手动测速，但展示来源徽标（与原版一致）
+  const fromProvider =
+    !unresolved &&
+    details &&
+    'source' in details &&
+    details.source.kind === 'provider'
+      ? details.source.providerName
+      : undefined
 
   // Smart 子组（GLOBAL 视图）：用权重最高的节点替代 now 展示
   const isSmartMember = member.kind === 'group' && member.group.type === 'Smart'
@@ -105,19 +113,17 @@ export const ProxyItem = (props: Props) => {
         selected={!unresolved && selected}
         onClick={unresolved ? undefined : () => onClick?.(member)}
         sx={[
-          { borderRadius: 1 },
+          { borderRadius: 1, borderLeft: '3px solid transparent' },
           ({ palette: { mode, primary } }) => {
             const bgcolor = mode === 'light' ? '#ffffff' : '#24252f'
             const selectColor = mode === 'light' ? primary.main : primary.light
-            const showDelay = delayValue > 0
+            const showDelay = delayValue >= 0
 
             return {
               '&:hover .the-check': { display: !showDelay ? 'block' : 'none' },
               '&:hover .the-delay': { display: showDelay ? 'block' : 'none' },
               '&:hover .the-icon': { display: 'none' },
               '&.Mui-selected': {
-                width: `calc(100% + 3px)`,
-                marginLeft: `-3px`,
                 borderLeft: `3px solid ${selectColor}`,
                 bgcolor:
                   mode === 'light'
@@ -146,10 +152,11 @@ export const ProxyItem = (props: Props) => {
                 {name}
                 {showType && now && ` - ${now}`}
               </Box>
-              {showType && <TypeBox>{type}</TypeBox>}
+              {showType && fromProvider && <TypeBox>{fromProvider}</TypeBox>}
               {!unresolved && showType && smartRank && (
                 <TypeBox>{t(SMART_RANK_I18N_KEY[smartRank])}</TypeBox>
               )}
+              {!unresolved && showType && <TypeBox>{type}</TypeBox>}
               {!unresolved && showType && details?.udp && (
                 <TypeBox>UDP</TypeBox>
               )}
@@ -182,7 +189,8 @@ export const ProxyItem = (props: Props) => {
             </Widget>
           )}
 
-          {!unresolved && delayValue !== -2 && (
+          {!unresolved && !fromProvider && delayValue !== -2 && (
+            // provider 的节点不支持检测
             <Widget
               className="the-check"
               onClick={(e) => {
@@ -195,35 +203,42 @@ export const ProxyItem = (props: Props) => {
                 ':hover': { bgcolor: alpha(palette.primary.main, 0.15) },
               })}
             >
-              {t('shared.actions.check')}
+              Check
             </Widget>
           )}
 
-          {!unresolved && delayValue > 0 && (
+          {!unresolved && delayValue >= 0 && (
             // 显示延迟
             <Widget
               className="the-delay"
               onClick={(e) => {
+                if (fromProvider) return
                 e.preventDefault()
                 e.stopPropagation()
                 void onDelay()
               }}
               sx={({ palette }) => ({
                 color: delayManager.formatDelayColor(delayValue, timeout),
-                ':hover': { bgcolor: alpha(palette.primary.main, 0.15) },
+                ...(!fromProvider
+                  ? { ':hover': { bgcolor: alpha(palette.primary.main, 0.15) } }
+                  : {}),
               })}
             >
               {delayManager.formatDelay(delayValue, timeout)}
             </Widget>
           )}
 
-          {!unresolved && delayValue !== -2 && delayValue <= 0 && selected && (
-            // 展示已选择的 icon
-            <CheckCircleOutlineRounded
-              className="the-icon"
-              sx={{ fontSize: 16 }}
-            />
-          )}
+          {!unresolved &&
+            type !== 'Direct' &&
+            delayValue !== -2 &&
+            delayValue < 0 &&
+            selected && (
+              // 展示已选择的 icon
+              <CheckCircleOutlineRounded
+                className="the-icon"
+                sx={{ fontSize: 16 }}
+              />
+            )}
         </ListItemIcon>
       </ListItemButton>
     </ListItem>

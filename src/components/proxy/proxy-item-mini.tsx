@@ -34,6 +34,14 @@ export const ProxyItemMini = (props: Props) => {
   const unresolved = member.kind === 'unresolved'
   const name = member.ref.name
   const type = unresolved ? member.ref.reason : (details?.type ?? '')
+  // provider 节点不支持手动测速，但展示来源徽标（与原版一致）
+  const fromProvider =
+    !unresolved &&
+    details &&
+    'source' in details &&
+    details.source.kind === 'provider'
+      ? details.source.providerName
+      : undefined
 
   // Smart 子组（GLOBAL 视图）：用权重最高的节点替代 now 展示
   const isSmartMember = member.kind === 'group' && member.group.type === 'Smart'
@@ -76,10 +84,11 @@ export const ProxyItemMini = (props: Props) => {
           pr: 1,
           justifyContent: 'space-between',
           alignItems: 'center',
+          borderLeft: '3px solid transparent',
         },
         ({ palette: { mode, primary } }) => {
           const bgcolor = mode === 'light' ? '#ffffff' : '#24252f'
-          const showDelay = delayValue > 0
+          const showDelay = delayValue >= 0
           const selectColor = mode === 'light' ? primary.main : primary.light
 
           return {
@@ -94,8 +103,6 @@ export const ProxyItemMini = (props: Props) => {
             },
             '& .the-unpin': { filter: 'grayscale(1)' },
             '&.Mui-selected': {
-              width: `calc(100% + 3px)`,
-              marginLeft: `-3px`,
               borderLeft: `3px solid ${selectColor}`,
               bgcolor:
                 mode === 'light'
@@ -149,12 +156,19 @@ export const ProxyItemMini = (props: Props) => {
                 {now}
               </Typography>
             )}
-            <TypeBox color="text.secondary" component="span">
-              {type}
-            </TypeBox>
+            {fromProvider && (
+              <TypeBox color="text.secondary" component="span">
+                {fromProvider}
+              </TypeBox>
+            )}
             {!unresolved && smartRank && (
               <TypeBox color="text.secondary" component="span">
                 {t(SMART_RANK_I18N_KEY[smartRank])}
+              </TypeBox>
+            )}
+            {!unresolved && (
+              <TypeBox color="text.secondary" component="span">
+                {type}
               </TypeBox>
             )}
             {!unresolved && details?.udp && (
@@ -193,7 +207,8 @@ export const ProxyItemMini = (props: Props) => {
             <BaseLoading />
           </Widget>
         )}
-        {!unresolved && delayValue !== -2 && (
+        {!unresolved && !fromProvider && delayValue !== -2 && (
+          // provider 的节点不支持检测
           <Widget
             className="the-check"
             onClick={(e) => {
@@ -206,7 +221,7 @@ export const ProxyItemMini = (props: Props) => {
               ':hover': { bgcolor: alpha(palette.primary.main, 0.15) },
             })}
           >
-            {t('shared.actions.check')}
+            Check
           </Widget>
         )}
 
@@ -215,13 +230,16 @@ export const ProxyItemMini = (props: Props) => {
           <Widget
             className="the-delay"
             onClick={(e) => {
+              if (fromProvider) return
               e.preventDefault()
               e.stopPropagation()
               void onDelay()
             }}
             sx={({ palette }) => ({
               color: delayManager.formatDelayColor(delayValue, timeout),
-              ':hover': { bgcolor: alpha(palette.primary.main, 0.15) },
+              ...(!fromProvider
+                ? { ':hover': { bgcolor: alpha(palette.primary.main, 0.15) } }
+                : {}),
             })}
           >
             {delayManager.formatDelay(delayValue, timeout)}
@@ -239,19 +257,22 @@ export const ProxyItemMini = (props: Props) => {
             />
           )}
       </Box>
-      {!unresolved && group.fixed && group.fixed === name && (
-        // 展示 fixed 状态
-        <span
-          className={name === group.now ? 'the-pin' : 'the-unpin'}
-          title={
-            group.type === 'URLTest'
-              ? t('proxies.page.labels.delayCheckReset')
-              : ''
-          }
-        >
-          📌
-        </span>
-      )}
+      {!unresolved &&
+        group.fixed &&
+        group.fixed === name &&
+        group.type !== 'Smart' && (
+          // 展示 fixed 状态
+          <span
+            className={name === group.now ? 'the-pin' : 'the-unpin'}
+            title={
+              group.type === 'URLTest'
+                ? t('proxies.page.labels.delayCheckReset')
+                : ''
+            }
+          >
+            📌
+          </span>
+        )}
     </ListItemButton>
   )
 }

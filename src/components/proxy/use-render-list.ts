@@ -307,9 +307,7 @@ export const useRenderList = (
             useRegularExpression: headState.filterUseRegularExpression,
           },
         )
-        if (!useRule) {
-          ret.push({ type: 1, key: `head-${group.name}`, group, headState })
-        }
+        ret.push({ type: 1, key: `head-${group.name}`, group, headState })
         if (occurrences.length === 0) {
           ret.push({ type: 3, key: `empty-${group.name}`, group, headState })
         } else if (col > 1) {
