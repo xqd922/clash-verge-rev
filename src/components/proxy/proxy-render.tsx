@@ -46,7 +46,7 @@ export const ProxyRender = memo(function ProxyRender(props: RenderProps) {
   const { t } = useTranslation()
   const {
     item,
-    stickyed = false,
+    stickyed: _stickyed = false, // 恢复吸顶阴影时改回 stickyed 并取消下方注释
     onLocation,
     onCheckAll,
     onHeadState,
@@ -103,12 +103,15 @@ export const ProxyRender = memo(function ProxyRender(props: RenderProps) {
       <div style={{ padding: '4px 8px' }}>
         <ListItemButton
           dense
-          sx={{
-            boxShadow:
-              stickyed && headState?.open
-                ? '0 4px 8px rgba(0, 0, 0, 0.2) !important'
-                : undefined,
-          }}
+          sx={
+            {
+              // 上游的吸顶阴影；要悬浮感：解构处 _stickyed 改回 stickyed 后取消下面注释
+              // boxShadow:
+              //   stickyed && headState?.open
+              //     ? '0 4px 8px rgba(0, 0, 0, 0.2) !important'
+              //     : undefined,
+            }
+          }
           style={{
             background: itembackgroundcolor,
             height: '100%',
