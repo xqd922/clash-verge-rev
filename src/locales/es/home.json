@@ -82,7 +82,9 @@
         "unknown": "Desconocido"
       },
       "errors": {
-        "load": "Error al obtener la información de IP"
+        "load": "Error al obtener la información de IP",
+        "loadWithDetails": "No se pudo obtener la información de IP: {{message}}",
+        "noServices": "No hay servicios de detección de IP disponibles"
       }
     },
     "currentProxy": {
@@ -96,6 +98,18 @@
         "group": "Grupo de proxy",
         "proxy": "Nodo",
         "noActiveNode": "No hay nodos de proxy activos"
+      },
+      "status": {
+        "testing": "Probando",
+        "untested": "Sin probar",
+        "error": "Error",
+        "timeout": "Tiempo agotado",
+        "latencyHigh": "Latencia alta",
+        "latencyMedium": "Latencia moderada",
+        "latencyGood": "Latencia buena",
+        "latencyExcellent": "Latencia excelente",
+        "uninitialized": "Sin inicializar",
+        "noProxyNode": "Sin nodo proxy"
       }
     },
     "tests": {
@@ -114,11 +128,17 @@
       },
       "patterns": {
         "minutes": "{{time}} Minutes"
-      }
+      },
+      "unknownTime": "Hora desconocida",
+      "chartStyles": {
+        "smooth": "Suave",
+        "linear": "Lineal"
+      },
+      "diagnostics": "Puntos: {{points}} | Comprimido: {{compressed}} | FPS: {{fps}}"
     },
     "clashMode": {
       "errors": {
-        "communication": "Core communication error"
+        "communication": "Error de comunicación del núcleo, reinicie el equipo e inténtelo de nuevo"
       },
       "labels": {
         "rule": "Modo de reglas",

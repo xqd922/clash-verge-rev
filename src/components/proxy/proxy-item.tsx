@@ -7,9 +7,10 @@ import {
   ListItemIcon,
   ListItemText,
   styled,
-  SxProps,
-  Theme,
+  type SxProps,
+  type Theme,
 } from '@mui/material'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { BaseLoading } from '@/components/base'
@@ -17,19 +18,24 @@ import { useProxyDelayState } from '@/hooks/use-proxy-delay-state'
 import {
   getProxyNowLabel,
   SMART_RANK_I18N_KEY,
-  type SmartRank,
   useSmartWeights,
+  type SmartRank,
 } from '@/hooks/use-smart-weights'
 import delayManager from '@/services/delay'
+import {
+  memberDetails,
+  type ProxyGroupView,
+  type ResolvedProxyMember,
+} from '@/types/proxy-view'
 
 interface Props {
-  group: IProxyGroupItem
-  proxy: IProxyItem
+  group: ProxyGroupView
+  member: ResolvedProxyMember
   selected: boolean
   showType?: boolean
   smartRank?: SmartRank
   sx?: SxProps<Theme>
-  onClick?: (name: string) => void
+  onClick?: (member: ResolvedProxyMember) => void
 }
 
 const Widget = styled(Box)(() => ({
@@ -51,44 +57,67 @@ const TypeBox = styled('span')(({ theme }) => ({
 }))
 
 export const ProxyItem = (props: Props) => {
+  const { t } = useTranslation()
   const {
     group,
-    proxy,
+    member,
     selected,
     showType = true,
     smartRank,
     sx,
     onClick,
   } = props
-  const { t } = useTranslation()
+  const details = memberDetails(member)
+  const unresolved = member.kind === 'unresolved'
+  const name = member.ref.name
+  const type = unresolved ? member.ref.reason : (details?.type ?? '')
 
-  const { delayValue, isPreset, timeout, onDelay } = useProxyDelayState(
-    proxy,
-    group.name,
-    group.type,
+  // Smart 子组（GLOBAL 视图）：用权重最高的节点替代 now 展示
+  const isSmartMember = member.kind === 'group' && member.group.type === 'Smart'
+  const smartMemberNames = useMemo(
+    () =>
+      member.kind === 'group'
+        ? member.group.members.map((m) => m.name)
+        : undefined,
+    [member],
   )
-  const isSmart = proxy.type === 'Smart'
-  const { topNodes } = useSmartWeights(proxy.name, isSmart, proxy.all)
-  const proxyNow = getProxyNowLabel(proxy.type, proxy.now, topNodes[0])
+  const { topNodes: memberTopNodes } = useSmartWeights(
+    member.ref.name,
+    isSmartMember,
+    smartMemberNames,
+  )
+  const now =
+    member.kind === 'group'
+      ? getProxyNowLabel(member.group.type, member.group.now, memberTopNodes[0])
+      : undefined
+
+  // -1/<=0 为不显示，-2 为 loading
+  const { delayValue, isPreset, timeout, onDelay } = useProxyDelayState(
+    member,
+    group.name,
+  )
 
   return (
     <ListItem sx={sx}>
       <ListItemButton
         dense
-        selected={selected}
-        onClick={() => onClick?.(proxy.name)}
+        disabled={unresolved}
+        selected={!unresolved && selected}
+        onClick={unresolved ? undefined : () => onClick?.(member)}
         sx={[
-          { borderRadius: 1, borderLeft: '3px solid transparent' },
+          { borderRadius: 1 },
           ({ palette: { mode, primary } }) => {
             const bgcolor = mode === 'light' ? '#ffffff' : '#24252f'
             const selectColor = mode === 'light' ? primary.main : primary.light
-            const showDelay = delayValue >= 0
+            const showDelay = delayValue > 0
 
             return {
               '&:hover .the-check': { display: !showDelay ? 'block' : 'none' },
               '&:hover .the-delay': { display: showDelay ? 'block' : 'none' },
               '&:hover .the-icon': { display: 'none' },
               '&.Mui-selected': {
+                width: `calc(100% + 3px)`,
+                marginLeft: `-3px`,
                 borderLeft: `3px solid ${selectColor}`,
                 bgcolor:
                   mode === 'light'
@@ -103,7 +132,7 @@ export const ProxyItem = (props: Props) => {
         ]}
       >
         <ListItemText
-          title={proxy.name}
+          title={name}
           secondary={
             <>
               <Box
@@ -114,21 +143,28 @@ export const ProxyItem = (props: Props) => {
                   color: 'text.primary',
                 }}
               >
-                {proxy.name}
-                {showType && proxyNow && ` - ${proxyNow}`}
+                {name}
+                {showType && now && ` - ${now}`}
               </Box>
-              {showType && !!proxy.provider && (
-                <TypeBox>{proxy.provider}</TypeBox>
-              )}
-              {showType && smartRank && (
+              {showType && <TypeBox>{type}</TypeBox>}
+              {!unresolved && showType && smartRank && (
                 <TypeBox>{t(SMART_RANK_I18N_KEY[smartRank])}</TypeBox>
               )}
-              {showType && <TypeBox>{proxy.type}</TypeBox>}
-              {showType && proxy.udp && <TypeBox>UDP</TypeBox>}
-              {showType && proxy.xudp && <TypeBox>XUDP</TypeBox>}
-              {showType && proxy.tfo && <TypeBox>TFO</TypeBox>}
-              {showType && proxy.mptcp && <TypeBox>MPTCP</TypeBox>}
-              {showType && proxy.smux && <TypeBox>SMUX</TypeBox>}
+              {!unresolved && showType && details?.udp && (
+                <TypeBox>UDP</TypeBox>
+              )}
+              {!unresolved && showType && details?.xudp && (
+                <TypeBox>XUDP</TypeBox>
+              )}
+              {!unresolved && showType && details?.tfo && (
+                <TypeBox>TFO</TypeBox>
+              )}
+              {!unresolved && showType && details?.mptcp && (
+                <TypeBox>MPTCP</TypeBox>
+              )}
+              {!unresolved && showType && details?.smux && (
+                <TypeBox>SMUX</TypeBox>
+              )}
             </>
           }
         />
@@ -140,52 +176,48 @@ export const ProxyItem = (props: Props) => {
             display: isPreset ? 'none' : '',
           }}
         >
-          {delayValue === -2 && (
+          {!unresolved && delayValue === -2 && (
             <Widget>
               <BaseLoading />
             </Widget>
           )}
 
-          {!proxy.provider && delayValue !== -2 && (
-            // provider 的节点不支持检测
+          {!unresolved && delayValue !== -2 && (
             <Widget
               className="the-check"
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                onDelay()
+                void onDelay()
               }}
               sx={({ palette }) => ({
                 display: 'none', // hover 时显示
                 ':hover': { bgcolor: alpha(palette.primary.main, 0.15) },
               })}
             >
-              Check
+              {t('shared.actions.check')}
             </Widget>
           )}
 
-          {delayValue >= 0 && (
+          {!unresolved && delayValue > 0 && (
             // 显示延迟
             <Widget
               className="the-delay"
               onClick={(e) => {
-                if (proxy.provider) return
                 e.preventDefault()
                 e.stopPropagation()
-                onDelay()
+                void onDelay()
               }}
               sx={({ palette }) => ({
                 color: delayManager.formatDelayColor(delayValue, timeout),
-                ...(!proxy.provider
-                  ? { ':hover': { bgcolor: alpha(palette.primary.main, 0.15) } }
-                  : {}),
+                ':hover': { bgcolor: alpha(palette.primary.main, 0.15) },
               })}
             >
               {delayManager.formatDelay(delayValue, timeout)}
             </Widget>
           )}
 
-          {delayValue !== -2 && delayValue < 0 && selected && (
+          {!unresolved && delayValue !== -2 && delayValue <= 0 && selected && (
             // 展示已选择的 icon
             <CheckCircleOutlineRounded
               className="the-icon"

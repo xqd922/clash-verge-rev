@@ -1,6 +1,7 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { getSmartWeights } from 'tauri-plugin-mihomo-api'
+
+import { getCacheData, useQuery } from '@/services/query-client'
 
 interface RawNodeRankItem {
   Name: string
@@ -113,10 +114,8 @@ export function useSmartWeights(
   enabled: boolean,
   proxyNames?: string[],
 ): UseSmartWeights {
-  const queryClient = useQueryClient()
-  const profileId = queryClient.getQueryData<IProfilesConfig>([
-    'getProfiles',
-  ])?.current
+  // getProfiles 缓存由 SWR 封装层维护
+  const profileId = getCacheData<IProfilesConfig>(['getProfiles'])?.current
 
   // 用代理组节点列表特征作为 queryKey 的一部分
   // 当配置切换后代理组节点变化时，自动触发 refetch

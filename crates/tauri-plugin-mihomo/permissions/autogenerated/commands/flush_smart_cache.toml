@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-flush-smart-cache"
+description = "Enables the flush_smart_cache command without any pre-configured scope."
+commands.allow = ["flush_smart_cache"]
+
+[[permission]]
+identifier = "deny-flush-smart-cache"
+description = "Denies the flush_smart_cache command without any pre-configured scope."
+commands.deny = ["flush_smart_cache"]

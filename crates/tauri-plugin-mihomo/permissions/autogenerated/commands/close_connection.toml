@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-close-connection"
+description = "Enables the close_connection command without any pre-configured scope."
+commands.allow = ["close_connection"]
+
+[[permission]]
+identifier = "deny-close-connection"
+description = "Denies the close_connection command without any pre-configured scope."
+commands.deny = ["close_connection"]

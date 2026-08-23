@@ -124,39 +124,31 @@ impl Hotkey {
                 });
             }
             HotkeyFunction::ClashModeRule => {
-                AsyncHandler::spawn(async move || match feat::change_clash_mode("rule".into()).await {
-                    Ok(()) => {
-                        notify_event(NotificationEvent::ClashModeChanged { mode: "Rule" }).await;
-                    }
-                    Err(err) => {
-                        logging!(error, Type::Hotkey, "Failed to switch Clash mode: {err}");
-                    }
+                AsyncHandler::spawn(async move || {
+                    // 错误已在 change_clash_mode 内部记录，此处显式忽略返回值
+                    let _ = feat::change_clash_mode("rule".into()).await;
+                    notify_event(NotificationEvent::ClashModeChanged { mode: "Rule" }).await;
                 });
             }
             HotkeyFunction::ClashModeGlobal => {
-                AsyncHandler::spawn(async move || match feat::change_clash_mode("global".into()).await {
-                    Ok(()) => {
-                        notify_event(NotificationEvent::ClashModeChanged { mode: "Global" }).await;
-                    }
-                    Err(err) => {
-                        logging!(error, Type::Hotkey, "Failed to switch Clash mode: {err}");
-                    }
+                AsyncHandler::spawn(async move || {
+                    // 错误已在 change_clash_mode 内部记录，此处显式忽略返回值
+                    let _ = feat::change_clash_mode("global".into()).await;
+                    notify_event(NotificationEvent::ClashModeChanged { mode: "Global" }).await;
                 });
             }
             HotkeyFunction::ClashModeDirect => {
-                AsyncHandler::spawn(async move || match feat::change_clash_mode("direct".into()).await {
-                    Ok(()) => {
-                        notify_event(NotificationEvent::ClashModeChanged { mode: "Direct" }).await;
-                    }
-                    Err(err) => {
-                        logging!(error, Type::Hotkey, "Failed to switch Clash mode: {err}");
-                    }
+                AsyncHandler::spawn(async move || {
+                    // 错误已在 change_clash_mode 内部记录，此处显式忽略返回值
+                    let _ = feat::change_clash_mode("direct".into()).await;
+                    notify_event(NotificationEvent::ClashModeChanged { mode: "Direct" }).await;
                 });
             }
             HotkeyFunction::ToggleSystemProxy => {
                 AsyncHandler::spawn(async move || {
-                    let is_proxy_enabled = feat::toggle_system_proxy().await;
-                    notify_event(NotificationEvent::SystemProxyToggled(is_proxy_enabled)).await;
+                    if let Some(is_proxy_enabled) = feat::toggle_system_proxy().await {
+                        notify_event(NotificationEvent::SystemProxyToggled(is_proxy_enabled)).await;
+                    }
                 });
             }
             HotkeyFunction::ToggleTunMode => {

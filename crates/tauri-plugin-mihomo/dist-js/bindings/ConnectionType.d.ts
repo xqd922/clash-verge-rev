@@ -1,1 +1,3 @@
-export type ConnectionType = "HTTP" | "HTTPS" | "Socks4" | "Socks5" | "ShadowSocks" | "Vmess" | "Vless" | "Redir" | "TProxy" | "Trojan" | "Tunnel" | "Tun" | "Tuic" | "Hysteria2" | "AnyTLS" | "Inner";
+export type ConnectionType = "HTTP" | "HTTPS" | "SOCKS4" | "SOCKS5" | "SHADOWSOCKS" | "SNELL" | "VMESS" | "VLESS" | "REDIR" | "TPROXY" | "TROJAN" | "TUNNEL" | "TUN" | "TUIC" | "HYSTERIA2" | "ANYTLS" | "MIERU" | "SUDOKU" | "TRUSTTUNNEL" | "INNER" | {
+    "Unknown": string;
+};

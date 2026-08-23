@@ -21,7 +21,6 @@ import {
   TextSnippetOutlined,
 } from '@mui/icons-material'
 import { Box, Button, Grid, IconButton, Stack } from '@mui/material'
-import { useQuery } from '@tanstack/react-query'
 import { listen, TauriEvent } from '@tauri-apps/api/event'
 import { readText } from '@tauri-apps/plugin-clipboard-manager'
 import { readTextFile } from '@tauri-apps/plugin-fs'
@@ -45,7 +44,6 @@ import {
   createProfile,
   deleteProfile,
   enhanceProfiles,
-  getProfiles,
   //restartCore,
   getRuntimeLogs,
   importProfile,
@@ -53,7 +51,7 @@ import {
   updateProfile,
 } from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
-import { queryClient } from '@/services/query-client'
+import { revalidateQuery, useQuery } from '@/services/query-client'
 import { useSetLoadingCache } from '@/services/states'
 import { debugLog } from '@/utils/debug'
 
@@ -141,8 +139,8 @@ const ProfilePage = () => {
     try {
       // 只失效 profiles 相关 query，不影响 WS 订阅、IP 缓存等其他 query
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['getProfiles'] }),
-        queryClient.invalidateQueries({ queryKey: ['getRuntimeLogs'] }),
+        void revalidateQuery(['getProfiles']),
+        void revalidateQuery(['getRuntimeLogs']),
       ])
 
       // 强制重新获取配置数据
@@ -273,10 +271,7 @@ const ProfilePage = () => {
     console.warn(`[导入刷新] 常规刷新失败，尝试清除缓存重新获取`)
     try {
       // 清除缓存并重新获取
-      await queryClient.fetchQuery({
-        queryKey: ['getProfiles'],
-        queryFn: getProfiles,
-      })
+      await revalidateQuery(['getProfiles'])
       showNotice.error(
         'profiles.page.feedback.notifications.importNeedsRefresh',
         3000,

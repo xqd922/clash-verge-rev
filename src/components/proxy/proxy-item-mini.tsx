@@ -1,5 +1,6 @@
 import { CheckCircleOutlineRounded } from '@mui/icons-material'
 import { alpha, Box, ListItemButton, styled, Typography } from '@mui/material'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { BaseLoading } from '@/components/base'
@@ -7,40 +8,66 @@ import { useProxyDelayState } from '@/hooks/use-proxy-delay-state'
 import {
   getProxyNowLabel,
   SMART_RANK_I18N_KEY,
-  type SmartRank,
   useSmartWeights,
+  type SmartRank,
 } from '@/hooks/use-smart-weights'
 import delayManager from '@/services/delay'
+import {
+  memberDetails,
+  type ProxyGroupView,
+  type ResolvedProxyMember,
+} from '@/types/proxy-view'
 
 interface Props {
-  group: IProxyGroupItem
-  proxy: IProxyItem
+  group: ProxyGroupView
+  member: ResolvedProxyMember
   selected: boolean
   showType?: boolean
   smartRank?: SmartRank
-  onClick?: (name: string) => void
+  onClick?: (member: ResolvedProxyMember) => void
 }
 
 // 多列布局
 export const ProxyItemMini = (props: Props) => {
-  const { group, proxy, selected, showType = true, smartRank, onClick } = props
+  const { group, member, selected, showType = true, smartRank, onClick } = props
+  const details = memberDetails(member)
+  const unresolved = member.kind === 'unresolved'
+  const name = member.ref.name
+  const type = unresolved ? member.ref.reason : (details?.type ?? '')
+
+  // Smart 子组（GLOBAL 视图）：用权重最高的节点替代 now 展示
+  const isSmartMember = member.kind === 'group' && member.group.type === 'Smart'
+  const smartMemberNames = useMemo(
+    () =>
+      member.kind === 'group'
+        ? member.group.members.map((m) => m.name)
+        : undefined,
+    [member],
+  )
+  const { topNodes: memberTopNodes } = useSmartWeights(
+    member.ref.name,
+    isSmartMember,
+    smartMemberNames,
+  )
+  const now =
+    member.kind === 'group'
+      ? getProxyNowLabel(member.group.type, member.group.now, memberTopNodes[0])
+      : undefined
 
   const { t } = useTranslation()
 
+  // -1/<=0 为不显示，-2 为 loading
   const { delayValue, isPreset, timeout, onDelay } = useProxyDelayState(
-    proxy,
+    member,
     group.name,
-    group.type,
   )
-  const isSmart = proxy.type === 'Smart'
-  const { topNodes } = useSmartWeights(proxy.name, isSmart, proxy.all)
-  const proxyNow = getProxyNowLabel(proxy.type, proxy.now, topNodes[0])
 
   return (
     <ListItemButton
       dense
-      selected={selected}
-      onClick={() => onClick?.(proxy.name)}
+      disabled={unresolved}
+      selected={!unresolved && selected}
+      onClick={unresolved ? undefined : () => onClick?.(member)}
       sx={[
         {
           height: 56,
@@ -49,11 +76,10 @@ export const ProxyItemMini = (props: Props) => {
           pr: 1,
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderLeft: '3px solid transparent',
         },
         ({ palette: { mode, primary } }) => {
           const bgcolor = mode === 'light' ? '#ffffff' : '#24252f'
-          const showDelay = delayValue >= 0
+          const showDelay = delayValue > 0
           const selectColor = mode === 'light' ? primary.main : primary.light
 
           return {
@@ -68,6 +94,8 @@ export const ProxyItemMini = (props: Props) => {
             },
             '& .the-unpin': { filter: 'grayscale(1)' },
             '&.Mui-selected': {
+              width: `calc(100% + 3px)`,
+              marginLeft: `-3px`,
               borderLeft: `3px solid ${selectColor}`,
               bgcolor:
                 mode === 'light'
@@ -79,10 +107,7 @@ export const ProxyItemMini = (props: Props) => {
         },
       ]}
     >
-      <Box
-        title={`${proxy.name}\n${proxyNow ?? ''}`}
-        sx={{ overflow: 'hidden' }}
-      >
+      <Box title={`${name}\n${now ?? ''}`} sx={{ overflow: 'hidden' }}>
         <Typography
           variant="body2"
           component="div"
@@ -95,7 +120,7 @@ export const ProxyItemMini = (props: Props) => {
             whiteSpace: 'nowrap',
           }}
         >
-          {proxy.name}
+          {name}
         </Typography>
 
         {showType && (
@@ -107,7 +132,7 @@ export const ProxyItemMini = (props: Props) => {
               marginTop: '4px',
             }}
           >
-            {proxyNow && (
+            {now && (
               <Typography
                 variant="body2"
                 component="div"
@@ -121,43 +146,38 @@ export const ProxyItemMini = (props: Props) => {
                   marginRight: '8px',
                 }}
               >
-                {proxyNow}
+                {now}
               </Typography>
             )}
-            {!!proxy.provider && (
-              <TypeBox color="text.secondary" component="span">
-                {proxy.provider}
-              </TypeBox>
-            )}
-            {smartRank && (
+            <TypeBox color="text.secondary" component="span">
+              {type}
+            </TypeBox>
+            {!unresolved && smartRank && (
               <TypeBox color="text.secondary" component="span">
                 {t(SMART_RANK_I18N_KEY[smartRank])}
               </TypeBox>
             )}
-            <TypeBox color="text.secondary" component="span">
-              {proxy.type}
-            </TypeBox>
-            {proxy.udp && (
+            {!unresolved && details?.udp && (
               <TypeBox color="text.secondary" component="span">
                 UDP
               </TypeBox>
             )}
-            {proxy.xudp && (
+            {!unresolved && details?.xudp && (
               <TypeBox color="text.secondary" component="span">
                 XUDP
               </TypeBox>
             )}
-            {proxy.tfo && (
+            {!unresolved && details?.tfo && (
               <TypeBox color="text.secondary" component="span">
                 TFO
               </TypeBox>
             )}
-            {proxy.mptcp && (
+            {!unresolved && details?.mptcp && (
               <TypeBox color="text.secondary" component="span">
                 MPTCP
               </TypeBox>
             )}
-            {proxy.smux && (
+            {!unresolved && details?.smux && (
               <TypeBox color="text.secondary" component="span">
                 SMUX
               </TypeBox>
@@ -168,50 +188,47 @@ export const ProxyItemMini = (props: Props) => {
       <Box
         sx={{ ml: 0.5, color: 'primary.main', display: isPreset ? 'none' : '' }}
       >
-        {delayValue === -2 && (
+        {!unresolved && delayValue === -2 && (
           <Widget>
             <BaseLoading />
           </Widget>
         )}
-        {!proxy.provider && delayValue !== -2 && (
-          // provider 的节点不支持检测
+        {!unresolved && delayValue !== -2 && (
           <Widget
             className="the-check"
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
-              onDelay()
+              void onDelay()
             }}
             sx={({ palette }) => ({
               display: 'none', // hover 时显示
               ':hover': { bgcolor: alpha(palette.primary.main, 0.15) },
             })}
           >
-            Check
+            {t('shared.actions.check')}
           </Widget>
         )}
 
-        {delayValue >= 0 && (
+        {!unresolved && delayValue >= 0 && (
           // 显示延迟
           <Widget
             className="the-delay"
             onClick={(e) => {
-              if (proxy.provider) return
               e.preventDefault()
               e.stopPropagation()
-              onDelay()
+              void onDelay()
             }}
             sx={({ palette }) => ({
               color: delayManager.formatDelayColor(delayValue, timeout),
-              ...(!proxy.provider
-                ? { ':hover': { bgcolor: alpha(palette.primary.main, 0.15) } }
-                : {}),
+              ':hover': { bgcolor: alpha(palette.primary.main, 0.15) },
             })}
           >
             {delayManager.formatDelay(delayValue, timeout)}
           </Widget>
         )}
-        {proxy.type !== 'Direct' &&
+        {!unresolved &&
+          type !== 'Direct' &&
           delayValue !== -2 &&
           delayValue < 0 &&
           selected && (
@@ -222,10 +239,10 @@ export const ProxyItemMini = (props: Props) => {
             />
           )}
       </Box>
-      {group.fixed && group.fixed === proxy.name && group.type !== 'Smart' && (
+      {!unresolved && group.fixed && group.fixed === name && (
         // 展示 fixed 状态
         <span
-          className={proxy.name === group.now ? 'the-pin' : 'the-unpin'}
+          className={name === group.now ? 'the-pin' : 'the-unpin'}
           title={
             group.type === 'URLTest'
               ? t('proxies.page.labels.delayCheckReset')

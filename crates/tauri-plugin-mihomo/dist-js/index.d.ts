@@ -26,9 +26,8 @@ export declare function flushDNS(): Promise<void>;
 /**
  * 获取 Smart 代理组权重 (仅 Smart 核心)
  * @param groupName Smart 代理组名称
- * @returns 权重数据
  */
-export declare function getSmartWeights(groupName: string): Promise<Record<string, any>>;
+export declare function getSmartWeights(groupName: string): Promise<unknown>;
 /**
  * 清除 Smart 缓存数据 (仅 Smart 核心)
  */
@@ -201,16 +200,13 @@ export interface MessageKind<T, D> {
     type: T;
     data: D;
 }
-export interface CloseFrame {
-    code: number;
-    reason: string;
-}
-export type Message = MessageKind<"Text", string> | MessageKind<"Binary", number[]> | MessageKind<"Ping", number[]> | MessageKind<"Pong", number[]> | MessageKind<"Close", CloseFrame | null>;
+export type Message = MessageKind<"Text", string>;
 export declare class MihomoWebSocket {
-    id: number;
+    id: string;
+    private closed;
     private readonly listeners;
     private static instances;
-    constructor(id: number, listeners: Set<(arg: Message) => void>);
+    constructor(id: string, listeners: Set<(arg: Message) => void>);
     /**
      * 创建一个新的 WebSocket 连接，用于 Mihomo 的流量监控
      * @returns WebSocket 实例
@@ -238,11 +234,11 @@ export declare class MihomoWebSocket {
     addListener(cb: (arg: Message) => void): () => void;
     /**
      * 关闭 WebSocket 连接
-     * @param forceTimeout 强制关闭 WebSocket 连接等待的时间，单位: 毫秒, 默认为 0
      */
     close(): Promise<void>;
     /**
      * 清理全部的 websocket 连接资源
      */
     static cleanupAll(): Promise<void>;
+    static get_all_instances(): Promise<MihomoWebSocket[]>;
 }

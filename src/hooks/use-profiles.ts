@@ -1,13 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
-import { selectNodeForGroup } from 'tauri-plugin-mihomo-api'
+import { useCallback, useRef } from 'react'
+import { getProxies, selectNodeForGroup } from 'tauri-plugin-mihomo-api'
 
+import { getProfiles, patchProfile, patchProfilesConfig } from '@/services/cmds'
 import {
-  calcuProxies,
-  getProfiles,
-  patchProfile,
-  patchProfilesConfig,
-} from '@/services/cmds'
-import { queryClient } from '@/services/query-client'
+  revalidateQuery,
+  setCacheDataAsync,
+  useQuery,
+} from '@/services/query-client'
 import { debugLog } from '@/utils/debug'
 
 export const useProfiles = () => {
@@ -34,48 +33,44 @@ export const useProfiles = () => {
     refetchInterval: false,
   })
 
-  const mutateProfiles = async () => {
-    await refetch()
-  }
+  const refetchRef = useRef(refetch)
+  refetchRef.current = refetch
+  const mutateProfiles = useCallback(async () => {
+    await refetchRef.current()
+  }, [])
 
-  const patchProfiles = async (
-    value: Partial<IProfilesConfig>,
-    signal?: AbortSignal,
-    options?: { deferRefreshOnSuccess?: boolean },
-  ) => {
-    try {
-      if (signal?.aborted) {
-        throw new DOMException('Operation was aborted', 'AbortError')
-      }
-      const success = await patchProfilesConfig(value)
+  const patchProfiles = useCallback(
+    async (value: Partial<IProfilesConfig>) => {
+      try {
+        const outcome = await patchProfilesConfig(value)
 
-      if (signal?.aborted) {
-        throw new DOMException('Operation was aborted', 'AbortError')
-      }
+        if (outcome.status === 'valid') {
+          await setCacheDataAsync<IProfilesConfig>(
+            ['getProfiles'],
+            (current) => (current ? { ...current, ...value } : current),
+          )
+        } else if (outcome.status !== 'busy') {
+          await mutateProfiles()
+        }
 
-      if (!options?.deferRefreshOnSuccess || !success) {
+        return outcome
+      } catch (error) {
         await mutateProfiles()
-      }
-
-      return success
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
         throw error
       }
+    },
+    [mutateProfiles],
+  )
 
-      await mutateProfiles()
-      throw error
-    }
-  }
-
-  const patchCurrent = async (value: Partial<IProfileItem>) => {
-    if (profiles?.current) {
-      await patchProfile(profiles.current, value)
-      if (!value.selected) {
-        mutateProfiles()
+  const patchCurrent = useCallback(
+    async (value: Partial<IProfileItem>) => {
+      if (profiles?.current) {
+        await patchProfile(profiles.current, value)
+        void mutateProfiles()
       }
-    }
-  }
+    },
+    [mutateProfiles, profiles],
+  )
 
   // 根据selected的节点选择
   // targetProfileUid: 显式指定要恢复的目标配置，避免闭包中 profiles.current 是旧值
@@ -86,7 +81,7 @@ export const useProfiles = () => {
     try {
       debugLog('[ActivateSelected] 开始处理代理选择')
 
-      const proxiesData = await calcuProxies()
+      const proxiesData = await getProxies()
       const profileData = profileOverride ?? profiles
 
       if (!profileData || !proxiesData || !profileData.items) {
@@ -111,10 +106,6 @@ export const useProfiles = () => {
         return
       }
 
-      debugLog(
-        `[ActivateSelected] 当前profile有 ${selected.length} 个代理选择配置`,
-      )
-
       type SelectedEntry = { name?: string; now?: string }
       const selectedMap = Object.fromEntries(
         (selected as SelectedEntry[])
@@ -127,8 +118,12 @@ export const useProfiles = () => {
 
       let hasChange = false
       const newSelected: typeof selected = []
-      const { global, groups } = proxiesData
-      const selectableTypes = new Set([
+      const proxyRecord: Record<string, any> = proxiesData.proxies ?? {}
+      const global = proxyRecord['GLOBAL']
+      const groups = Object.values(proxyRecord).filter(
+        (g: any) => g?.all && g.name !== 'GLOBAL',
+      )
+      const selectableTypes = new Set<string>([
         'Selector',
         'URLTest',
         'Fallback',
@@ -145,7 +140,7 @@ export const useProfiles = () => {
         const savedProxy = selectedMap[name]
         const availableProxies = Array.isArray(group.all) ? group.all : []
 
-        if (!selectableTypes.has(type)) {
+        if (!selectableTypes.has(type as string)) {
           if (savedProxy != null || now != null) {
             const preferredProxy = now ? now : savedProxy
             newSelected.push({ name, now: preferredProxy })
@@ -160,13 +155,9 @@ export const useProfiles = () => {
           continue
         }
 
-        const existsInGroup = availableProxies.some((proxy) => {
-          if (typeof proxy === 'string') {
-            return proxy === savedProxy
-          }
-
-          return proxy?.name === savedProxy
-        })
+        const existsInGroup = (availableProxies as unknown as string[]).some(
+          (proxyName) => proxyName === savedProxy,
+        )
 
         if (!existsInGroup) {
           console.warn(
@@ -200,13 +191,10 @@ export const useProfiles = () => {
         return
       }
 
-      debugLog(`[ActivateSelected] 完成代理切换，保存新的选择配置`)
-
       try {
         await patchProfile(current.uid, { selected: newSelected })
-        debugLog('[ActivateSelected] 代理选择配置保存成功')
-
-        queryClient.setQueryData(['getProxies'], await calcuProxies())
+        // 选择已切换，重新拉取代理视图
+        await revalidateQuery(['getProxyView'])
       } catch (error: unknown) {
         console.error(
           '[ActivateSelected] 保存代理选择配置失败:',

@@ -1,1 +1,3 @@
-export type ProxyType = "Direct" | "Reject" | "RejectDrop" | "Compatible" | "Pass" | "Dns" | "Shadowsocks" | "ShadowsocksR" | "Snell" | "Socks5" | "Http" | "Vmess" | "Vless" | "Trojan" | "Hysteria" | "Hysteria2" | "WireGuard" | "Tuic" | "Ssh" | "Mieru" | "AnyTLS" | "Relay" | "Sudoku" | "Selector" | "Fallback" | "URLTest" | "LoadBalance" | "Smart";
+export type ProxyType = "Direct" | "Reject" | "RejectDrop" | "Compatible" | "Pass" | "PassRule" | "Dns" | "Shadowsocks" | "ShadowsocksR" | "Snell" | "Socks5" | "Http" | "Vmess" | "Vless" | "Trojan" | "Hysteria" | "Hysteria2" | "WireGuard" | "Tuic" | "Ssh" | "Mieru" | "Masque" | "AnyTLS" | "Relay" | "Sudoku" | "TrustTunnel" | "OpenVPN" | "Tailscale" | "GostRelay" | "Selector" | "Fallback" | "URLTest" | "LoadBalance" | "Smart" | {
+    "Unknown": string;
+};

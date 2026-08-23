@@ -1,4 +1,5 @@
 import type { TunStack } from "./TunStack";
+import type { JsonValue } from "./serde_json/JsonValue";
 export type TunConfig = {
     enable: boolean;
     device: string;
@@ -16,7 +17,8 @@ export type TunConfig = {
     autoRedirect?: boolean;
     autoRedirectInputMark?: number;
     autoRedirectOutputMark?: number;
-    loopbackAddress?: string;
+    autoRedirectIproute2FallbackRuleIndex?: number;
+    loopbackAddress?: Array<string>;
     strictRoute?: boolean;
     routeAddress?: Array<string>;
     routeAddressSet?: Array<string>;
@@ -35,8 +37,11 @@ export type TunConfig = {
     includeAndroidUser?: Array<number>;
     includePackage?: Array<string>;
     excludePackage?: Array<string>;
+    includeMacAddress?: Array<string>;
+    excludeMacAddress?: Array<string>;
     endpointIndependentNat?: boolean;
     udpTimeout?: number;
+    disableIcmpForwarding?: boolean;
     fileDescriptor: number;
     inet4RouteAddress?: Array<string>;
     inet6RouteAddress?: Array<string>;
@@ -44,4 +49,8 @@ export type TunConfig = {
     inet6RouteExcludeAddress?: Array<string>;
     recvmsgx?: boolean;
     sendmsgx?: boolean;
-};
+} & ({
+    [key in string]: number | string | boolean | Array<JsonValue> | {
+        [key in string]: JsonValue;
+    } | null;
+});

@@ -4,11 +4,12 @@ import { invoke } from '@tauri-apps/api/core'
 import { useLockFn } from 'ahooks'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { updateGeo } from 'tauri-plugin-mihomo-api'
+import { updateGeo, type LogLevel } from 'tauri-plugin-mihomo-api'
 
 import { DialogRef, Switch, TooltipIcon } from '@/components/base'
 import { useClash } from '@/hooks/use-clash'
 import { useClashLog } from '@/hooks/use-clash-log'
+import { useDisplayedMixedPort } from '@/hooks/use-displayed-mixed-port'
 import { useVerge } from '@/hooks/use-verge'
 import { invoke_uwp_tool } from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
@@ -36,6 +37,7 @@ const SettingClash = ({ onError }: Props) => {
 
   const { clash, version, mutateClash, patchClash } = useClash()
   const { verge, patchVerge } = useVerge()
+  const displayedMixedPort = useDisplayedMixedPort()
   const [, setClashLog] = useClashLog()
 
   const {
@@ -44,8 +46,6 @@ const SettingClash = ({ onError }: Props) => {
     'log-level': logLevel,
     'unified-delay': unifiedDelay,
   } = clash ?? {}
-
-  const { verge_mixed_port } = verge ?? {}
 
   // 独立跟踪DNS设置开关状态
   const [dnsSettingsEnabled, setDnsSettingsEnabled] = useState(() => {
@@ -191,7 +191,10 @@ const SettingClash = ({ onError }: Props) => {
           onFormat={(e: any) => e.target.value}
           onChange={(e) => onChangeData({ 'log-level': e })}
           onGuard={(e) => {
-            setClashLog((pre) => ({ ...pre!, logLevel: e }))
+            setClashLog((pre) => ({
+              ...pre!,
+              logLevel: e.toUpperCase() as LogLevel,
+            }))
             return patchClash({ 'log-level': e })
           }}
         >
@@ -220,11 +223,11 @@ const SettingClash = ({ onError }: Props) => {
           autoComplete="new-password"
           disabled={false}
           size="small"
-          value={verge_mixed_port ?? 7897}
+          value={displayedMixedPort}
           sx={{ width: 100, input: { py: '7.5px', cursor: 'pointer' } }}
           onClick={(e) => {
             portRef.current?.open()
-            ;(e.target as any).blur()
+            ;(e.target as HTMLElement).blur()
           }}
         />
       </SettingItem>

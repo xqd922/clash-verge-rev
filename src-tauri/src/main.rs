@@ -1,11 +1,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{
+    process::ExitCode,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
-fn main() {
+fn main() -> ExitCode {
     let default_parallelism = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
-    let worker_limit = std::cmp::min(default_parallelism, 16);
-    let blocking_limit = 4 * worker_limit;
+    let worker_limit = std::cmp::min(default_parallelism, 8);
+    let blocking_limit = 2 * worker_limit;
 
     #[allow(clippy::unwrap_used)]
     let tokio_runtime = tokio::runtime::Builder::new_multi_thread()
@@ -25,5 +28,5 @@ fn main() {
     #[cfg(feature = "tokio-trace")]
     console_subscriber::init();
 
-    app_lib::run();
+    app_lib::run()
 }

@@ -1,1 +1,3 @@
-export type DNSMode = "normal" | "fake-ip" | "redir-host" | "hosts";
+export type DNSMode = "Normal" | "FakeIP" | "Mapping" | "Hosts" | {
+    "Unknown": string;
+};

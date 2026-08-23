@@ -6,39 +6,25 @@ use std::pin::Pin;
 use std::time::Duration;
 use tauri::{Manager as _, WebviewWindow, Wry};
 
-/// 窗口操作结果
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum WindowOperationResult {
-    /// 窗口已显示并获得焦点
     Shown,
-    /// 窗口已隐藏
     Hidden,
-    /// 创建了新窗口
     Created,
-    /// 摧毁了窗口
     Destroyed,
-    /// 操作失败
     Failed,
-    /// 无需操作
     NoAction,
 }
 
-/// 窗口状态
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum WindowState {
-    /// 窗口可见且有焦点
     VisibleFocused,
-    /// 窗口可见但无焦点
     VisibleUnfocused,
-    /// 窗口最小化
     Minimized,
-    /// 窗口隐藏
     Hidden,
-    /// 窗口不存在
     NotExist,
 }
 
-// 窗口操作防抖机制
 const WINDOW_OPERATION_DEBOUNCE_MS: u64 = 625;
 static WINDOW_OPERATION_LIMITER: Lazy<Limiter> = Lazy::new(|| {
     Limiter::new(
@@ -55,10 +41,15 @@ fn should_handle_window_operation() -> bool {
     allow
 }
 
-/// 统一的窗口管理器
 pub struct WindowManager;
 
 impl WindowManager {
+    #[cfg(target_os = "macos")]
+    fn set_macos_activation_policy_regular() {
+        logging!(info, Type::Window, "应用 macOS 特定的激活策略");
+        handle::Handle::global().set_activation_policy_regular();
+    }
+
     pub fn get_main_window_with_state() -> (Option<WebviewWindow<Wry>>, WindowState) {
         let Some(window) = Self::get_main_window() else {
             return (None, WindowState::NotExist);
@@ -106,15 +97,12 @@ impl WindowManager {
         }
     }
 
-    /// 获取主窗口实例
     pub fn get_main_window() -> Option<WebviewWindow<Wry>> {
         let app_handle = handle::Handle::app_handle();
         app_handle.get_webview_window("main")
     }
 
-    /// 智能显示主窗口
     pub async fn show_main_window() -> WindowOperationResult {
-        // 防抖检查
         if !should_handle_window_operation() {
             return WindowOperationResult::NoAction;
         }
@@ -155,7 +143,6 @@ impl WindowManager {
         }
     }
 
-    /// 切换主窗口显示状态（显示/隐藏）
     pub async fn toggle_main_window() -> WindowOperationResult {
         if !should_handle_window_operation() {
             return WindowOperationResult::NoAction;
@@ -172,10 +159,8 @@ impl WindowManager {
         }
     }
 
-    // 窗口不存在时创建新窗口
     async fn handle_not_exist_toggle() -> WindowOperationResult {
         logging!(info, Type::Window, "窗口不存在，将创建新窗口");
-        // 由于已经有防抖保护，直接调用内部方法
         if Self::create_window(true).await {
             WindowOperationResult::Created
         } else {
@@ -183,11 +168,10 @@ impl WindowManager {
         }
     }
 
-    // 隐藏主窗口
     fn hide_main_window(window: Option<&WebviewWindow<Wry>>) -> WindowOperationResult {
         logging!(info, Type::Window, "窗口可见，将隐藏窗口");
         if let Some(window) = window {
-            match window.hide() {
+            match window.close() {
                 Ok(_) => {
                     logging!(info, Type::Window, "窗口已成功隐藏");
                     WindowOperationResult::Hidden
@@ -203,7 +187,6 @@ impl WindowManager {
         }
     }
 
-    // 激活已存在的主窗口
     fn activate_existing_main_window(window: Option<&WebviewWindow<Wry>>) -> WindowOperationResult {
         logging!(info, Type::Window, "窗口存在但被隐藏或最小化，将激活窗口");
         if let Some(window) = window {
@@ -214,13 +197,25 @@ impl WindowManager {
         }
     }
 
-    /// 激活窗口（取消最小化、显示、设置焦点）
     fn activate_window(window: &WebviewWindow<Wry>) -> WindowOperationResult {
         logging!(info, Type::Window, "开始激活窗口");
+        #[cfg(target_os = "macos")]
+        Self::set_macos_activation_policy_regular();
+
+        // After renderer termination, defer show/focus until reload finishes to avoid a white flash.
+        #[allow(unused_mut)]
+        let mut defer_show_to_page_load = false;
+        #[cfg(target_os = "macos")]
+        if crate::utils::resolve::window::take_webview_needs_reload() {
+            logging!(info, Type::Window, "渲染进程曾被系统终止，激活窗口前重载页面");
+            match window.reload() {
+                Ok(()) => defer_show_to_page_load = true,
+                Err(e) => logging!(warn, Type::Window, "重载页面失败，退回直接显示: {}", e),
+            }
+        }
 
         let mut operations_successful = true;
 
-        // 1. 如果窗口最小化，先取消最小化
         if window.is_minimized().unwrap_or(false) {
             logging!(info, Type::Window, "窗口已最小化，正在取消最小化");
             if let Err(e) = window.unminimize() {
@@ -229,32 +224,22 @@ impl WindowManager {
             }
         }
 
-        // 2. 显示窗口
-        if let Err(e) = window.show() {
-            logging!(warn, Type::Window, "显示窗口失败: {}", e);
-            operations_successful = false;
-        }
-
-        // 3. 设置焦点
-        if let Err(e) = window.set_focus() {
-            logging!(warn, Type::Window, "设置窗口焦点失败: {}", e);
-            operations_successful = false;
-        }
-
-        // 4. 平台特定的激活策略
-        #[cfg(target_os = "macos")]
-        {
-            logging!(info, Type::Window, "应用 macOS 特定的激活策略");
-            handle::Handle::global().set_activation_policy_regular();
+        if !defer_show_to_page_load {
+            if let Err(e) = window.show() {
+                logging!(warn, Type::Window, "显示窗口失败: {}", e);
+                operations_successful = false;
+            }
+            if let Err(e) = window.set_focus() {
+                logging!(warn, Type::Window, "设置窗口焦点失败: {}", e);
+                operations_successful = false;
+            }
         }
 
         #[cfg(target_os = "windows")]
         {
-            // Windows 尝试额外的激活方法
             if let Err(e) = window.set_always_on_top(true) {
                 logging!(debug, Type::Window, "设置置顶失败（非关键错误）: {}", e);
             }
-            // 立即取消置顶
             if let Err(e) = window.set_always_on_top(false) {
                 logging!(debug, Type::Window, "取消置顶失败（非关键错误）: {}", e);
             }
@@ -269,23 +254,19 @@ impl WindowManager {
         }
     }
 
-    /// 检查窗口是否可见
     pub fn is_main_window_visible(window: Option<&WebviewWindow<Wry>>) -> bool {
         window.map(|w| w.is_visible().unwrap_or(false)).unwrap_or(false)
     }
 
-    /// 检查窗口是否有焦点
     pub fn is_main_window_focused(window: Option<&WebviewWindow<Wry>>) -> bool {
         window.map(|w| w.is_focused().unwrap_or(false)).unwrap_or(false)
     }
 
-    /// 检查窗口是否最小化
     pub fn is_main_window_minimized(window: Option<&WebviewWindow<Wry>>) -> bool {
         window.map(|w| w.is_minimized().unwrap_or(false)).unwrap_or(false)
     }
 
-    /// 创建新窗口,防抖避免重复调用
-    /// 窗口创建后保持隐藏，由前端 index.html 在 overlay 渲染后调用 show，避免主题闪烁
+    /// Keep new windows hidden until the frontend overlay renders, avoiding a theme flash.
     pub fn create_window(should_create: bool) -> Pin<Box<dyn Future<Output = bool> + Send>> {
         Box::pin(async move {
             logging!(info, Type::Window, "开始创建主窗口, should_create={}", should_create);
@@ -294,14 +275,12 @@ impl WindowManager {
                 return false;
             }
 
+            #[cfg(target_os = "macos")]
+            Self::set_macos_activation_policy_regular();
+
             match build_new_window().await {
                 Ok(_) => {
                     logging!(info, Type::Window, "新窗口创建成功，等待前端渲染后显示");
-
-                    #[cfg(target_os = "macos")]
-                    {
-                        handle::Handle::global().set_activation_policy_regular();
-                    }
 
                     true
                 }
@@ -313,7 +292,6 @@ impl WindowManager {
         })
     }
 
-    /// 摧毁窗口
     pub fn destroy_main_window() -> WindowOperationResult {
         if let Some(window) = Self::get_main_window() {
             let _ = window.destroy();
@@ -328,7 +306,6 @@ impl WindowManager {
         WindowOperationResult::Failed
     }
 
-    /// 获取详细的窗口状态信息
     fn get_window_status_info() -> String {
         let (window, state) = Self::get_main_window_with_state();
         let is_visible = Self::is_main_window_visible(window.as_ref());

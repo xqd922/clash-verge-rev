@@ -21,15 +21,14 @@ import {
   flushSmartCache,
   getProxies,
   unfixedProxy,
-  upgradeCore,
 } from 'tauri-plugin-mihomo-api'
 
 import { BaseDialog, DialogRef } from '@/components/base'
 import { useClash, useClashInfo } from '@/hooks/use-clash'
 import { useVerge } from '@/hooks/use-verge'
-import { changeClashCore, restartCore } from '@/services/cmds'
+import { changeClashCore, restartCore, upgradeClashCore } from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
-import { queryClient } from '@/services/query-client'
+import { revalidateQuery } from '@/services/query-client'
 
 const VALID_CORE = [
   {
@@ -56,7 +55,7 @@ async function resetSmartGroups() {
       (p) => p?.type === 'Smart' && p?.all,
     )
     await Promise.allSettled(groups.map((g) => unfixedProxy(g!.name)))
-    queryClient.invalidateQueries({ queryKey: ['getProxies'] })
+    void revalidateQuery(['getProxyView'])
   } catch {}
 }
 
@@ -123,19 +122,16 @@ export function ClashCoreViewer({ ref }: { ref?: Ref<DialogRef> }) {
   const onUpgrade = useLockFn(async () => {
     try {
       setUpgrading(true)
-      await upgradeCore()
-      setUpgrading(false)
-      mutateVersion()
+      const report = await upgradeClashCore()
       showNotice.success(
-        t('settings.feedback.notifications.clash.versionUpdated'),
+        report.upgraded
+          ? t('settings.feedback.notifications.clash.versionUpdated')
+          : t('settings.feedback.notifications.clash.alreadyLatestVersion'),
       )
-    } catch (err: any) {
+    } catch (err) {
+      showNotice.error(err)
+    } finally {
       setUpgrading(false)
-      const errMsg = err?.response?.data?.message ?? String(err)
-      const showMsg = errMsg.includes('already using latest version')
-        ? t('settings.feedback.notifications.clash.alreadyLatestVersion')
-        : errMsg
-      showNotice.info(showMsg)
     }
   })
 

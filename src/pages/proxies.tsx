@@ -25,7 +25,7 @@ const ProxyPage = () => {
   const { t } = useTranslation()
 
   const { clashConfig } = useClashConfigData()
-  const { refreshClashConfig, refreshProxy } = useAppRefreshers()
+  const { refreshClashConfig } = useAppRefreshers()
   const { verge } = useVerge()
 
   const normalizedMode = clashConfig?.mode?.toLowerCase()
@@ -37,19 +37,11 @@ const ProxyPage = () => {
       closeAllConnections()
     }
     try {
+      // patchClashMode 在后端 PATCH 失败时会 reject，需提示用户而非静默失败
       await patchClashMode(mode)
+      refreshClashConfig()
     } catch (error) {
-      console.error('[ProxyDiagnostics] patchClashMode:failed', error)
-      showNotice.error('Failed to switch proxy mode:', error)
-      return
-    }
-
-    const refreshResults = await Promise.allSettled([
-      refreshClashConfig(),
-      refreshProxy(),
-    ])
-    if (refreshResults.some((result) => result.status === 'rejected')) {
-      console.warn('[ProxyDiagnostics] patchClashMode:refresh-failed')
+      showNotice.error(error)
     }
   })
 

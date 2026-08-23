@@ -2,8 +2,8 @@ import {
   AccessTimeRounded,
   MyLocationRounded,
   NetworkCheckRounded,
-  FilterAltRounded,
-  FilterAltOffRounded,
+  SearchOffRounded,
+  SearchRounded,
   VisibilityRounded,
   VisibilityOffRounded,
   WifiTetheringRounded,
@@ -11,7 +11,7 @@ import {
   SortByAlphaRounded,
   SortRounded,
 } from '@mui/icons-material'
-import { Box, IconButton, TextField, SxProps } from '@mui/material'
+import { Box, IconButton, TextField, type SxProps } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -162,11 +162,7 @@ export const ProxyHead = ({
           onHeadState({ textState: textState === 'filter' ? null : 'filter' })
         }
       >
-        {textState === 'filter' ? (
-          <FilterAltRounded />
-        ) : (
-          <FilterAltOffRounded />
-        )}
+        {textState === 'filter' ? <SearchOffRounded /> : <SearchRounded />}
       </IconButton>
 
       {textState === 'filter' && (

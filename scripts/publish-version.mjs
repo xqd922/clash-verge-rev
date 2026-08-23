@@ -1,6 +1,5 @@
-// scripts/publish-version.mjs
-import { spawn } from 'child_process'
-import { existsSync } from 'fs'
+import { execFileSync, spawn } from 'child_process'
+import { existsSync, readFileSync } from 'fs'
 import path from 'path'
 
 const rootDir = process.cwd()
@@ -17,7 +16,6 @@ if (!versionArg) {
   process.exit(1)
 }
 
-// 1. 调用 release-version.mjs
 const runRelease = () =>
   new Promise((resolve, reject) => {
     const child = spawn('node', [scriptPath, versionArg], { stdio: 'inherit' })
@@ -27,9 +25,28 @@ const runRelease = () =>
     })
   })
 
-// 2. 判断是否需要打 tag
 function isSemver(version) {
-  return /^v?\d+\.\d+\.\d+(-[0-9A-Za-z-.]+)?$/.test(version)
+  return /^v?\d+\.\d+\.\d+(-(alpha|beta|rc)(\.\d+)?)?(\+[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*)?$/i.test(
+    version,
+  )
+}
+
+function normalizeVersion(version) {
+  return version.startsWith('v') ? version : `v${version}`
+}
+
+function readPackageVersion() {
+  const pkg = JSON.parse(
+    readFileSync(path.join(rootDir, 'package.json'), 'utf8'),
+  )
+  return pkg.version
+}
+
+function validateTag(tag) {
+  if (!isSemver(tag)) {
+    console.error(`[ERROR]: Invalid git tag: ${tag}`)
+    process.exit(1)
+  }
 }
 
 async function run() {
@@ -37,22 +54,18 @@ async function run() {
 
   let tag = null
   if (versionArg === 'alpha') {
-    // 读取 package.json 里的主版本
-    const pkg = await import(path.join(rootDir, 'package.json'), {
-      assert: { type: 'json' },
-    })
-    tag = `v${pkg.default.version}-alpha`
+    tag = normalizeVersion(readPackageVersion())
   } else if (isSemver(versionArg)) {
-    // 1.2.3 或 v1.2.3
-    tag = versionArg.startsWith('v') ? versionArg : `v${versionArg}`
+    // 1.2.3、v1.2.3、1.2.3-beta.1 或 1.2.3+build.1
+    tag = normalizeVersion(versionArg)
   }
 
   if (tag) {
-    // 打 tag 并推送
-    const { execSync } = await import('child_process')
+    validateTag(tag)
+
     try {
-      execSync(`git tag ${tag}`, { stdio: 'inherit' })
-      execSync(`git push origin ${tag}`, { stdio: 'inherit' })
+      execFileSync('git', ['tag', tag], { stdio: 'inherit' })
+      execFileSync('git', ['push', 'origin', tag], { stdio: 'inherit' })
       console.log(`[INFO]: Git tag ${tag} created and pushed.`)
     } catch {
       console.error(`[ERROR]: Failed to create or push git tag: ${tag}`)

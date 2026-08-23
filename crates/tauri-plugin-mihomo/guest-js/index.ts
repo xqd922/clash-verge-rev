@@ -63,15 +63,11 @@ export async function flushDNS(): Promise<void> {
 /**
  * 获取 Smart 代理组权重 (仅 Smart 核心)
  * @param groupName Smart 代理组名称
- * @returns 权重数据
  */
-export async function getSmartWeights(
-  groupName: string,
-): Promise<Record<string, any>> {
-  return await invoke<Record<string, any>>(
-    "plugin:mihomo|get_smart_weights",
-    { groupName },
-  );
+export async function getSmartWeights(groupName: string): Promise<unknown> {
+  return await invoke<unknown>("plugin:mihomo|get_smart_weights", {
+    groupName,
+  });
 }
 
 /**
@@ -410,24 +406,77 @@ export interface MessageKind<T, D> {
   data: D;
 }
 
-export interface CloseFrame {
-  code: number;
-  reason: string;
+export type Message = MessageKind<"Text", string>;
+
+type RawTextChannelMessage =
+  string | ArrayBuffer | Uint8Array | number[] | Message;
+
+const textDecoder = new TextDecoder();
+
+function isMessageKind(message: RawTextChannelMessage): message is Message {
+  if (
+    typeof message !== "object" ||
+    message === null ||
+    Array.isArray(message)
+  ) {
+    return false;
+  }
+
+  const value = message as Partial<Message>;
+  return value.type === "Text" && typeof value.data === "string";
 }
 
-export type Message =
-  | MessageKind<"Text", string>
-  | MessageKind<"Binary", number[]>
-  | MessageKind<"Ping", number[]>
-  | MessageKind<"Pong", number[]>
-  | MessageKind<"Close", CloseFrame | null>;
+function normalizeWebSocketMessage(message: RawTextChannelMessage): Message {
+  if (isMessageKind(message)) {
+    return message;
+  }
+  if (typeof message === "string") {
+    return { type: "Text", data: message };
+  }
+
+  if (message instanceof ArrayBuffer) {
+    return { type: "Text", data: textDecoder.decode(new Uint8Array(message)) };
+  }
+
+  const bytes = Array.isArray(message) ? new Uint8Array(message) : message;
+  return { type: "Text", data: textDecoder.decode(bytes) };
+}
+
+function dispatchWebSocketMessage(
+  listeners: Set<(arg: Message) => void>,
+  message: RawTextChannelMessage,
+): void {
+  const normalizedMessage = normalizeWebSocketMessage(message);
+  listeners.forEach((listener) => {
+    listener(normalizedMessage);
+  });
+}
+
+async function openWebSocketCommand(
+  command: string,
+  args: Record<string, unknown> = {},
+): Promise<MihomoWebSocket> {
+  const listeners: Set<(arg: Message) => void> = new Set();
+  const onMessage = new Channel<RawTextChannelMessage>();
+  onMessage.onmessage = (message: RawTextChannelMessage): void => {
+    dispatchWebSocketMessage(listeners, message);
+  };
+
+  const id = await invoke<string>(`plugin:mihomo|${command}`, {
+    ...args,
+    onMessage,
+  });
+  return new MihomoWebSocket(id, listeners);
+}
 
 export class MihomoWebSocket {
-  id: number;
+  id: string;
+  private closed = false;
   private readonly listeners: Set<(arg: Message) => void>;
+
   private static instances = new Set<MihomoWebSocket>();
 
-  constructor(id: number, listeners: Set<(arg: Message) => void>) {
+  constructor(id: string, listeners: Set<(arg: Message) => void>) {
     this.id = id;
     this.listeners = listeners;
   }
@@ -437,17 +486,7 @@ export class MihomoWebSocket {
    * @returns WebSocket 实例
    */
   static async connect_traffic(): Promise<MihomoWebSocket> {
-    const listeners: Set<(arg: Message) => void> = new Set();
-    const onMessage = new Channel<Message>();
-    onMessage.onmessage = (message: Message): void => {
-      listeners.forEach((l) => {
-        l(message);
-      });
-    };
-    const id = await invoke<number>("plugin:mihomo|ws_traffic", {
-      onMessage,
-    });
-    const instance = new MihomoWebSocket(id, listeners);
+    const instance = await openWebSocketCommand("ws_traffic");
     MihomoWebSocket.instances.add(instance);
     return instance;
   }
@@ -457,17 +496,7 @@ export class MihomoWebSocket {
    * @returns WebSocket 实例
    */
   static async connect_memory(): Promise<MihomoWebSocket> {
-    const listeners: Set<(arg: Message) => void> = new Set();
-    const onMessage = new Channel<Message>();
-    onMessage.onmessage = (message: Message): void => {
-      listeners.forEach((l) => {
-        l(message);
-      });
-    };
-    const id = await invoke<number>("plugin:mihomo|ws_memory", {
-      onMessage,
-    });
-    const instance = new MihomoWebSocket(id, listeners);
+    const instance = await openWebSocketCommand("ws_memory");
     MihomoWebSocket.instances.add(instance);
     return instance;
   }
@@ -477,17 +506,7 @@ export class MihomoWebSocket {
    * @returns WebSocket 实例
    */
   static async connect_connections(): Promise<MihomoWebSocket> {
-    const listeners: Set<(arg: Message) => void> = new Set();
-    const onMessage = new Channel<Message>();
-    onMessage.onmessage = (message: Message): void => {
-      listeners.forEach((l) => {
-        l(message);
-      });
-    };
-    const id = await invoke<number>("plugin:mihomo|ws_connections", {
-      onMessage,
-    });
-    const instance = new MihomoWebSocket(id, listeners);
+    const instance = await openWebSocketCommand("ws_connections");
     MihomoWebSocket.instances.add(instance);
     return instance;
   }
@@ -497,18 +516,7 @@ export class MihomoWebSocket {
    * @returns WebSocket 实例
    */
   static async connect_logs(level: LogLevel): Promise<MihomoWebSocket> {
-    const listeners: Set<(arg: Message) => void> = new Set();
-    const onMessage = new Channel<Message>();
-    onMessage.onmessage = (message: Message): void => {
-      listeners.forEach((l) => {
-        l(message);
-      });
-    };
-    const id = await invoke<number>("plugin:mihomo|ws_logs", {
-      level,
-      onMessage,
-    });
-    const instance = new MihomoWebSocket(id, listeners);
+    const instance = await openWebSocketCommand("ws_logs", { level });
     MihomoWebSocket.instances.add(instance);
     return instance;
   }
@@ -524,42 +532,23 @@ export class MihomoWebSocket {
     };
   }
 
-  // /**
-  //  * 发送消息到 WebSocket 连接
-  //  * @param message 发送的消息
-  //  */
-  // async send(message: Message | string | number[]): Promise<void> {
-  //   let m: Message;
-  //   if (typeof message === "string") {
-  //     m = { type: "Text", data: message };
-  //   } else if (typeof message === "object" && "type" in message) {
-  //     m = message;
-  //   } else if (Array.isArray(message)) {
-  //     m = { type: "Binary", data: message };
-  //   } else {
-  //     throw new Error(
-  //       "invalid `message` type, expected a `{ type: string, data: any }` object, a string or a numeric array",
-  //     );
-  //   }
-  //   await invoke("plugin:mihomo|ws_send", { id: this.id, message: m });
-  // }
-
   /**
    * 关闭 WebSocket 连接
-   * @param forceTimeout 强制关闭 WebSocket 连接等待的时间，单位: 毫秒, 默认为 0
    */
   async close(): Promise<void> {
+    if (this.closed) return;
+    this.closed = true;
+
+    // 立即断开 JS 强引用，不等待 IPC
+    this.listeners.clear();
+    MihomoWebSocket.instances.delete(this);
+
     try {
       await invoke("plugin:mihomo|ws_disconnect", {
         id: this.id,
-        forceTimeout: 0,
+        forceTimeout: 1000,
       });
-      this.listeners.clear();
-    } catch (ignore) {
-      // ignore
-    } finally {
-      MihomoWebSocket.instances.delete(this);
-    }
+    } catch {}
   }
 
   /**
@@ -569,7 +558,12 @@ export class MihomoWebSocket {
     await Promise.all(
       Array.from(MihomoWebSocket.instances).map((instance) => instance.close()),
     );
-    this.instances.clear();
+    MihomoWebSocket.instances.clear();
     await clearAllWsConnections();
+  }
+
+  // 用于开发中分析
+  static async get_all_instances() {
+    return Array.from(MihomoWebSocket.instances);
   }
 }

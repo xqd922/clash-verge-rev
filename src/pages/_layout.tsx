@@ -54,7 +54,7 @@ import {
   useNavMenuOrder,
 } from './_layout/hooks'
 import { handleNoticeMessage } from './_layout/utils'
-import { navItems } from './_routers'
+import { navItems } from './_navigation'
 import LogsPage from './logs'
 
 import 'dayjs/locale/ru'
