@@ -203,7 +203,7 @@ export const ProxyItem = (props: Props) => {
                 ':hover': { bgcolor: alpha(palette.primary.main, 0.15) },
               })}
             >
-              Check
+              {t('shared.actions.check')}
             </Widget>
           )}
 
