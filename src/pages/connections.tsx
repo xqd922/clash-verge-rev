@@ -113,7 +113,6 @@ const ConnectionsPage = () => {
   const filterConn = useMemo(() => {
     const orderFunc = orderFunctionMap[curOrderOpt]
 
-    if (isTableLayout && !hasSearch) return selectedConnections
     if (!hasSearch) return orderFunc([...selectedConnections])
 
     const matchConns = selectedConnections.filter((conn) => {
@@ -124,7 +123,7 @@ const ConnectionsPage = () => {
     })
 
     return orderFunc ? orderFunc(matchConns) : matchConns
-  }, [selectedConnections, isTableLayout, hasSearch, match, curOrderOpt])
+  }, [selectedConnections, hasSearch, match, curOrderOpt])
 
   const displayRows = useConnectionRowViews(
     isTableLayout ? EMPTY_CONNECTIONS : filterConn,
@@ -246,7 +245,7 @@ const ConnectionsPage = () => {
             {connections?.closedConnections.length}
           </Button>
         </ButtonGroup>
-        {!isTableLayout && (
+        {
           <BaseStyledSelect
             value={curOrderOpt}
             onChange={(e) => setCurOrderOpt(e.target.value as OrderKey)}
@@ -257,7 +256,7 @@ const ConnectionsPage = () => {
               </MenuItem>
             ))}
           </BaseStyledSelect>
-        )}
+        }
         <Box
           sx={{
             flex: 1,
