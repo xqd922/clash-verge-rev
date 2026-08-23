@@ -164,9 +164,9 @@ const META_ALPHA_VERSION_URL =
   'https://github.com/MetaCubeX/mihomo/releases/download/Prerelease-Alpha/version.txt'
 // ======== 内核版本锁定（盯住当前最新，不随上游浮动） ========
 // 想升级内核时改这里；置为空字符串 '' 则恢复自动拉取最新版
-const PINNED_META_VERSION = 'v1.19.29'
-const PINNED_META_ALPHA_VERSION = 'alpha-2e8a04c'
-const PINNED_META_SMART_VERSION = 'alpha-smart-f35e876'
+const PINNED_META_VERSION = 'v1.19.30'
+const PINNED_META_ALPHA_VERSION = 'alpha-f295ba6'
+const PINNED_META_SMART_VERSION = 'alpha-smart-834a506'
 
 const META_ALPHA_URL_PREFIX = `https://github.com/MetaCubeX/mihomo/releases/download/Prerelease-Alpha`
 let META_ALPHA_VERSION
