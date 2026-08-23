@@ -617,8 +617,9 @@ export const ConnectionTable = (props: Props) => {
 
   const toggleSorting = useCallback((field: ColumnField) => {
     setSorting((current) => {
-      if (!current || current.id !== field) return { id: field, desc: false }
-      if (!current.desc) return { id: field, desc: true }
+      // 首次点击即为降序（数值最大的在最上面），再点升序，第三次取消
+      if (!current || current.id !== field) return { id: field, desc: true }
+      if (current.desc) return { id: field, desc: false }
       return null
     })
   }, [])
