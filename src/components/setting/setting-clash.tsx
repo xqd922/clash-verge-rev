@@ -260,7 +260,20 @@ const SettingClash = ({ onError }: Props) => {
           />
         }
       >
-        <Typography sx={{ py: '7px', pr: 1 }}>{version}</Typography>
+        <Typography
+          noWrap
+          component="span"
+          title={version}
+          sx={{
+            py: '7px',
+            pr: 1,
+            maxWidth: '220px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {version}
+        </Typography>
       </SettingItem>
 
       {isWIN && (
