@@ -43,7 +43,6 @@ import {
 import { useI18n } from '@/hooks/use-i18n'
 import { useVerge } from '@/hooks/use-verge'
 import { useWindowDecorations } from '@/hooks/use-window'
-import ProxiesPage from '@/pages/proxies'
 import { useThemeMode } from '@/services/states'
 import getSystem from '@/utils/get-system'
 
@@ -124,7 +123,6 @@ const Layout = () => {
   const { switchLanguage } = useI18n()
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const isProxyPage = pathname === '/'
   const isLogsPage = pathname === '/logs'
   const logsPageMountedRef = useRef(false)
   if (isLogsPage) logsPageMountedRef.current = true
@@ -452,16 +450,9 @@ const Layout = () => {
           <div className="layout-content__right">
             <div className="the-bar"></div>
             <div className="the-content">
-              <div style={{ display: isProxyPage ? 'contents' : 'none' }}>
-                <BaseErrorBoundary>
-                  <ProxiesPage />
-                </BaseErrorBoundary>
-              </div>
-              {!isProxyPage && (
-                <BaseErrorBoundary>
-                  <Outlet />
-                </BaseErrorBoundary>
-              )}
+              <BaseErrorBoundary>
+                <Outlet />
+              </BaseErrorBoundary>
               {logsPageMountedRef.current && (
                 <div
                   style={{

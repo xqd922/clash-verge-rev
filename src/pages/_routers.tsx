@@ -7,14 +7,12 @@ export const router = createBrowserRouter([
   {
     path: '/',
     Component: Layout,
-    children: navItems
-      .filter((item) => item.path !== '/')
-      .map(
-        (item) =>
-          ({
-            path: item.path,
-            Component: item.Component,
-          }) as RouteObject,
-      ),
+    children: navItems.map(
+      (item) =>
+        ({
+          path: item.path,
+          Component: item.Component,
+        }) as RouteObject,
+    ),
   },
 ])
