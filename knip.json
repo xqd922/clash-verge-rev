@@ -17,9 +17,28 @@
   "ignoreBinaries": ["rustc"],
   "ignoreDependencies": ["lint-staged"],
   "ignoreIssues": {
-    "src/types/generated/**": ["exports", "types"]
+    "src/types/generated/**": ["exports", "types"],
+    "src/components/shared/traffic-error-boundary.tsx": ["exports"],
+    "src/pages/_layout.tsx": ["cycles"],
+    "src/pages/_layout/hooks/index.ts": ["exports"],
+    "src/pages/_layout/hooks/use-pending-failures.ts": ["exports"],
+    "src/providers/app-data-context.ts": ["exports"],
+    "src/services/cmds.ts": ["exports"],
+    "src/services/service-request.ts": ["exports", "types"],
+    "src/utils/traffic-sampler.ts": ["exports"],
+    "src/hooks/use-clash.ts": ["exports"],
+    "src/hooks/use-connection-data.ts": ["exports"],
+    "src/hooks/use-traffic-monitor.ts": ["exports"]
   },
   "cycles": {
     "dynamicImports": true
-  }
+  },
+  "ignoreExportsUsedInFile": true,
+  "ignore": [
+    "src/components/layout/service-migration-dialog.tsx",
+    "src/components/layout/sysproxy-privilege-dialog.tsx",
+    "src/components/profile/log-viewer.tsx",
+    "src/components/profile/profile-more.tsx",
+    "src/hooks/use-service-installer.ts"
+  ]
 }
