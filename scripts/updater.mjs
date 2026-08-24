@@ -251,6 +251,13 @@ async function processRelease(github, options, tag, isAlpha) {
       }
     })
 
+    // tauri-plugin-updater 的静态 JSON 必须带版本号，否则前端"检查更新"解析失败
+    const appVersion = tag.name.replace(/^v/, '')
+    updateData.version = appVersion
+    Object.values(updateData.platforms).forEach((value) => {
+      value.version = appVersion
+    })
+
     const updateDataNew = JSON.parse(JSON.stringify(updateData))
 
     Object.entries(updateDataNew.platforms).forEach(([key, value]) => {
