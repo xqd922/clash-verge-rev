@@ -35,7 +35,7 @@
   "identifier": "io.github.clash-verge-rev.clash-verge-rev",
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE4NTJDMEQ3RTA5RTBCOUIKUldTYkM1N2cxOEJTR0ppZ3hpTVpiRkhIQnB6ZitIYkFsMmFKMkdlQkJKK2ZaZVBvdkh3RVJYd0UK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEYzRjU3RjMxQzhCOEMzQ0QKUldUTnc3aklNWC8xODk5MVQ4K29JK1JoZ0pHWVNSY1Nuak5UU1loemtuUUZ3QkcxVkdyZTUzSkQK",
       "endpoints": [
         "https://github.com/xqd922/clash-verge-rev/releases/download/updater/update.json"
       ],
