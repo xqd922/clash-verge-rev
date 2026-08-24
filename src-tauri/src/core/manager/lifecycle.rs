@@ -46,11 +46,13 @@ const fn startup_decision(status: &ServiceStatus, service_required: bool) -> Sta
         ServiceStatus::Ready => StartupDecision::Service,
         ServiceStatus::NotInstalled if !service_required => StartupDecision::Sidecar,
         ServiceStatus::SidecarAllowed => StartupDecision::Sidecar,
+        // 服务已安装但探测不可达(例如安装器更新期间把它弄停)。等待不会让它复活;
+        // 先用 Sidecar 保住连接,Windows 上 handoff watcher 会在服务恢复后自动交接。
+        ServiceStatus::Unavailable(_) => StartupDecision::Sidecar,
         ServiceStatus::Checking
         | ServiceStatus::NotInstalled
         | ServiceStatus::NeedsReinstall
-        | ServiceStatus::InstallRequired
-        | ServiceStatus::Unavailable(_) => StartupDecision::Wait,
+        | ServiceStatus::InstallRequired => StartupDecision::Wait,
         ServiceStatus::UninstallRequired | ServiceStatus::ReinstallRequired | ServiceStatus::ForceReinstallRequired => {
             StartupDecision::Wait
         }
@@ -1338,21 +1340,25 @@ mod tests {
             startup_decision(&ServiceStatus::NeedsReinstall, true),
             StartupDecision::Wait
         );
-        assert_eq!(
-            startup_decision(&ServiceStatus::Unavailable("broken".into()), true),
-            StartupDecision::Wait
-        );
         assert_eq!(startup_decision(&ServiceStatus::Checking, true), StartupDecision::Wait);
+    }
+
+    #[test]
+    fn an_unreachable_but_installed_service_falls_back_to_sidecar() {
+        // 等待无法让已安装却不可达的服务复活;连接优先,恢复后由 handoff 交接。
+        for service_required in [true, false] {
+            assert_eq!(
+                startup_decision(&ServiceStatus::Unavailable("broken".into()), service_required),
+                StartupDecision::Sidecar,
+                "service_required={service_required}"
+            );
+        }
     }
 
     #[test]
     fn service_evidence_failures_never_silently_fall_back() {
         assert_eq!(
             startup_decision(&ServiceStatus::NeedsReinstall, false),
-            StartupDecision::Wait
-        );
-        assert_eq!(
-            startup_decision(&ServiceStatus::Unavailable("missing".into()), false),
             StartupDecision::Wait
         );
     }
