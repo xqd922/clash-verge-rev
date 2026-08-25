@@ -47,7 +47,6 @@ async fn train_smart_model_inner() -> Result<String> {
     std::fs::copy(&csv_path, workspace.join("smart_weight_data.csv")).context("复制训练数据失败")?;
 
     let (python, python_args) = detect_python().await?;
-    ensure_python_deps(&python, &python_args).await?;
 
     logging!(info, Type::Core, "smart model training started with {rows} rows");
     run_training(&python, &python_args, &workspace).await?;
@@ -89,38 +88,40 @@ fn count_csv_rows(path: &Path) -> Result<usize> {
     Ok(content.iter().filter(|&&b| b == b'\n').count())
 }
 
+/// 训练依赖的导入自检语句
+const DEP_CHECK: &str = "import lightgbm, pandas, sklearn, joblib";
+
+/// 依次探测候选解释器：能运行且已装齐训练依赖的才可用，
+/// 避免被 PATH 靠前但不可用的解释器（如未装 pip 的环境）卡住
 async fn detect_python() -> Result<(String, Vec<String>)> {
+    let requirements = trainer_workspace()?.join("requirements.txt");
     let candidates: [(&str, &[&str]); 2] = [("python", &[]), ("py", &["-3"])];
+    let mut problems = Vec::new();
     for (program, prefix) in candidates {
-        let mut args: Vec<&str> = prefix.to_vec();
-        args.push("--version");
-        if let Ok(output) = Command::new(program).args(&args).output().await
-            && output.status.success()
-        {
+        if !run_success(program, prefix, &["--version"]).await {
+            problems.push(format!("{program}: 未检测到"));
+            continue;
+        }
+        if run_success(program, prefix, &["-c", DEP_CHECK]).await {
             return Ok((program.into(), prefix.iter().map(|s| s.to_string()).collect()));
         }
+        problems.push(format!(
+            "{program}{}: 缺少训练依赖，请先执行 \"{program} {}\" -m pip install -r \"{}\"",
+            prefix.join(" "),
+            prefix.join(" "),
+            requirements.display()
+        ));
     }
-    bail!("未检测到 Python，请安装 Python 3.11+ 并加入 PATH 后重试")
+    bail!("没有可用的 Python 训练环境（Python 3.11+）：\n{}", problems.join("\n"))
 }
 
-async fn ensure_python_deps(python: &str, python_args: &[String]) -> Result<()> {
-    let check = "import lightgbm, pandas, sklearn, joblib";
-    let output = Command::new(python)
-        .args(python_args)
-        .arg("-c")
-        .arg(check)
+/// 运行子进程并判断是否成功退出
+async fn run_success(program: &str, prefix: &[&str], extra: &[&str]) -> bool {
+    Command::new(program)
+        .args(prefix.iter().chain(extra.iter()))
         .output()
-        .await?;
-    if output.status.success() {
-        return Ok(());
-    }
-    let workspace = trainer_workspace()?;
-    bail!(
-        "Python 缺少训练依赖，请先执行：\"{} {}\" -m pip install -r \"{}\"",
-        python,
-        python_args.join(" "),
-        workspace.join("requirements.txt").display()
-    )
+        .await
+        .is_ok_and(|output| output.status.success())
 }
 
 async fn run_training(python: &str, python_args: &[String], workspace: &Path) -> Result<()> {
