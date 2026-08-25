@@ -7,7 +7,8 @@ import svgr from 'vite-plugin-svgr'
 
 export default defineConfig({
   root: 'src',
-  server: { port: 3000 },
+  // Tauri 官方约定的开发端口
+  server: { port: 1420, strictPort: true },
   plugins: [
     svgr(),
     react(),
