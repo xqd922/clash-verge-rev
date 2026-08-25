@@ -267,7 +267,9 @@ const SettingClash = ({ onError }: Props) => {
           sx={{
             py: '7px',
             pr: 1,
-            maxWidth: '220px',
+            // 相对上限：始终给左侧标签预留 120px，避免长内核名把标签挤到换行
+            maxWidth: 'calc(100% - 120px)',
+            minWidth: 0,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
           }}
