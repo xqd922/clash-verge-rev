@@ -5,7 +5,7 @@ import { MihomoWebSocket, type LogLevel } from 'tauri-plugin-mihomo-api'
 
 import { getClashLogs } from '@/services/cmds'
 
-import { useClashLog } from './use-clash-log'
+import { sanitizeClashLogLevel, useClashLog } from './use-clash-log'
 import { useMihomoWsSubscription } from './use-mihomo-ws-subscription'
 
 const MAX_LOG_NUM = 1000
@@ -51,7 +51,7 @@ export const useLogData = () => {
   const queryClient = useQueryClient()
   const [clashLog] = useClashLog()
   const enableLog = clashLog.enable
-  const logLevel = clashLog.logLevel
+  const logLevel = sanitizeClashLogLevel(clashLog.logLevel)
   const allowedTypes = LOG_LEVEL_FILTERS[logLevel] ?? DEFAULT_LOG_TYPES
   const hasLoadedInitialLogsRef = useRef(false)
 

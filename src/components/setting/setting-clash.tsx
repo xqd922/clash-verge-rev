@@ -8,7 +8,7 @@ import { updateGeo } from 'tauri-plugin-mihomo-api'
 
 import { DialogRef, Switch, TooltipIcon } from '@/components/base'
 import { useClash } from '@/hooks/use-clash'
-import { useClashLog } from '@/hooks/use-clash-log'
+import { sanitizeClashLogLevel, useClashLog } from '@/hooks/use-clash-log'
 import { useVerge } from '@/hooks/use-verge'
 import { invoke_uwp_tool } from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
@@ -186,7 +186,7 @@ const SettingClash = ({ onError }: Props) => {
         }
       >
         <GuardState
-          value={logLevel === 'warn' ? 'warning' : (logLevel ?? 'info')}
+          value={sanitizeClashLogLevel(logLevel)}
           onCatch={onError}
           onFormat={(e: any) => e.target.value}
           onChange={(e) => onChangeData({ 'log-level': e })}
