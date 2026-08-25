@@ -409,6 +409,7 @@
         "autoLogClean": "Auto Log Clean",
         "autoDelayDetection": "Auto Delay Detection",
         "autoDelayDetectionInterval": "Auto Delay Detection Interval",
+        "trainSmartModel": "Smart Model Training",
         "defaultLatencyTest": "Default Latency Test",
         "defaultLatencyTimeout": "Default Latency Timeout"
       },
@@ -416,6 +417,7 @@
         "autoCloseConnections": "Terminate established connections when the proxy group selection or proxy mode changes",
         "enableBuiltinEnhanced": "Compatibility handling for the configuration file",
         "autoDelayDetection": "Periodically test the current node latency in the background",
+        "trainSmartModel": "Train a personal Smart model from locally collected data and replace Model.bin. Requires local Python; takes effect after core restart.",
         "defaultLatencyTest": "Used for HTTP client request testing only and won't make a difference to the configuration file"
       },
       "options": {
@@ -426,6 +428,10 @@
           "never": "Never Clean",
           "retainDays": "Retain {{n}} Days"
         }
+      },
+      "actions": {
+        "trainSmartModelNow": "Train Now",
+        "trainSmartModelWorking": "Training…"
       }
     },
     "update": {

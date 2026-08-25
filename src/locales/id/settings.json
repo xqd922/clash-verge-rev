@@ -409,6 +409,7 @@
         "autoLogClean": "Pembersihan Log Otomatis",
         "autoDelayDetection": "Deteksi Latensi Otomatis",
         "autoDelayDetectionInterval": "Interval Deteksi Latensi Otomatis",
+        "trainSmartModel": "Smart Model Training",
         "defaultLatencyTest": "Tes Latensi Default",
         "defaultLatencyTimeout": "Waktu Habis Latensi Default"
       },
@@ -416,6 +417,7 @@
         "autoCloseConnections": "Hentikan koneksi yang sudah ada saat pemilihan grup proksi atau mode proksi berubah",
         "enableBuiltinEnhanced": "Penanganan kompatibilitas untuk file konfigurasi",
         "autoDelayDetection": "Secara berkala menguji latensi node saat ini di latar belakang",
+        "trainSmartModel": "Train a personal Smart model from locally collected data and replace Model.bin. Requires local Python; takes effect after core restart.",
         "defaultLatencyTest": "Digunakan hanya untuk pengujian permintaan klien HTTP dan tidak akan mempengaruhi file konfigurasi"
       },
       "options": {
@@ -426,6 +428,10 @@
           "never": "Jangan Pernah Bersihkan",
           "retainDays": "Simpan {{n}} Hari"
         }
+      },
+      "actions": {
+        "trainSmartModelNow": "Train Now",
+        "trainSmartModelWorking": "Training…"
       }
     },
     "update": {

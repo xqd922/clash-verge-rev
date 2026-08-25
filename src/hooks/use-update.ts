@@ -31,14 +31,15 @@ export const updateLastCheckTime = (timestamp?: number): number => {
 
 // --- useUpdate hook ---
 
-export const useUpdate = (enabled: boolean = true) => {
+export type UpdateCheckMode = 'auto' | 'manual'
+
+export const useUpdate = (mode: UpdateCheckMode = 'auto') => {
   const { verge } = useVerge()
   const { auto_check_update } = verge || {}
 
-  // Determine if we should check for updates
-  // If enabled is explicitly false, don't check
-  // Otherwise, respect the auto_check_update setting (or default to true if null/undefined for manual triggers)
-  const shouldCheck = enabled && auto_check_update !== false
+  // auto：跟随「自动检查更新」开关；manual：从不主动请求，
+  // 仅展示手动「检查更新」按钮写入缓存的结果
+  const shouldCheck = mode === 'auto' && auto_check_update !== false
 
   const {
     data: updateInfo,
@@ -54,7 +55,7 @@ export const useUpdate = (enabled: boolean = true) => {
     enabled: shouldCheck,
     retry: 2,
     staleTime: 60 * 60 * 1000,
-    refetchInterval: 24 * 60 * 60 * 1000,
+    refetchInterval: mode === 'auto' ? 24 * 60 * 60 * 1000 : false,
     refetchOnWindowFocus: false,
   })
 

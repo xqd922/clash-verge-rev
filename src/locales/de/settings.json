@@ -409,6 +409,7 @@
         "autoLogClean": "Protokolle automatisch bereinigen",
         "autoDelayDetection": "Automatische Latenzprüfung",
         "autoDelayDetectionInterval": "Intervall für automatische Latenzprüfung",
+        "trainSmartModel": "Smart Model Training",
         "defaultLatencyTest": "Standard-Testlink",
         "defaultLatencyTimeout": "Test-Timeout"
       },
@@ -416,6 +417,7 @@
         "autoCloseConnections": "Wenn der ausgewählte Knoten in der Proxy-Gruppe oder der Proxy-Modus geändert wird, werden die bestehenden Verbindungen geschlossen.",
         "enableBuiltinEnhanced": "Kompatibilitätsbehandlung der Konfigurationsdatei",
         "autoDelayDetection": "Überprüft regelmäßig im Hintergrund die Latenz des aktuellen Knotens",
+        "trainSmartModel": "Train a personal Smart model from locally collected data and replace Model.bin. Requires local Python; takes effect after core restart.",
         "defaultLatencyTest": "Dies wird nur für HTTP-Client-Anfragentests verwendet und hat keine Auswirkungen auf die Konfigurationsdatei."
       },
       "options": {
@@ -426,6 +428,10 @@
           "never": "Nie bereinigen",
           "retainDays": "{{n}} Tage behalten"
         }
+      },
+      "actions": {
+        "trainSmartModelNow": "Train Now",
+        "trainSmartModelWorking": "Training…"
       }
     },
     "update": {

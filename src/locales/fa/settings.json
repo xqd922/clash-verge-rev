@@ -409,6 +409,7 @@
         "autoLogClean": "پاکسازی خودکار لاگ",
         "autoDelayDetection": "تشخیص تأخیر خودکار",
         "autoDelayDetectionInterval": "فاصله تشخیص تأخیر خودکار",
+        "trainSmartModel": "Smart Model Training",
         "defaultLatencyTest": "آزمون تأخیر پیش‌فرض",
         "defaultLatencyTimeout": "زمان انتظار تأخیر پیش‌فرض"
       },
@@ -416,6 +417,7 @@
         "autoCloseConnections": "اتصالات برقرار شده را هنگام تغییر انتخاب گروه پروکسی یا حالت پروکسی خاتمه دهید",
         "enableBuiltinEnhanced": "مدیریت سازگاری برای فایل پیکربندی",
         "autoDelayDetection": "به‌صورت دوره‌ای تأخیر گره فعلی را در پس‌زمینه آزمایش می‌کند",
+        "trainSmartModel": "Train a personal Smart model from locally collected data and replace Model.bin. Requires local Python; takes effect after core restart.",
         "defaultLatencyTest": "فقط برای تست درخواست‌های کلاینت HTTP استفاده می‌شود و بر فایل پیکربندی تأثیری نخواهد داشت"
       },
       "options": {
@@ -426,6 +428,10 @@
           "never": "هرگز پاک نکن",
           "retainDays": "نگهداری به مدت {{n}} روز"
         }
+      },
+      "actions": {
+        "trainSmartModelNow": "Train Now",
+        "trainSmartModelWorking": "Training…"
       }
     },
     "update": {
