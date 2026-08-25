@@ -3,6 +3,8 @@
 /target/
 gen/
 WixTools
-resources
+# resources 由 prebuild 脚本下载填充，整体忽略；仅训练脚本需要随仓库分发
+resources/*
+!resources/smart-trainer
 sidecar
 
