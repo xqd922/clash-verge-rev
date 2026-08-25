@@ -1,4 +1,4 @@
-import { getVergeConfig } from './cmds'
+import { getRuntimeConfig, getVergeConfig } from './cmds'
 import {
   cacheLanguage,
   getCachedLanguage,
@@ -7,6 +7,28 @@ import {
 } from './i18n'
 
 let vergeConfigCache: IVergeConfig | null | undefined
+
+// 与 vergeConfigCache 同理：为运行时 Clash 配置提供同步首帧数据，
+// 避免设置页开关（如 IPv6）先渲染默认值、数据到达后再翻转出现动画
+let runtimeConfigCache: IConfigData | null | undefined
+
+export const setPreloadRuntimeConfig = (config: IConfigData | null) => {
+  runtimeConfigCache = config
+}
+
+export const getPreloadRuntimeConfig = () => runtimeConfigCache
+
+export const preloadRuntimeConfig = async () => {
+  try {
+    const config = await getRuntimeConfig()
+    setPreloadRuntimeConfig(config)
+    return config
+  } catch (error) {
+    console.warn('[preload.ts] Failed to read runtime config:', error)
+    setPreloadRuntimeConfig(null)
+    return null
+  }
+}
 
 const detectSystemTheme = (): 'light' | 'dark' => {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function')
@@ -96,10 +118,12 @@ export const preloadLanguage = async (
 
 export const preloadAppData = async () => {
   const configPromise = preloadConfig()
+  const runtimeConfigPromise = preloadRuntimeConfig()
   const initialLanguage = await preloadLanguage(undefined, () => configPromise)
   const [config] = await Promise.all([
     configPromise,
     initializeLanguage(initialLanguage),
+    runtimeConfigPromise,
   ])
   const initialThemeMode = resolveThemeMode(config)
   return { initialThemeMode }

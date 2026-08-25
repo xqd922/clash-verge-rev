@@ -7,6 +7,10 @@ import {
   getRuntimeConfig,
   patchClashConfig,
 } from '@/services/cmds'
+import {
+  getPreloadRuntimeConfig,
+  setPreloadRuntimeConfig,
+} from '@/services/preload'
 import { queryClient } from '@/services/query-client'
 
 type MutateClashUpdater =
@@ -60,8 +64,14 @@ const validatePorts = (patch: ClashInfoPatch) => {
 export const useRuntimeConfig = (shouldFetch: boolean = true) => {
   return useQuery({
     queryKey: ['getRuntimeConfig'],
-    queryFn: getRuntimeConfig,
+    queryFn: async () => {
+      const config = await getRuntimeConfig()
+      setPreloadRuntimeConfig(config)
+      return config
+    },
     enabled: shouldFetch,
+    // 同步预载缓存作为首帧数据，避免开关先显示默认值再翻转出现动画
+    initialData: getPreloadRuntimeConfig() ?? undefined,
   })
 }
 
