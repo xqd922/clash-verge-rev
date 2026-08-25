@@ -221,6 +221,10 @@ release: 7.0.29
 
 The `personal` branch has its own release workflow separate from the main `release.yml`.
 
+### Commit Ordering: `release:` Goes Last
+
+Within a release cycle, land all `fix:` / `feat:` commits first; the version-bump commit (`release: X.Y.Z`) is always the FINAL commit before triggering the workflow, marking the exact tree that gets built. If a change is discovered after the bump commit, do not commit on top of it — reorder instead: `git reset --mixed HEAD~1`, commit the fixes, then re-create the bump commit so `release:` stays on top.
+
 ### Workflow: `.github/workflows/personal-release.yml`
 
 - **Trigger**: `workflow_dispatch` (manual only, via GitHub UI or `gh workflow run`)
