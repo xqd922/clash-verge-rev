@@ -176,6 +176,7 @@ mod app_init {
             cmd::get_runtime_logs,
             cmd::invoke_uwp_tool,
             cmd::copy_clash_env,
+            cmd::train_smart_model,
             cmd::sync_tray_proxy_selection,
             cmd::save_dns_config,
             cmd::apply_dns_config,

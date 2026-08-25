@@ -1,4 +1,5 @@
 import {
+  Button,
   InputAdornment,
   List,
   ListItem,
@@ -13,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 
 import { BaseDialog, DialogRef, Switch, TooltipIcon } from '@/components/base'
 import { useVerge } from '@/hooks/use-verge'
+import { trainSmartModel } from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
 
 export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
@@ -33,6 +35,19 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
     defaultLatencyTest: '',
     autoLogClean: 2,
     defaultLatencyTimeout: '' as number | '',
+  })
+  const [smartTraining, setSmartTraining] = useState(false)
+
+  const onTrainSmartModel = useLockFn(async () => {
+    setSmartTraining(true)
+    try {
+      const message = await trainSmartModel()
+      showNotice.success(message)
+    } catch (err) {
+      showNotice.error(err)
+    } finally {
+      setSmartTraining(false)
+    }
   })
 
   useImperativeHandle(ref, () => ({
@@ -369,6 +384,28 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
               },
             }}
           />
+        </ListItem>
+
+        <ListItem sx={{ padding: '5px 2px' }}>
+          <ListItemText
+            primary={t('settings.modals.misc.fields.trainSmartModel')}
+            sx={{ maxWidth: 'fit-content' }}
+          />
+          <TooltipIcon
+            title={t('settings.modals.misc.tooltips.trainSmartModel')}
+            sx={{ opacity: '0.7' }}
+          />
+          <Button
+            size="small"
+            variant="contained"
+            disabled={smartTraining}
+            onClick={onTrainSmartModel}
+            sx={{ marginLeft: 'auto' }}
+          >
+            {smartTraining
+              ? t('settings.modals.misc.actions.trainSmartModelWorking')
+              : t('settings.modals.misc.actions.trainSmartModelNow')}
+          </Button>
         </ListItem>
 
         <ListItem sx={{ padding: '5px 2px' }}>

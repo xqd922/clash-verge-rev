@@ -376,6 +376,10 @@ export async function invoke_uwp_tool() {
   )
 }
 
+export async function trainSmartModel() {
+  return invoke<string>('train_smart_model')
+}
+
 export async function getPortableFlag() {
   return invoke<boolean>('get_portable_flag')
 }
