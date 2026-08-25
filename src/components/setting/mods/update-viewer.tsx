@@ -111,7 +111,7 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
   const updateState = useUpdateState()
   const setUpdateState = useSetUpdateState()
 
-  const { updateInfo } = useUpdate()
+  const { updateInfo } = useUpdate('manual')
 
   const [downloaded, setDownloaded] = useState(0)
   const [total, setTotal] = useState(0)

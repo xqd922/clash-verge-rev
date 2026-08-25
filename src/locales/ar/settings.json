@@ -409,6 +409,7 @@
         "autoLogClean": "تنظيف السجلات تلقائيًا",
         "autoDelayDetection": "اكتشاف التأخير التلقائي",
         "autoDelayDetectionInterval": "الفاصل الزمني لاكتشاف التأخير التلقائي",
+        "trainSmartModel": "Smart Model Training",
         "defaultLatencyTest": "اختبار التأخير الافتراضي",
         "defaultLatencyTimeout": "مهلة التأخير الافتراضية"
       },
@@ -416,6 +417,7 @@
         "autoCloseConnections": "إنهاء الاتصالات القائمة عند تغيير اختيار مجموعة الوكيل أو وضع الوكيل",
         "enableBuiltinEnhanced": "معالجة توافق ملف التكوين",
         "autoDelayDetection": "يختبر زمن استجابة العقدة الحالية على نحو دوري في الخلفية",
+        "trainSmartModel": "Train a personal Smart model from locally collected data and replace Model.bin. Requires local Python; takes effect after core restart.",
         "defaultLatencyTest": "يُستخدم فقط لاختبار طلب HTTP العميل. لن يؤثر على ملف التكوين"
       },
       "options": {
@@ -426,6 +428,10 @@
           "never": "عدم التنظيف أبدًا",
           "retainDays": "الاحتفاظ لمدة {{n}} يومًا"
         }
+      },
+      "actions": {
+        "trainSmartModelNow": "Train Now",
+        "trainSmartModelWorking": "Training…"
       }
     },
     "update": {

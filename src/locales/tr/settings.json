@@ -409,6 +409,7 @@
         "autoLogClean": "Otomatik Günlük Temizleme",
         "autoDelayDetection": "Otomatik Gecikme Tespiti",
         "autoDelayDetectionInterval": "Otomatik Gecikme Tespiti Aralığı",
+        "trainSmartModel": "Smart Model Training",
         "defaultLatencyTest": "Varsayılan Gecikme Testi",
         "defaultLatencyTimeout": "Varsayılan Gecikme Zaman Aşımı"
       },
@@ -416,6 +417,7 @@
         "autoCloseConnections": "Vekil grup seçimi veya vekil modu değiştiğinde kurulan bağlantıları sonlandır",
         "enableBuiltinEnhanced": "Yapılandırma dosyası için uyumluluk işleme",
         "autoDelayDetection": "Arka planda mevcut düğümün gecikmesini periyodik olarak test eder",
+        "trainSmartModel": "Train a personal Smart model from locally collected data and replace Model.bin. Requires local Python; takes effect after core restart.",
         "defaultLatencyTest": "Yalnızca HTTP istemci isteği testi için kullanılır ve yapılandırma dosyasında bir fark yaratmaz"
       },
       "options": {
@@ -426,6 +428,10 @@
           "never": "Asla Temizleme",
           "retainDays": "{{n}} Gün Sakla"
         }
+      },
+      "actions": {
+        "trainSmartModelNow": "Train Now",
+        "trainSmartModelWorking": "Training…"
       }
     },
     "update": {

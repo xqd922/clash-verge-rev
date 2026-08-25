@@ -948,6 +948,10 @@ export interface TranslationResources {
           }
         }
         misc: {
+          actions: {
+            trainSmartModelNow: string
+            trainSmartModelWorking: string
+          }
           fields: {
             appLogLevel: string
             appLogMaxCount: string
@@ -961,6 +965,7 @@ export interface TranslationResources {
             defaultLatencyTimeout: string
             enableBuiltinEnhanced: string
             proxyLayoutColumns: string
+            trainSmartModel: string
           }
           options: {
             autoLogClean: {
@@ -977,6 +982,7 @@ export interface TranslationResources {
             autoDelayDetection: string
             defaultLatencyTest: string
             enableBuiltinEnhanced: string
+            trainSmartModel: string
           }
         }
         networkInterface: {

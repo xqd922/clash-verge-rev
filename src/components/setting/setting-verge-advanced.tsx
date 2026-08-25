@@ -14,6 +14,7 @@ import {
   openLogsDir,
 } from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
+import { queryClient } from '@/services/query-client'
 import { checkUpdateSafe as checkUpdate } from '@/services/update'
 import { version } from '@root/package.json'
 
@@ -25,7 +26,6 @@ import { LiteModeViewer } from './mods/lite-mode-viewer'
 import { MiscViewer } from './mods/misc-viewer'
 import { SettingItem, SettingList } from './mods/setting-comp'
 import { ThemeViewer } from './mods/theme-viewer'
-import { UpdateViewer } from './mods/update-viewer'
 
 interface Props {
   onError?: (err: Error) => void
@@ -39,7 +39,6 @@ const SettingVergeAdvanced = ({ onError: _ }: Props) => {
   const miscRef = useRef<DialogRef>(null)
   const themeRef = useRef<DialogRef>(null)
   const layoutRef = useRef<DialogRef>(null)
-  const updateRef = useRef<DialogRef>(null)
   const backupRef = useRef<DialogRef>(null)
   const liteModeRef = useRef<DialogRef>(null)
 
@@ -47,12 +46,13 @@ const SettingVergeAdvanced = ({ onError: _ }: Props) => {
     try {
       const info = await checkUpdate()
       updateLastCheckTime()
+      // 手动检查结果写入共享缓存，供更新弹窗（manual 模式）展示
+      queryClient.setQueryData(['checkUpdate'], info)
+      // 有更新时不自动弹窗，仅由标题栏红色 New 按钮提示，点击后再打开
       if (!info?.available) {
         showNotice.success(
           'settings.components.verge.advanced.notifications.latestVersion',
         )
-      } else {
-        updateRef.current?.open()
       }
     } catch (err: any) {
       showNotice.error(err)
@@ -80,7 +80,6 @@ const SettingVergeAdvanced = ({ onError: _ }: Props) => {
       <HotkeyViewer ref={hotkeyRef} />
       <MiscViewer ref={miscRef} />
       <LayoutViewer ref={layoutRef} />
-      <UpdateViewer ref={updateRef} />
       <BackupViewer ref={backupRef} />
       <LiteModeViewer ref={liteModeRef} />
 

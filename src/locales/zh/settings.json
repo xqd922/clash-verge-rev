@@ -409,6 +409,7 @@
         "autoLogClean": "自动清理日志",
         "autoDelayDetection": "自动延迟检测",
         "autoDelayDetectionInterval": "自动延迟检测间隔",
+        "trainSmartModel": "Smart 模型训练",
         "defaultLatencyTest": "默认测试链接",
         "defaultLatencyTimeout": "测试超时时间"
       },
@@ -416,6 +417,7 @@
         "autoCloseConnections": "当代理组选中节点或代理模式变动时，关闭已建立的连接",
         "enableBuiltinEnhanced": "配置文件的兼容性处理",
         "autoDelayDetection": "后台定时检测当前节点延迟",
+        "trainSmartModel": "用本地收集的数据训练专属 Smart 模型并替换 Model.bin，需本机 Python 环境；重启内核后生效",
         "defaultLatencyTest": "仅用于 HTTP 客户端请求测试，不会对配置文件产生影响"
       },
       "options": {
@@ -426,6 +428,10 @@
           "never": "不清理",
           "retainDays": "保留 {{n}} 天"
         }
+      },
+      "actions": {
+        "trainSmartModelNow": "立即训练",
+        "trainSmartModelWorking": "训练中…"
       }
     },
     "update": {
