@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 
 import { useListen } from '@/hooks/use-listen'
 import { queryClient } from '@/services/query-client'
+import { setSmartTrainStatus } from '@/services/smart-train-status'
 
 export const useLayoutEvents = (
   handleNotice: (payload: [string, string]) => void,
@@ -70,6 +71,12 @@ export const useLayoutEvents = (
     register(
       addListener('verge://notice-message', ({ payload }) =>
         handleNotice(payload as [string, string]),
+      ),
+    )
+
+    register(
+      addListener('verge://smart-train-progress', ({ payload }) =>
+        setSmartTrainStatus({ running: true, text: String(payload) }),
       ),
     )
 

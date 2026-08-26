@@ -1,4 +1,4 @@
-use crate::{cmd::smart::run_smart_training_exclusive, config::Config, process::AsyncHandler};
+use crate::{cmd::smart::run_smart_training_exclusive, config::Config, core::handle::Handle, process::AsyncHandler};
 use anyhow::Result;
 use chrono::Local;
 use clash_verge_logging::{Type, logging, logging_error};
@@ -103,9 +103,11 @@ impl SmartTrainManager {
             match run_smart_training_exclusive().await {
                 Ok(message) => {
                     logging!(info, Type::Core, "smart model training finished: {message}");
+                    Handle::notice_message("smart_train::ok", &message);
                 }
                 Err(err) => {
                     logging_error!(Type::Core, "smart model training failed: {:#}", err);
+                    Handle::notice_message("smart_train::error", format!("{:#}", err));
                 }
             }
         });

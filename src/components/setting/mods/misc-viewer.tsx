@@ -8,16 +8,29 @@ import {
   TextField,
 } from '@mui/material'
 import { useLockFn } from 'ahooks'
-import { forwardRef, useImperativeHandle, useState } from 'react'
+import {
+  forwardRef,
+  useImperativeHandle,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { BaseDialog, DialogRef, Switch, TooltipIcon } from '@/components/base'
 import { useVerge } from '@/hooks/use-verge'
 import { showNotice } from '@/services/notice-service'
+import {
+  getSmartTrainStatus,
+  subscribeSmartTrainStatus,
+} from '@/services/smart-train-status'
 
 export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
   const { t } = useTranslation()
   const { verge, patchVerge } = useVerge()
+  const smartTrain = useSyncExternalStore(
+    subscribeSmartTrainStatus,
+    getSmartTrainStatus,
+  )
 
   const [open, setOpen] = useState(false)
   const [values, setValues] = useState({
@@ -480,6 +493,25 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
             ))}
           </Select>
         </ListItem>
+
+        {(smartTrain.running || smartTrain.text) && (
+          <ListItem sx={{ padding: '0 2px' }}>
+            <ListItemText
+              secondary={
+                <>
+                  {smartTrain.running ? '⏳ ' : ''}
+                  {smartTrain.text}
+                </>
+              }
+              slotProps={{
+                secondary: {
+                  variant: 'body2',
+                  sx: { wordBreak: 'break-all', whiteSpace: 'pre-wrap' },
+                },
+              }}
+            />
+          </ListItem>
+        )}
       </List>
     </BaseDialog>
   )

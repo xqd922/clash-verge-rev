@@ -1,4 +1,5 @@
 import { showNotice } from '@/services/notice-service'
+import { setSmartTrainStatus } from '@/services/smart-train-status'
 
 type NavigateFunction = (path: string, options?: any) => void
 type TranslateFunction = (key: string) => string
@@ -85,6 +86,14 @@ export const handleNoticeMessage = (
         'settings.feedback.notifications.clash.changeFailed',
         msg,
       ),
+    'smart_train::ok': () => {
+      setSmartTrainStatus({ running: false, text: msg })
+      showNotice.success(msg)
+    },
+    'smart_train::error': () => {
+      setSmartTrainStatus({ running: false, text: msg })
+      showNotice.error(msg)
+    },
   }
 
   const handler = handlers[status]

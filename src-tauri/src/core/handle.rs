@@ -72,6 +72,13 @@ impl Handle {
         });
     }
 
+    /// 转发 Smart 模型训练的实时进度到前端
+    pub fn smart_train_progress<S: AsRef<str>>(detail: S) {
+        Self::send_event(FrontendEvent::SmartTrainProgress {
+            detail: detail.as_ref().into(),
+        });
+    }
+
     pub fn set_is_exiting(&self) {
         self.is_exiting.store(true, Ordering::Release);
     }

@@ -1,9 +1,15 @@
 use std::path::{Path, PathBuf};
+use std::process::Stdio;
 use std::time::Duration;
 
 use anyhow::{Context as _, Result, anyhow, bail};
 use clash_verge_logging::{Type, logging, logging_error};
-use tokio::{process::Command, sync::Mutex, time::timeout};
+use tokio::{
+    io::{AsyncBufReadExt as _, BufReader},
+    process::Command,
+    sync::Mutex,
+    time::timeout,
+};
 
 use crate::{
     cmd::{CmdResult, StringifyErr as _},
@@ -68,8 +74,17 @@ async fn train_smart_model_inner() -> Result<String> {
             .with_context(|| format!("复制训练脚本失败: {file}"))?;
     }
     std::fs::copy(&csv_path, workspace.join("smart_weight_data.csv")).context("复制训练数据失败")?;
+    Handle::smart_train_progress(format!("已快照 {rows} 行训练数据，正在检查 Python 环境"));
 
     let (python, python_args) = detect_python().await?;
+    Handle::smart_train_progress(format!(
+        "Python 环境就绪：{python}{}",
+        if python_args.is_empty() {
+            String::new()
+        } else {
+            format!(" {}", python_args.join(" "))
+        }
+    ));
 
     logging!(info, Type::Core, "smart model training started with {rows} rows");
     run_training(&python, &python_args, &workspace).await?;
@@ -77,6 +92,7 @@ async fn train_smart_model_inner() -> Result<String> {
     let new_model = workspace.join("Model.bin");
     validate_model(&new_model)?;
     replace_model(&home_dir, &new_model)?;
+    Handle::smart_train_progress("新模型已写入，正在重启内核加载");
 
     // 自动重启内核加载新模型；失败不吞掉训练成果，仅提示手动重启
     let restarted = CoreManager::global().restart_core().await.is_ok();
@@ -152,18 +168,51 @@ async fn run_success(program: &str, prefix: &[&str], extra: &[&str]) -> bool {
 
 async fn run_training(python: &str, python_args: &[String], workspace: &Path) -> Result<()> {
     let mut cmd = Command::new(python);
-    cmd.args(python_args).arg("train_flexible.py").current_dir(workspace);
+    cmd.args(python_args)
+        .arg("train_flexible.py")
+        .current_dir(workspace)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
     #[cfg(windows)]
     cmd.creation_flags(CREATE_NO_WINDOW);
-    let future = cmd.output();
-    let output = timeout(TRAIN_TIMEOUT, future)
-        .await
-        .map_err(|_| anyhow!("训练超时（超过 30 分钟）"))?
-        .context("启动训练进程失败")?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let mut tail: Vec<&str> = stderr.lines().rev().take(15).collect();
+    let mut child = cmd.spawn().context("启动训练进程失败")?;
+    let stdout = child.stdout.take().context("无法读取训练输出")?;
+    let stderr = child.stderr.take().context("无法读取训练错误输出")?;
+
+    // 并发收集 stderr，失败时截取尾部定位原因
+    let stderr_task = tokio::spawn(async move {
+        let mut text = String::new();
+        let mut lines = BufReader::new(stderr).lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            text.push_str(&line);
+            text.push('\n');
+        }
+        text
+    });
+
+    // 逐行把训练日志转发到前端作为实时进度
+    let drain_stdout = async {
+        let mut lines = BufReader::new(stdout).lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            let line = line.trim_end();
+            if !line.is_empty() {
+                Handle::smart_train_progress(line);
+            }
+        }
+    };
+    timeout(TRAIN_TIMEOUT, drain_stdout)
+        .await
+        .map_err(|_| anyhow!("训练超时（超过 30 分钟）"))?;
+
+    let status = timeout(Duration::from_secs(60), child.wait())
+        .await
+        .map_err(|_| anyhow!("训练进程在输出结束后未退出"))?
+        .context("等待训练进程退出失败")?;
+
+    if !status.success() {
+        let stderr_text = stderr_task.await.unwrap_or_default();
+        let mut tail: Vec<&str> = stderr_text.lines().rev().take(15).collect();
         tail.reverse();
         bail!("训练脚本执行失败：\n{}", tail.join("\n"));
     }

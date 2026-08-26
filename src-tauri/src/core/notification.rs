@@ -10,6 +10,7 @@ pub enum FrontendEvent<'a> {
     RefreshClash,
     RefreshVerge,
     NoticeMessage { status: &'a str, message: String },
+    SmartTrainProgress { detail: String },
     ProfileChanged { current_profile_id: &'a String },
     TimerUpdated { profile_index: &'a String },
     ProfileUpdateStarted { uid: &'a String },
@@ -36,6 +37,9 @@ impl NotificationSystem {
             FrontendEvent::RefreshVerge => ("verge://refresh-verge-config", Ok(json!("yes"))),
             FrontendEvent::NoticeMessage { status, message } => {
                 ("verge://notice-message", serde_json::to_value((status, message)))
+            }
+            FrontendEvent::SmartTrainProgress { detail } => {
+                ("verge://smart-train-progress", serde_json::to_value(detail))
             }
             FrontendEvent::ProfileChanged { current_profile_id } => ("profile-changed", Ok(json!(current_profile_id))),
             FrontendEvent::TimerUpdated { profile_index } => ("verge://timer-updated", Ok(json!(profile_index))),
