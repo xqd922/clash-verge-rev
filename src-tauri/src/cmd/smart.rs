@@ -2,12 +2,12 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use anyhow::{Context as _, Result, anyhow, bail};
-use clash_verge_logging::{Type, logging};
-use tokio::process::Command;
-use tokio::time::timeout;
+use clash_verge_logging::{Type, logging, logging_error};
+use tokio::{process::Command, sync::Mutex, time::timeout};
 
 use crate::{
     cmd::{CmdResult, StringifyErr as _},
+    config::Config,
     core::{CoreManager, handle::Handle},
     utils::dirs,
 };
@@ -21,9 +21,32 @@ const MIN_RECOMMENDED_ROWS: usize = 2000;
 /// 需要复制到工作目录的训练脚本
 const TRAINER_FILES: [&str; 4] = ["transform.go", "go_parser.py", "train_flexible.py", "requirements.txt"];
 
+/// 训练互斥锁：手动触发与后台定时训练共用，避免并发执行
+static TRAIN_LOCK: Mutex<()> = Mutex::const_new(());
+
 #[tauri::command]
 pub async fn train_smart_model() -> CmdResult<String> {
-    train_smart_model_inner().await.stringify_err()
+    run_smart_training_exclusive().await.stringify_err()
+}
+
+/// 手动命令与后台定时任务共用的训练入口：串行化执行并在成功后记录时间戳
+pub(crate) async fn run_smart_training_exclusive() -> Result<String> {
+    let _guard = TRAIN_LOCK.lock().await;
+    let message = train_smart_model_inner().await?;
+    mark_smart_trained().await;
+    Ok(message)
+}
+
+/// 记录本次成功训练时间，供自动训练判期使用（刚手动训完则顺延下个周期）
+async fn mark_smart_trained() {
+    Config::verge()
+        .await
+        .edit_draft(|d| d.smart_auto_train_last_at = Some(chrono::Local::now().timestamp()));
+    Config::verge().await.apply();
+    let data = Config::verge().await.data_arc();
+    if let Err(e) = data.save_file().await {
+        logging_error!(Type::Core, "Failed to save smart_auto_train_last_at: {:#?}", e);
+    }
 }
 
 async fn train_smart_model_inner() -> Result<String> {
@@ -115,21 +138,24 @@ async fn detect_python() -> Result<(String, Vec<String>)> {
     bail!("没有可用的 Python 训练环境（Python 3.11+）：\n{}", problems.join("\n"))
 }
 
-/// 运行子进程并判断是否成功退出
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+/// 运行子进程并判断是否成功退出（不弹出控制台窗口）
 async fn run_success(program: &str, prefix: &[&str], extra: &[&str]) -> bool {
-    Command::new(program)
-        .args(prefix.iter().chain(extra.iter()))
-        .output()
-        .await
-        .is_ok_and(|output| output.status.success())
+    let mut cmd = Command::new(program);
+    cmd.args(prefix.iter().chain(extra.iter()));
+    #[cfg(windows)]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    cmd.output().await.is_ok_and(|output| output.status.success())
 }
 
 async fn run_training(python: &str, python_args: &[String], workspace: &Path) -> Result<()> {
-    let future = Command::new(python)
-        .args(python_args)
-        .arg("train_flexible.py")
-        .current_dir(workspace)
-        .output();
+    let mut cmd = Command::new(python);
+    cmd.args(python_args).arg("train_flexible.py").current_dir(workspace);
+    #[cfg(windows)]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    let future = cmd.output();
     let output = timeout(TRAIN_TIMEOUT, future)
         .await
         .map_err(|_| anyhow!("训练超时（超过 30 分钟）"))?

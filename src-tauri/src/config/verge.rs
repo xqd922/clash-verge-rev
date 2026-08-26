@@ -186,6 +186,16 @@ pub struct IVerge {
     /// Create backups automatically when critical configs change
     pub auto_backup_on_change: Option<bool>,
 
+    /// 是否开启 Smart 模型自动训练（关闭时仅可手动训练）
+    pub enable_smart_auto_train: Option<bool>,
+
+    /// Smart 模型自动训练间隔（天）
+    pub smart_auto_train_interval_days: Option<u64>,
+
+    /// 上次成功训练的时间戳（秒），用于自动训练判期
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub smart_auto_train_last_at: Option<i64>,
+
     /// verge 的各种 port 用于覆盖 clash 的各种 port
     #[cfg(not(target_os = "windows"))]
     pub verge_redir_port: Option<u16>,
@@ -440,6 +450,9 @@ impl IVerge {
             enable_auto_backup_schedule: Some(false),
             auto_backup_interval_hours: Some(24),
             auto_backup_on_change: Some(true),
+            enable_smart_auto_train: Some(false),
+            smart_auto_train_interval_days: Some(7),
+            smart_auto_train_last_at: None,
             webdav_url: None,
             webdav_username: None,
             webdav_password: None,
@@ -538,6 +551,9 @@ impl IVerge {
         patch!(default_latency_timeout);
         patch!(enable_auto_delay_detection);
         patch!(auto_delay_detection_interval_minutes);
+        patch!(enable_smart_auto_train);
+        patch!(smart_auto_train_interval_days);
+        patch!(smart_auto_train_last_at);
         patch!(enable_builtin_enhanced);
         patch!(enable_smart_convert);
         patch!(proxy_layout_column);

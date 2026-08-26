@@ -979,6 +979,8 @@ interface IVergeConfig {
   default_latency_timeout?: number
   enable_auto_delay_detection?: boolean
   auto_delay_detection_interval_minutes?: number
+  enable_smart_auto_train?: boolean
+  smart_auto_train_interval_days?: number
   enable_builtin_enhanced?: boolean
   enable_smart_convert?: boolean
   auto_log_clean?: 0 | 1 | 2 | 3 | 4

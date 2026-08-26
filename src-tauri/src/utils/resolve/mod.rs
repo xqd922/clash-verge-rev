@@ -14,7 +14,7 @@ use crate::{
         tray::Tray,
     },
     feat,
-    module::{auto_backup::AutoBackupManager, lightweight::auto_lightweight_boot},
+    module::{auto_backup::AutoBackupManager, lightweight::auto_lightweight_boot, smart_train::SmartTrainManager},
     process::AsyncHandler,
     utils::{init, server, startup, window_manager::WindowManager},
 };
@@ -71,6 +71,7 @@ pub fn resolve_setup_async() {
             init_hotkey(),
             init_auto_lightweight_boot(),
             init_auto_backup(),
+            init_smart_train(),
             init_silent_updater(),
         );
 
@@ -130,6 +131,10 @@ pub(super) async fn init_auto_lightweight_boot() {
 
 pub(super) async fn init_auto_backup() {
     logging_error!(Type::Setup, AutoBackupManager::global().init().await);
+}
+
+pub(super) async fn init_smart_train() {
+    logging_error!(Type::Setup, SmartTrainManager::global().init().await);
 }
 
 async fn init_silent_updater() {

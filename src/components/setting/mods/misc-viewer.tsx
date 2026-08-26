@@ -1,5 +1,4 @@
 import {
-  Button,
   InputAdornment,
   List,
   ListItem,
@@ -14,7 +13,6 @@ import { useTranslation } from 'react-i18next'
 
 import { BaseDialog, DialogRef, Switch, TooltipIcon } from '@/components/base'
 import { useVerge } from '@/hooks/use-verge'
-import { trainSmartModel } from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
 
 export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
@@ -32,24 +30,12 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
     proxyLayoutColumn: 6,
     enableAutoDelayDetection: false,
     autoDelayDetectionIntervalMinutes: 5,
+    enableSmartAutoTrain: false,
+    smartAutoTrainIntervalDays: 7,
     defaultLatencyTest: '',
     autoLogClean: 2,
     defaultLatencyTimeout: '' as number | '',
   })
-  const [smartTraining, setSmartTraining] = useState(false)
-
-  const onTrainSmartModel = useLockFn(async () => {
-    setSmartTraining(true)
-    try {
-      const message = await trainSmartModel()
-      showNotice.success(message)
-    } catch (err) {
-      showNotice.error(err)
-    } finally {
-      setSmartTraining(false)
-    }
-  })
-
   useImperativeHandle(ref, () => ({
     open: () => {
       setOpen(true)
@@ -64,6 +50,8 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
         enableAutoDelayDetection: verge?.enable_auto_delay_detection ?? false,
         autoDelayDetectionIntervalMinutes:
           verge?.auto_delay_detection_interval_minutes ?? 5,
+        enableSmartAutoTrain: verge?.enable_smart_auto_train ?? false,
+        smartAutoTrainIntervalDays: verge?.smart_auto_train_interval_days ?? 7,
         defaultLatencyTest: verge?.default_latency_test || '',
         autoLogClean: verge?.auto_log_clean || 0,
         // 未设置时留空展示灰色占位符，与上方 URL 输入框行为一致
@@ -86,6 +74,8 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
         enable_auto_delay_detection: values.enableAutoDelayDetection,
         auto_delay_detection_interval_minutes:
           values.autoDelayDetectionIntervalMinutes,
+        enable_smart_auto_train: values.enableSmartAutoTrain,
+        smart_auto_train_interval_days: values.smartAutoTrainIntervalDays,
         default_latency_test: values.defaultLatencyTest,
         // 留空时省略字段（undefined 序列化后被忽略），保持后端原值
         default_latency_timeout:
@@ -388,28 +378,6 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
 
         <ListItem sx={{ padding: '5px 2px' }}>
           <ListItemText
-            primary={t('settings.modals.misc.fields.trainSmartModel')}
-            sx={{ maxWidth: 'fit-content' }}
-          />
-          <TooltipIcon
-            title={t('settings.modals.misc.tooltips.trainSmartModel')}
-            sx={{ opacity: '0.7' }}
-          />
-          <Button
-            size="small"
-            variant="contained"
-            disabled={smartTraining}
-            onClick={onTrainSmartModel}
-            sx={{ marginLeft: 'auto' }}
-          >
-            {smartTraining
-              ? t('settings.modals.misc.actions.trainSmartModelWorking')
-              : t('settings.modals.misc.actions.trainSmartModelNow')}
-          </Button>
-        </ListItem>
-
-        <ListItem sx={{ padding: '5px 2px' }}>
-          <ListItemText
             primary={t('settings.modals.misc.fields.defaultLatencyTest')}
             sx={{ maxWidth: 'fit-content' }}
           />
@@ -464,6 +432,53 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
               },
             }}
           />
+        </ListItem>
+
+        {/* Smart 模型训练：开关打开即立即训练一次，之后按下方间隔自动训练 */}
+        <ListItem sx={{ padding: '5px 2px' }}>
+          <ListItemText
+            primary={t('settings.modals.misc.fields.trainSmartModel')}
+            sx={{ maxWidth: 'fit-content' }}
+          />
+          <TooltipIcon
+            title={t('settings.modals.misc.tooltips.trainSmartModel')}
+            sx={{ opacity: '0.7' }}
+          />
+          <Switch
+            edge="end"
+            checked={values.enableSmartAutoTrain}
+            onChange={(_, c) =>
+              setValues((v) => ({ ...v, enableSmartAutoTrain: c }))
+            }
+            sx={{ marginLeft: 'auto' }}
+          />
+        </ListItem>
+
+        <ListItem sx={{ padding: '5px 2px' }}>
+          <ListItemText
+            primary={t('settings.modals.misc.fields.trainSmartModelInterval')}
+            sx={{ maxWidth: 'fit-content' }}
+          />
+          <Select
+            size="small"
+            disabled={!values.enableSmartAutoTrain}
+            sx={{ marginLeft: 'auto', width: 160, '> div': { py: '7.5px' } }}
+            value={values.smartAutoTrainIntervalDays}
+            onChange={(e) =>
+              setValues((v) => ({
+                ...v,
+                smartAutoTrainIntervalDays: e.target.value as number,
+              }))
+            }
+          >
+            {[3, 7, 14, 30].map((d) => (
+              <MenuItem key={d} value={d}>
+                {t('settings.modals.misc.options.trainInterval.everyNDays', {
+                  n: d,
+                })}
+              </MenuItem>
+            ))}
+          </Select>
         </ListItem>
       </List>
     </BaseDialog>
