@@ -410,6 +410,7 @@
         "autoDelayDetection": "自動遅延検出",
         "autoDelayDetectionInterval": "自動遅延検出間隔",
         "trainSmartModel": "Smart Model Training",
+        "trainSmartModelInterval": "自動トレーニング間隔",
         "defaultLatencyTest": "デフォルトの遅延テストURL",
         "defaultLatencyTimeout": "テストタイムアウト時間"
       },
@@ -427,11 +428,10 @@
         "autoLogClean": {
           "never": "クリーンアップしない",
           "retainDays": "{{n}}日間保持"
+        },
+        "trainInterval": {
+          "everyNDays": "{{n}}日ごと"
         }
-      },
-      "actions": {
-        "trainSmartModelNow": "Train Now",
-        "trainSmartModelWorking": "Training…"
       }
     },
     "update": {

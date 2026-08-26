@@ -410,6 +410,7 @@
         "autoDelayDetection": "自動延遲偵測",
         "autoDelayDetectionInterval": "自動延遲偵測間隔",
         "trainSmartModel": "Smart Model Training",
+        "trainSmartModelInterval": "自動訓練間隔",
         "defaultLatencyTest": "預設測試網址",
         "defaultLatencyTimeout": "測試逾時"
       },
@@ -427,11 +428,10 @@
         "autoLogClean": {
           "never": "不清理",
           "retainDays": "保留 {{n}} 天"
+        },
+        "trainInterval": {
+          "everyNDays": "每 {{n}} 天"
         }
-      },
-      "actions": {
-        "trainSmartModelNow": "Train Now",
-        "trainSmartModelWorking": "Training…"
       }
     },
     "update": {

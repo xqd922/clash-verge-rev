@@ -410,6 +410,7 @@
         "autoDelayDetection": "اكتشاف التأخير التلقائي",
         "autoDelayDetectionInterval": "الفاصل الزمني لاكتشاف التأخير التلقائي",
         "trainSmartModel": "Smart Model Training",
+        "trainSmartModelInterval": "Auto Training Interval",
         "defaultLatencyTest": "اختبار التأخير الافتراضي",
         "defaultLatencyTimeout": "مهلة التأخير الافتراضية"
       },
@@ -427,11 +428,10 @@
         "autoLogClean": {
           "never": "عدم التنظيف أبدًا",
           "retainDays": "الاحتفاظ لمدة {{n}} يومًا"
+        },
+        "trainInterval": {
+          "everyNDays": "Every {{n}} days"
         }
-      },
-      "actions": {
-        "trainSmartModelNow": "Train Now",
-        "trainSmartModelWorking": "Training…"
       }
     },
     "update": {

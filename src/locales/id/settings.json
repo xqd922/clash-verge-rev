@@ -410,6 +410,7 @@
         "autoDelayDetection": "Deteksi Latensi Otomatis",
         "autoDelayDetectionInterval": "Interval Deteksi Latensi Otomatis",
         "trainSmartModel": "Smart Model Training",
+        "trainSmartModelInterval": "Auto Training Interval",
         "defaultLatencyTest": "Tes Latensi Default",
         "defaultLatencyTimeout": "Waktu Habis Latensi Default"
       },
@@ -427,11 +428,10 @@
         "autoLogClean": {
           "never": "Jangan Pernah Bersihkan",
           "retainDays": "Simpan {{n}} Hari"
+        },
+        "trainInterval": {
+          "everyNDays": "Every {{n}} days"
         }
-      },
-      "actions": {
-        "trainSmartModelNow": "Train Now",
-        "trainSmartModelWorking": "Training…"
       }
     },
     "update": {

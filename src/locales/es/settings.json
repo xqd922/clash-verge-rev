@@ -410,6 +410,7 @@
         "autoDelayDetection": "Detección automática de latencia",
         "autoDelayDetectionInterval": "Intervalo de detección automática de latencia",
         "trainSmartModel": "Smart Model Training",
+        "trainSmartModelInterval": "Auto Training Interval",
         "defaultLatencyTest": "Enlace de prueba de latencia predeterminado",
         "defaultLatencyTimeout": "Tiempo de espera de la prueba de latencia"
       },
@@ -427,11 +428,10 @@
         "autoLogClean": {
           "never": "No limpiar",
           "retainDays": "Retener {{n}} días"
+        },
+        "trainInterval": {
+          "everyNDays": "Every {{n}} days"
         }
-      },
-      "actions": {
-        "trainSmartModelNow": "Train Now",
-        "trainSmartModelWorking": "Training…"
       }
     },
     "update": {

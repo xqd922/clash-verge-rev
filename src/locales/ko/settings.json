@@ -410,6 +410,7 @@
         "autoDelayDetection": "자동 지연 감지",
         "autoDelayDetectionInterval": "자동 지연 감지 간격",
         "trainSmartModel": "Smart Model Training",
+        "trainSmartModelInterval": "자동 훈련 간격",
         "defaultLatencyTest": "기본 지연 테스트",
         "defaultLatencyTimeout": "기본 지연 제한시간"
       },
@@ -427,11 +428,10 @@
         "autoLogClean": {
           "never": "정리 안 함",
           "retainDays": "{{n}}일 보관"
+        },
+        "trainInterval": {
+          "everyNDays": "{{n}}일마다"
         }
-      },
-      "actions": {
-        "trainSmartModelNow": "Train Now",
-        "trainSmartModelWorking": "Training…"
       }
     },
     "update": {

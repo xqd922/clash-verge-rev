@@ -948,10 +948,6 @@ export interface TranslationResources {
           }
         }
         misc: {
-          actions: {
-            trainSmartModelNow: string
-            trainSmartModelWorking: string
-          }
           fields: {
             appLogLevel: string
             appLogMaxCount: string
@@ -966,6 +962,7 @@ export interface TranslationResources {
             enableBuiltinEnhanced: string
             proxyLayoutColumns: string
             trainSmartModel: string
+            trainSmartModelInterval: string
           }
           options: {
             autoLogClean: {
@@ -974,6 +971,9 @@ export interface TranslationResources {
             }
             proxyLayoutColumns: {
               auto: string
+            }
+            trainInterval: {
+              everyNDays: string
             }
           }
           title: string

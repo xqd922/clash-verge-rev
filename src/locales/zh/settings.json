@@ -1,141 +1,141 @@
 {
   "page": {
     "actions": {
-      "manual": "使用手册",
-      "telegram": "Telegram 频道",
-      "github": "GitHub 项目地址"
+      "manual": "Manual",
+      "telegram": "Telegram Channel",
+      "github": "Github Repo"
     },
-    "title": "设置"
+    "title": "Settings"
   },
   "sections": {
     "system": {
-      "title": "系统设置",
+      "title": "System Setting",
       "toggles": {
-        "tunMode": "虚拟网卡模式",
-        "systemProxy": "系统代理"
+        "tunMode": "Tun Mode",
+        "systemProxy": "System Proxy"
       },
       "tooltips": {
-        "silentStart": "程序启动时以后台模式运行，不显示程序面板"
+        "silentStart": "Start the program in background mode without displaying the panel"
       },
       "fields": {
-        "autoLaunch": "开机自启",
-        "silentStart": "静默启动"
+        "autoLaunch": "Auto Launch",
+        "silentStart": "Silent Start"
       },
       "notifications": {
         "tunMode": {
-          "autoDisabled": "由于服务不可用，TUN 模式已自动关闭",
-          "autoDisableFailed": "自动关闭 TUN 模式失败"
+          "autoDisabled": "TUN Mode automatically disabled due to service unavailable",
+          "autoDisableFailed": "Failed to disable TUN Mode automatically"
         }
       }
     },
     "proxyControl": {
       "tooltips": {
-        "systemProxy": "修改操作系统的代理设置，如果开启失败，可手动修改操作系统的代理设置",
-        "tunMode": "TUN（虚拟网卡）模式接管系统所有流量，启用时无须打开系统代理",
-        "tunUnavailable": "TUN 模式需要安装服务模式或管理员模式"
+        "systemProxy": "Enable to modify the operating system's proxy settings. If enabling fails, modify the operating system's proxy settings manually",
+        "tunMode": "Tun (Virtual NIC) mode: Captures all system traffic, when enabled, there is no need to enable system proxy.",
+        "tunUnavailable": "TUN requires Service Mode or Admin Mode"
       },
       "actions": {
-        "installService": "安装服务",
-        "uninstallService": "卸载服务"
+        "installService": "Install Service",
+        "uninstallService": "Uninstall Service"
       },
       "fields": {
-        "systemProxy": "系统代理",
-        "tunMode": "虚拟网卡模式"
+        "systemProxy": "System Proxy",
+        "tunMode": "Tun Mode"
       }
     },
     "externalController": {
-      "title": "外部控制器监听地址",
+      "title": "External Controller",
       "fields": {
-        "enable": "启用外部控制器",
-        "address": "外部控制器监听地址",
-        "secret": "API 访问密钥"
+        "enable": "Enable External Controller",
+        "address": "External Controller",
+        "secret": "Core Secret"
       },
       "placeholders": {
-        "address": "必填",
-        "secret": "建议设置"
+        "address": "Required",
+        "secret": "Recommended"
       },
       "tooltips": {
-        "copy": "复制到剪贴板"
+        "copy": "Copy to clipboard"
       },
       "messages": {
-        "addressRequired": "控制器地址不能为空",
-        "secretRequired": "访问密钥不能为空",
-        "copyFailed": "复制失败",
-        "controllerCopied": "控制器地址已复制到剪贴板",
-        "secretCopied": "访问密钥已复制到剪贴板"
+        "addressRequired": "Controller address cannot be empty",
+        "secretRequired": "Secret cannot be empty",
+        "copyFailed": "Failed to copy",
+        "controllerCopied": "Controller address copied to clipboard",
+        "secretCopied": "Secret copied to clipboard"
       }
     },
     "externalCors": {
-      "title": "外部控制跨域设置",
+      "title": "External Cors Configuration",
       "fields": {
-        "allowPrivateNetwork": "允许专用网络访问",
-        "allowedOrigins": "允许的来源"
+        "allowPrivateNetwork": "Allow private network access",
+        "allowedOrigins": "Allowed Origins"
       },
       "placeholders": {
-        "origin": "请输入有效的网址"
+        "origin": "Please enter a valid url"
       },
       "actions": {
-        "add": "添加"
+        "add": "Add"
       },
       "messages": {
-        "alwaysIncluded": "始终包含来源：{{urls}}"
+        "alwaysIncluded": "Always included origins: {{urls}}"
       },
       "tooltips": {
-        "open": "外部控制跨域设置"
+        "open": "External Cors Settings"
       }
     },
     "appearance": {
-      "light": "浅色",
-      "dark": "深色",
-      "system": "系统"
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
     },
     "clash": {
-      "title": "Clash 设置",
+      "title": "Clash Setting",
       "form": {
         "fields": {
-          "allowLan": "局域网连接",
-          "dnsOverwrite": "DNS 覆写",
+          "allowLan": "Allow LAN",
+          "dnsOverwrite": "DNS Overwrite",
           "ipv6": "IPv6",
-          "unifiedDelay": "统一延迟",
-          "logLevel": "日志等级",
-          "portConfig": "端口设置",
-          "external": "外部控制",
-          "webUI": "网页界面",
-          "clashCore": "Clash 内核",
-          "enableSmartConvert": "自动转换为 Smart",
-          "openUwpTool": "UWP 工具",
-          "updateGeoData": "更新 GeoData",
+          "unifiedDelay": "Unified Delay",
+          "logLevel": "Log Level",
+          "portConfig": "Port Config",
+          "external": "External",
+          "webUI": "Web UI",
+          "clashCore": "Clash Core",
+          "enableSmartConvert": "Auto-Convert to Smart",
+          "openUwpTool": "Open UWP tool",
+          "updateGeoData": "Update GeoData",
           "tunnels": {
-            "title": "流量隧道管理",
-            "localAddr": "本地监听地址",
-            "localPort": "本地监听端口",
-            "targetAddr": "目标地址",
-            "targetPort": "目标端口",
-            "proxyGroup": "代理组",
-            "proxyNode": "代理节点",
-            "protocols": "协议",
-            "existing": "已配置的隧道",
-            "default": "跟随当前配置",
-            "optional": "可选",
+            "title": "Tunnel Management",
+            "localAddr": "Local Listen Address",
+            "localPort": "Local Listen Port",
+            "targetAddr": "Target Address",
+            "targetPort": "Target Port",
+            "proxyGroup": "Proxy Group",
+            "proxyNode": "Proxy Node",
+            "protocols": "Protocol",
+            "existing": "Existing Tunnels",
+            "default": "Follow Current Configuration",
+            "optional": "Optional",
             "messages": {
-              "incomplete": "请完整填写隧道信息",
-              "invalidLocalAddr": "无效的本地监听地址",
-              "invalidLocalPort": "无效的本地监听端口",
-              "invalidTargetAddr": "无效的目标地址",
-              "invalidTargetPort": "无效的目标端口"
+              "incomplete": "Please fill in all required tunnel fields",
+              "invalidLocalAddr": "Invalid local listen address",
+              "invalidLocalPort": "Invalid local listen port",
+              "invalidTargetAddr": "Invalid Target Address",
+              "invalidTargetPort": "Invalid Target Port"
             },
             "actions": {
-              "add": "添加",
-              "addNew": "添加新隧道"
+              "add": "Add",
+              "addNew": "Add New Tunnel"
             }
           }
         },
         "tooltips": {
-          "networkInterface": "网络接口",
-          "unifiedDelay": "开启统一延迟时，会进行两次延迟测试，以消除连接握手等带来的不同类型节点的延迟差异",
-          "logLevel": "仅对日志目录 Service 文件夹下的内核日志文件生效",
-          "openUwpTool": "Windows 8 开始限制 UWP 应用（如微软商店）直接访问本地主机的网络服务，使用此工具可绕过该限制",
-          "enableSmartConvert": "使用 Smart 核心时，自动将 url-test、fallback、load-balance 代理组转换为 smart 类型"
+          "networkInterface": "Network Interface",
+          "unifiedDelay": "When unified delay is turned on, two delay tests will be performed to eliminate the delay differences between different types of nodes caused by connection handshakes, etc",
+          "logLevel": "This parameter is valid only for kernel log files in the log directory Service folder",
+          "openUwpTool": "Since Windows 8, UWP apps (such as Microsoft Store) are restricted from directly accessing local host network services, and this tool can be used to bypass this restriction",
+          "enableSmartConvert": "Auto-convert url-test, fallback, and load-balance proxy groups to smart type when using Smart core"
         },
         "options": {
           "logLevel": {
@@ -152,119 +152,119 @@
   "components": {
     "verge": {
       "basic": {
-        "title": "Verge 基础设置",
+        "title": "Verge Basic Setting",
         "actions": {
-          "browse": "浏览"
+          "browse": "Browse"
         },
         "trayOptions": {
-          "showMainWindow": "显示主窗口",
-          "showTrayMenu": "显示托盘菜单",
-          "disable": "禁用"
+          "showMainWindow": "Show Main Window",
+          "showTrayMenu": "Show Tray Menu",
+          "disable": "Disable"
         },
         "fields": {
-          "language": "语言设置",
-          "themeMode": "主题模式",
-          "trayClickEvent": "托盘点击事件",
-          "copyEnvType": "复制环境变量类型",
-          "startPage": "启动页面",
-          "startupScript": "启动脚本",
-          "themeSetting": "主题设置",
-          "layoutSetting": "界面设置",
-          "misc": "杂项设置",
-          "hotkeySetting": "热键设置"
+          "language": "Language",
+          "themeMode": "Theme Mode",
+          "trayClickEvent": "Tray Click Event",
+          "copyEnvType": "Copy Env Type",
+          "startPage": "Start Page",
+          "startupScript": "Startup Script",
+          "themeSetting": "Theme Setting",
+          "layoutSetting": "Layout Setting",
+          "misc": "Miscellaneous",
+          "hotkeySetting": "Hotkey Setting"
         }
       },
       "advanced": {
-        "title": "Verge 高级设置",
+        "title": "Verge Advanced Setting",
         "tooltips": {
-          "backupInfo": "支持本地或 WebDAV 方式备份配置文件",
-          "openConfDir": "如果软件运行异常，!备份!并删除此文件夹下的所有文件，重启软件",
-          "liteMode": "关闭 GUI 界面，仅保留内核运行"
+          "backupInfo": "Support local or WebDAV backup of configuration files",
+          "openConfDir": "If the software runs abnormally, BACKUP and delete all files in this folder then restart the software",
+          "liteMode": "Close the GUI and keep only the kernel running"
         },
         "actions": {
-          "copyVersion": "复制 Verge 版本号"
+          "copyVersion": "Copy Version"
         },
         "notifications": {
-          "latestVersion": "当前已是最新版本",
-          "versionCopied": "Verge 版本已复制到剪贴板"
+          "latestVersion": "Currently on the Latest Version",
+          "versionCopied": "Version copied to clipboard"
         },
         "fields": {
-          "backupSetting": "备份设置",
-          "runtimeConfig": "当前配置",
-          "openConfDir": "配置目录",
-          "openCoreDir": "内核目录",
-          "openLogsDir": "日志目录",
-          "checkUpdates": "检查更新",
-          "openDevTools": "开发者工具",
-          "liteModeSettings": "轻量模式设置",
-          "exit": "退出",
-          "exportDiagnostics": "导出诊断信息",
-          "vergeVersion": "Verge 版本"
+          "backupSetting": "Backup Setting",
+          "runtimeConfig": "Runtime Config",
+          "openConfDir": "Open Conf Dir",
+          "openCoreDir": "Open Core Dir",
+          "openLogsDir": "Open Logs Dir",
+          "checkUpdates": "Check for Updates",
+          "openDevTools": "Dev Tools",
+          "liteModeSettings": "LightWeight Mode Settings",
+          "exit": "Exit",
+          "exportDiagnostics": "Export Diagnostic Info",
+          "vergeVersion": "Verge Version"
         }
       },
       "theme": {
-        "title": "主题设置",
+        "title": "Theme Setting",
         "fields": {
-          "primaryColor": "主要颜色",
-          "secondaryColor": "次要颜色",
-          "primaryText": "文本主要颜色",
-          "secondaryText": "文本次要颜色",
-          "infoColor": "信息颜色",
-          "warningColor": "警告颜色",
-          "errorColor": "错误颜色",
-          "successColor": "成功颜色",
-          "fontFamily": "字体系列",
-          "cssInjection": "CSS 注入"
+          "primaryColor": "Primary Color",
+          "secondaryColor": "Secondary Color",
+          "primaryText": "Primary Text",
+          "secondaryText": "Secondary Text",
+          "infoColor": "Info Color",
+          "warningColor": "Warning Color",
+          "errorColor": "Error Color",
+          "successColor": "Success Color",
+          "fontFamily": "Font Family",
+          "cssInjection": "CSS Injection"
         },
         "actions": {
-          "editCss": "编辑 CSS"
+          "editCss": "Edit CSS"
         },
         "dialogs": {
-          "editCssTitle": "编辑 CSS"
+          "editCssTitle": "Edit CSS"
         }
       },
       "layout": {
-        "title": "界面设置",
+        "title": "Layout Setting",
         "fields": {
-          "preferSystemTitlebar": "优先使用系统标题栏",
-          "trafficGraph": "流量图显",
-          "memoryUsage": "内核占用",
-          "proxyGroupIcon": "代理组图标",
-          "toastPosition": "通知位置",
-          "hoverNavigator": "悬浮跳转导航",
-          "hoverNavigatorDelay": "悬浮跳转导航延迟",
-          "navIcon": "导航栏图标",
-          "collapseNavBar": "收起导航栏",
-          "trayIcon": "托盘图标",
-          "proxyGroupsDisplayMode": "托盘代理组显示模式",
-          "showOutboundModesInline": "将出站模式显示在托盘一级菜单",
-          "commonTrayIcon": "常规托盘图标",
-          "systemProxyTrayIcon": "系统代理托盘图标",
-          "tunTrayIcon": "TUN 模式托盘图标",
-          "enableTrayIcon": "启用托盘图标",
-          "enableTraySpeed": "启用托盘速率",
-          "pauseRenderTrafficStatsOnBlur": "失去焦点时暂停渲染流量统计"
+          "preferSystemTitlebar": "Prefer System Titlebar",
+          "trafficGraph": "Traffic Graph",
+          "memoryUsage": "Core Usage",
+          "proxyGroupIcon": "Proxy Group Icon",
+          "toastPosition": "Toast Position",
+          "hoverNavigator": "Hover Jump Navigator",
+          "hoverNavigatorDelay": "Hover Jump Navigator Delay",
+          "navIcon": "Nav Icon",
+          "collapseNavBar": "Collapse Navigation Bar",
+          "trayIcon": "Tray Icon",
+          "proxyGroupsDisplayMode": "Proxy Groups Display Mode",
+          "showOutboundModesInline": "Show Outbound Modes Inline",
+          "commonTrayIcon": "Common Tray Icon",
+          "systemProxyTrayIcon": "System Proxy Tray Icon",
+          "tunTrayIcon": "Tun Tray Icon",
+          "enableTrayIcon": "Enable Tray Icon",
+          "enableTraySpeed": "Enable Tray Speed",
+          "pauseRenderTrafficStatsOnBlur": "Pause rendering traffic statistics when blurred"
         },
         "tooltips": {
-          "hoverNavigator": "鼠标悬停在字母上时自动滚动到对应代理组",
-          "hoverNavigatorDelay": "鼠标悬停后触发自动跳转前等待的毫秒数"
+          "hoverNavigator": "Automatically scroll to the corresponding proxy group when hovering over alphabet letters",
+          "hoverNavigatorDelay": "Delay before auto scrolling when hovering, in milliseconds"
         },
         "options": {
           "icon": {
-            "monochrome": "单色图标",
-            "colorful": "彩色图标",
-            "disable": "禁用"
+            "monochrome": "Monochrome",
+            "colorful": "Colorful",
+            "disable": "Disable"
           },
           "toastPosition": {
-            "topLeft": "左上角",
-            "topRight": "右上角",
-            "bottomLeft": "左下角",
-            "bottomRight": "右下角"
+            "topLeft": "Top Left",
+            "topRight": "Top Right",
+            "bottomLeft": "Bottom Left",
+            "bottomRight": "Bottom Right"
           },
           "proxyGroupsDisplayMode": {
-            "default": "默认",
-            "inline": "一级菜单",
-            "disable": "禁用"
+            "default": "Default",
+            "inline": "Inline",
+            "disable": "Disable"
           }
         }
       }
@@ -272,396 +272,396 @@
   },
   "modals": {
     "clashPort": {
-      "title": "端口设置",
+      "title": "Port Config",
       "fields": {
-        "mixed": "混合代理端口",
-        "socks": "SOCKS 代理端口",
-        "http": "HTTP(S) 代理端口",
-        "redir": "Redir 透明代理端口",
-        "tproxy": "Tproxy 透明代理端口"
+        "mixed": "Mixed Port",
+        "socks": "Socks Port",
+        "http": "Http(s) Port",
+        "redir": "Redir Port",
+        "tproxy": "Tproxy Port"
       },
       "actions": {
-        "random": "随机端口"
+        "random": "Random Port"
       },
       "messages": {
-        "portInUse": "端口 {{port}} 已被占用",
-        "saved": "端口设置已保存",
-        "saveFailed": "端口设置保存失败"
+        "portInUse": "Port {{port}} is already in use",
+        "saved": "Port settings saved",
+        "saveFailed": "Failed to save port settings"
       }
     },
     "clashCore": {
       "variants": {
-        "release": "正式版",
-        "alpha": "预览版",
-        "smart": "智能版"
+        "release": "Release Version",
+        "alpha": "Alpha Version",
+        "smart": "Smart Version"
       },
       "actions": {
-        "flushSmartCache": "清除缓存"
+        "flushSmartCache": "Flush Cache"
       }
     },
     "liteMode": {
-      "title": "轻量模式设置",
+      "title": "LightWeight Mode Settings",
       "actions": {
-        "enterNow": "立即进入轻量模式"
+        "enterNow": "Enter LightWeight Mode Now"
       },
       "toggles": {
-        "autoEnter": "自动进入轻量模式"
+        "autoEnter": "Auto Enter LightWeight Mode"
       },
       "tooltips": {
-        "autoEnter": "启用后，将在窗口关闭一段时间后自动激活轻量模式"
+        "autoEnter": "Enable to automatically activate LightWeight Mode after the window is closed for a period of time"
       },
       "fields": {
-        "delay": "自动进入轻量模式延迟"
+        "delay": "Auto Enter LightWeight Mode Delay"
       },
       "messages": {
-        "autoEnterHint": "关闭窗口后，轻量模式将在 {{n}} 分钟后自动激活"
+        "autoEnterHint": "When closing the window, LightWeight Mode will be automatically activated after {{n}} minutes"
       }
     },
     "backup": {
-      "title": "备份设置",
+      "title": "Backup Setting",
       "tabs": {
-        "local": "本地备份",
-        "webdav": "WebDAV 备份"
+        "local": "Local backup",
+        "webdav": "WebDAV backup"
       },
       "actions": {
-        "selectTarget": "选择备份目标",
-        "backup": "备份",
-        "export": "导出",
-        "exportBackup": "导出备份",
-        "importBackup": "导入备份",
-        "deleteBackup": "删除备份",
-        "restore": "恢复",
-        "restoreBackup": "恢复备份",
-        "viewHistory": "查看记录"
+        "selectTarget": "Select backup target",
+        "backup": "Backup",
+        "export": "Export",
+        "exportBackup": "Export Backup",
+        "importBackup": "Import Backup",
+        "deleteBackup": "Delete Backup",
+        "restore": "Restore",
+        "restoreBackup": "Restore Backup",
+        "viewHistory": "View history"
       },
       "fields": {
-        "webdavUrl": "WebDAV 服务器地址 http(s)://",
-        "username": "用户名",
-        "info": "在应用数据目录中创建本地备份，您可以通过下方列表进行恢复或删除。"
+        "webdavUrl": "WebDAV Server URL",
+        "username": "Username",
+        "info": "Backups are stored locally in the application data directory. Use the list below to restore or delete backups."
       },
       "messages": {
-        "webdavUrlRequired": "WebDAV 服务器地址不能为空",
-        "invalidWebdavUrl": "无效的 WebDAV 服务器地址格式",
-        "usernameRequired": "用户名不能为空",
-        "passwordRequired": "密码不能为空",
-        "webdavConfigSaved": "WebDAV 配置保存成功",
-        "webdavConfigSaveFailed": "保存 WebDAV 配置失败: {{error}}",
-        "backupCreated": "备份创建成功",
-        "backupFailed": "备份失败: {{error}}",
-        "localBackupCreated": "本地备份创建成功",
-        "localBackupFailed": "本地备份失败",
-        "restoreSuccess": "恢复成功，应用将在 1 秒后重启",
-        "localBackupExported": "本地备份导出成功",
-        "localBackupExportFailed": "本地备份导出失败",
-        "localBackupImported": "本地备份导入成功",
-        "localBackupImportFailed": "本地备份导入失败：{{error}}",
-        "webdavRefreshSuccess": "WebDAV 刷新成功",
-        "webdavRefreshFailed": "WebDAV 刷新失败: {{error}}",
-        "confirmDelete": "确认删除此备份文件吗？",
-        "confirmRestore": "确认恢复此份文件吗？"
+        "webdavUrlRequired": "WebDAV URL cannot be empty",
+        "invalidWebdavUrl": "Invalid WebDAV URL format",
+        "usernameRequired": "Username cannot be empty",
+        "passwordRequired": "Password cannot be empty",
+        "webdavConfigSaved": "WebDAV configuration saved successfully",
+        "webdavConfigSaveFailed": "Failed to save WebDAV configuration: {{error}}",
+        "backupCreated": "Backup created successfully",
+        "backupFailed": "Backup failed: {{error}}",
+        "localBackupCreated": "Local backup created successfully",
+        "localBackupFailed": "Local backup failed",
+        "restoreSuccess": "Restore Success, App will restart in 1s",
+        "localBackupExported": "Local backup exported successfully",
+        "localBackupExportFailed": "Failed to export local backup",
+        "localBackupImported": "Local backup imported successfully",
+        "localBackupImportFailed": "Failed to import local backup: {{error}}",
+        "webdavRefreshSuccess": "WebDAV refresh succeeded",
+        "webdavRefreshFailed": "WebDAV refresh failed: {{error}}",
+        "confirmDelete": "Confirm to delete this backup file?",
+        "confirmRestore": "Confirm to restore this backup file?"
       },
       "auto": {
-        "title": "自动备份",
-        "scheduleLabel": "启用定时备份",
-        "scheduleHelper": "按设定频率在后台创建本地备份文件。",
-        "intervalLabel": "备份频率",
-        "changeLabel": "关键变更时自动备份",
-        "changeHelper": "全局扩展覆写配置/脚本更改后自动备份。",
+        "title": "Automatic backup",
+        "scheduleLabel": "Enable scheduled backup",
+        "scheduleHelper": "Create local backups in the background at the configured interval.",
+        "intervalLabel": "Backup frequency",
+        "changeLabel": "Backup on critical changes",
+        "changeHelper": "Automatically backup when Global Extend Config/Script changes.",
         "options": {
-          "hours": "每 {{n}} 小时",
-          "days": "每 {{n}} 天"
+          "hours": "Every {{n}} hours",
+          "days": "Every {{n}} days"
         }
       },
       "manual": {
-        "title": "手动备份",
-        "local": "在本设备的应用数据目录中创建备份。",
-        "webdav": "配置 WebDAV 后，可直接上传备份到服务器。",
-        "configureWebdav": "配置 WebDAV"
+        "title": "Manual backup",
+        "local": "Creates a snapshot on this device, stored under the app data directory.",
+        "webdav": "Upload a snapshot to your WebDAV server once credentials are set.",
+        "configureWebdav": "Configure WebDAV"
       },
       "history": {
-        "title": "备份记录",
-        "summary": "共 {{count}} 份备份 · 最近 {{recent}}",
-        "empty": "暂无备份记录",
-        "unknownPlatform": "未知",
-        "unknownTime": "未知时间"
+        "title": "Backup history",
+        "summary": "{{count}} backups • latest {{recent}}",
+        "empty": "No backups available",
+        "unknownPlatform": "unknown",
+        "unknownTime": "Unknown time"
       },
       "webdav": {
-        "title": "WebDAV 设置"
+        "title": "WebDAV settings"
       },
       "table": {
-        "filename": "文件名称",
-        "backupTime": "备份时间",
-        "actions": "操作",
-        "noBackups": "暂无备份",
-        "rowsPerPage": "每页行数"
+        "filename": "Filename",
+        "backupTime": "Backup Time",
+        "actions": "Actions",
+        "noBackups": "No backups available",
+        "rowsPerPage": "Rows per page"
       }
     },
     "misc": {
-      "title": "杂项设置",
+      "title": "Miscellaneous",
       "fields": {
-        "appLogLevel": "应用日志等级",
-        "appLogMaxSize": "应用日志最大大小",
-        "appLogMaxCount": "应用日志最大数量",
-        "autoCloseConnections": "自动关闭连接",
-        "autoCheckUpdate": "自动检查更新",
-        "enableBuiltinEnhanced": "内置增强功能",
-        "proxyLayoutColumns": "代理页布局列数",
-        "autoLogClean": "自动清理日志",
-        "autoDelayDetection": "自动延迟检测",
-        "autoDelayDetectionInterval": "自动延迟检测间隔",
-        "trainSmartModel": "Smart 模型训练",
-        "defaultLatencyTest": "默认测试链接",
-        "defaultLatencyTimeout": "测试超时时间"
+        "appLogLevel": "App Log Level",
+        "appLogMaxSize": "App Log Max Size",
+        "appLogMaxCount": "App Log Max Count",
+        "autoCloseConnections": "Auto Close Connections",
+        "autoCheckUpdate": "Auto Check Update",
+        "enableBuiltinEnhanced": "Enable Builtin Enhanced",
+        "proxyLayoutColumns": "Proxy Layout Columns",
+        "autoLogClean": "Auto Log Clean",
+        "autoDelayDetection": "Auto Delay Detection",
+        "autoDelayDetectionInterval": "Auto Delay Detection Interval",
+        "trainSmartModel": "Smart Model Training",
+        "trainSmartModelInterval": "Auto Training Interval",
+        "defaultLatencyTest": "Default Latency Test",
+        "defaultLatencyTimeout": "Default Latency Timeout"
       },
       "tooltips": {
-        "autoCloseConnections": "当代理组选中节点或代理模式变动时，关闭已建立的连接",
-        "enableBuiltinEnhanced": "配置文件的兼容性处理",
-        "autoDelayDetection": "后台定时检测当前节点延迟",
-        "trainSmartModel": "用本地收集的数据训练专属 Smart 模型并替换 Model.bin，需本机 Python 环境；重启内核后生效",
-        "defaultLatencyTest": "仅用于 HTTP 客户端请求测试，不会对配置文件产生影响"
+        "autoCloseConnections": "Terminate established connections when the proxy group selection or proxy mode changes",
+        "enableBuiltinEnhanced": "Compatibility handling for the configuration file",
+        "autoDelayDetection": "Periodically test the current node latency in the background",
+        "trainSmartModel": "Train a personal Smart model from locally collected data and replace Model.bin. Requires local Python; takes effect after core restart.",
+        "defaultLatencyTest": "Used for HTTP client request testing only and won't make a difference to the configuration file"
       },
       "options": {
         "proxyLayoutColumns": {
-          "auto": "自动列数"
+          "auto": "Auto Columns"
         },
         "autoLogClean": {
-          "never": "不清理",
-          "retainDays": "保留 {{n}} 天"
+          "never": "Never Clean",
+          "retainDays": "Retain {{n}} Days"
+        },
+        "trainInterval": {
+          "everyNDays": "Every {{n}} days"
         }
-      },
-      "actions": {
-        "trainSmartModelNow": "立即训练",
-        "trainSmartModelWorking": "训练中…"
       }
     },
     "update": {
-      "title": "新版本 v{{version}}",
+      "title": "New Version v{{version}}",
       "actions": {
-        "goToRelease": "前往发布页",
-        "update": "更新"
+        "goToRelease": "Go to Release Page",
+        "update": "Update"
       },
       "messages": {
-        "portableError": "便携版不支持应用内更新，请手动下载替换",
-        "breakChangeError": "此版本为重大更新，不支持应用内更新，请卸载后手动下载安装"
+        "portableError": "The portable version does not support in-app updates. Please manually download and replace it",
+        "breakChangeError": "This version is a major update and does not support in-app updates. Please uninstall it and manually download and install the new version"
       }
     },
     "sysproxy": {
-      "title": "系统代理设置",
+      "title": "System Proxy Setting",
       "fieldsets": {
-        "currentStatus": "当前系统代理"
+        "currentStatus": "Current System Proxy"
       },
       "fields": {
-        "enableStatus": "开启状态：",
-        "serverAddr": "服务地址：",
-        "pacUrl": "PAC 地址：",
-        "proxyHost": "代理主机",
-        "usePacMode": "使用 PAC 模式",
-        "proxyGuard": "系统代理守卫",
-        "guardDuration": "代理守卫间隔",
-        "alwaysUseDefaultBypass": "始终使用默认绕过",
-        "enableBypassCheck": "验证代理绕过格式",
-        "proxyBypass": "代理绕过设置：",
-        "bypass": "当前绕过：",
-        "pacScriptContent": "PAC 脚本内容"
+        "enableStatus": "Enable Status:",
+        "serverAddr": "Server Addr: ",
+        "pacUrl": "PAC URL: ",
+        "proxyHost": "Proxy Host",
+        "usePacMode": "Use PAC Mode",
+        "proxyGuard": "Proxy Guard",
+        "guardDuration": "Guard Duration",
+        "alwaysUseDefaultBypass": "Always use Default Bypass",
+        "enableBypassCheck": "Validate Proxy Bypass Format",
+        "proxyBypass": "Proxy Bypass Settings: ",
+        "bypass": "Bypass: ",
+        "pacScriptContent": "PAC Script Content"
       },
       "tooltips": {
-        "proxyGuard": "开启以防止其他软件修改操作系统的代理设置"
+        "proxyGuard": "Enable to prevent other software from modifying the operating system's proxy settings"
       },
       "messages": {
-        "durationTooShort": "代理守护间隔时间不得低于 1 秒",
-        "invalidBypass": "无效的代理绕过格式",
-        "invalidProxyHost": "代理主机格式无效"
+        "durationTooShort": "Proxy Daemon Duration Cannot be Less than 1 Second",
+        "invalidBypass": "Invalid Bypass Format",
+        "invalidProxyHost": "Invalid Proxy Host Format"
       },
       "actions": {
-        "editPac": "编辑 PAC"
+        "editPac": "Edit PAC"
       }
     },
     "tun": {
-      "title": "虚拟网卡模式",
+      "title": "Tun Mode",
       "fields": {
-        "stack": "TUN 模式堆栈",
-        "device": "虚拟网卡名称",
-        "autoRoute": "自动设置全局路由",
-        "routeExcludeAddress": "排除自定义网段",
-        "strictRoute": "严格路由",
-        "autoDetectInterface": "自动选择流量出口接口",
-        "dnsHijack": "DNS 劫持",
-        "mtu": "最大传输单元",
-        "autoRedirect": "自动重定向"
+        "stack": "Tun Stack",
+        "device": "Device Name",
+        "autoRoute": "Auto Route",
+        "routeExcludeAddress": "Route Exclude Address",
+        "strictRoute": "Strict Route",
+        "autoDetectInterface": "Auto Detect Interface",
+        "dnsHijack": "DNS Hijack",
+        "mtu": "Max Transmission Unit",
+        "autoRedirect": "Auto Redirect"
       },
       "tooltips": {
-        "dnsHijack": "多个 DNS 服务器请使用 , 分隔",
-        "autoRedirect": "自动配置 nftables/iptables 的 TCP 重定向"
+        "dnsHijack": "Please use , to separate multiple DNS servers",
+        "autoRedirect": "Automatically configures nftables/iptables TCP redirects"
       },
       "messages": {
-        "applied": "设置已应用",
-        "invalidRouteExcludeAddress": "请输入有效的 CIDR 网段",
-        "routeExcludeAddressHint": "仅支持 IPv4/IPv6 CIDR，例如 192.168.0.0/16 或 fd00::/8"
+        "applied": "Settings Applied",
+        "invalidRouteExcludeAddress": "Please enter a valid CIDR block",
+        "routeExcludeAddressHint": "Only IPv4/IPv6 CIDR is supported, such as 192.168.0.0/16 or fd00::/8"
       }
     },
     "dns": {
       "dialog": {
-        "title": "DNS 覆写",
-        "warning": "如果你不清楚这里的设置请不要修改，并保持 DNS 覆写开启"
+        "title": "DNS Overwrite",
+        "warning": "If you are not familiar with these settings, please do not modify them and keep DNS Overwrite enabled"
       },
       "sections": {
-        "general": "DNS 设置",
-        "fallbackFilter": "回退过滤设置",
-        "hosts": "Hosts 设置"
+        "general": "DNS Settings",
+        "fallbackFilter": "Fallback Filter Settings",
+        "hosts": "Hosts Settings"
       },
       "fields": {
-        "enable": "启用 DNS",
-        "listen": "DNS 监听地址",
-        "enhancedMode": "增强模式",
-        "fakeIpRange": "Fake IP 范围",
-        "fakeIpFilterMode": "Fake IP 过滤模式",
+        "enable": "Enable DNS",
+        "listen": "DNS Listen",
+        "enhancedMode": "Enhanced Mode",
+        "fakeIpRange": "Fake IP Range",
+        "fakeIpFilterMode": "Fake IP Filter Mode",
         "ipv6": {
           "label": "IPv6",
-          "description": "启用 IPv6 DNS 解析"
+          "description": "Enable IPv6 DNS resolution"
         },
         "preferH3": {
-          "label": "优先使用 HTTP/3",
-          "description": "DNS DOH 使用 HTTP/3 协议"
+          "label": "Prefer H3",
+          "description": "DNS DOH uses HTTP/3"
         },
         "respectRules": {
-          "label": "遵循路由规则",
-          "description": "DNS 连接遵循路由规则"
+          "label": "Respect Rules",
+          "description": "DNS connections follow routing rules"
         },
         "useHosts": {
-          "label": "使用 Hosts",
-          "description": "启用通过 hosts 文件解析域名"
+          "label": "Use Hosts",
+          "description": "Enable to resolve hosts through hosts file"
         },
         "useSystemHosts": {
-          "label": "使用系统 Hosts",
-          "description": "启用通过系统 hosts 文件解析域名"
+          "label": "Use System Hosts",
+          "description": "Enable to resolve hosts through system hosts file"
         },
         "directPolicy": {
-          "label": "直连域名服务器遵循策略",
-          "description": "是否遵循 nameserver-policy 设置"
+          "label": "Direct Nameserver Follow Policy",
+          "description": "Whether to follow nameserver policy"
         },
         "defaultNameserver": {
-          "label": "默认域名服务器",
-          "description": "用于解析 DNS 服务器的默认 DNS 服务器"
+          "label": "Default Nameserver",
+          "description": "Default DNS servers used to resolve DNS servers"
         },
         "nameserver": {
-          "label": "域名服务器",
-          "description": "DNS 服务器列表，用逗号分隔"
+          "label": "Nameserver",
+          "description": "List of DNS servers, comma separated"
         },
         "fallback": {
-          "label": "回退服务器",
-          "description": "回退 DNS 服务器列表，用逗号分隔"
+          "label": "Fallback",
+          "description": "List of fallback DNS servers, comma separated"
         },
         "proxy": {
-          "label": "代理节点DNS",
-          "description": "代理节点域名解析服务器，仅用于解析代理节点的域名，用逗号分隔"
+          "label": "Proxy Server Nameserver",
+          "description": "DNS servers for proxy node domain resolution"
         },
         "directNameserver": {
-          "label": "直连域名服务器",
-          "description": "直连出口域名解析服务器，支持 system 关键字，用逗号分隔"
+          "label": "Direct Nameserver",
+          "description": "DNS servers for direct exit domain resolution, supports 'system' keyword, comma separated"
         },
         "fakeIpFilter": {
-          "label": "Fake IP 过滤",
-          "description": "跳过 Fake IP 解析的域名，用逗号分隔"
+          "label": "Fake IP Filter",
+          "description": "Domains that skip fake IP resolution, comma separated"
         },
         "nameserverPolicy": {
-          "label": "域名服务器策略",
-          "description": "特定域名的 DNS 服务器，多个服务器使用分号分隔，格式: domain=server1;server2"
+          "label": "Nameserver Policy",
+          "description": "Domain-specific DNS server, multiple servers separated by semicolons, format: domain=server1;server2"
         },
         "geoipFiltering": {
-          "label": "GeoIP 过滤",
-          "description": "启用 GeoIP 回退过滤"
+          "label": "GeoIP Filtering",
+          "description": "Enable GeoIP filtering for fallback"
         },
-        "geoipCode": "GeoIP 国家代码",
+        "geoipCode": "GeoIP Code",
         "fallbackIpCidr": {
-          "label": "回退 IP CIDR",
-          "description": "不使用回退服务器的 IP CIDR，用逗号分隔"
+          "label": "Fallback IP CIDR",
+          "description": "IP CIDRs not using fallback servers, comma separated"
         },
         "fallbackDomain": {
-          "label": "回退域名",
-          "description": "使用回退服务器的域名，用逗号分隔"
+          "label": "Fallback Domain",
+          "description": "Domains using fallback servers, comma separated"
         },
         "hosts": {
           "label": "Hosts",
-          "description": "自定义域名到 IP 或域名的映射，用逗号分隔"
+          "description": "Custom domain to IP or domain mapping"
         }
       },
       "messages": {
-        "saved": "DNS 设置已保存",
-        "configError": "DNS 配置错误："
+        "saved": "DNS settings saved",
+        "configError": "DNS configuration error:"
       },
       "errors": {
-        "invalid": "配置无效",
-        "invalidYaml": "YAML 格式无效"
+        "invalid": "Invalid configuration",
+        "invalidYaml": "Invalid YAML format"
       }
     },
     "webUI": {
       "actions": {
-        "openUrl": "打开链接"
+        "openUrl": "Open URL"
       },
-      "title": "网页界面",
+      "title": "Web UI",
       "messages": {
-        "supportedPlaceholders": "支持 %host, %port, %secret",
-        "placeholderInstruction": "使用 %host, %port, %secret 表示 主机, 端口, 访问密钥"
+        "supportedPlaceholders": "Support %host, %port, %secret",
+        "placeholderInstruction": "Replace host, port, secret with %host, %port, %secret"
       }
     },
     "hotkey": {
       "toggles": {
-        "enableGlobal": "启用全局热键"
+        "enableGlobal": "Enable Global Hotkey"
       },
-      "title": "热键设置",
+      "title": "Hotkey Setting",
       "functions": {
-        "rule": "规则模式",
-        "global": "全局模式",
-        "openOrCloseDashboard": "打开/关闭面板",
-        "toggleSystemProxy": "打开/关闭系统代理",
-        "toggleTunMode": "打开/关闭 TUN 模式",
-        "entryLightweightMode": "进入轻量模式",
-        "direct": "直连模式",
-        "reactivateProfiles": "重新激活订阅"
+        "rule": "Rule Mode",
+        "global": "Global Mode",
+        "openOrCloseDashboard": "Open/Close Dashboard",
+        "toggleSystemProxy": "Enable/Disable System Proxy",
+        "toggleTunMode": "Enable/Disable Tun Mode",
+        "entryLightweightMode": "Entry Lightweight Mode",
+        "direct": "Direct Mode",
+        "reactivateProfiles": "Reactivate Profiles"
       }
     },
     "password": {
       "prompts": {
-        "enterRoot": "请输入您的 root 密码"
+        "enterRoot": "Please enter your root password"
       }
     },
     "networkInterface": {
-      "title": "网络接口",
+      "title": "Network Interface",
       "fields": {
-        "ipAddress": "IP 地址",
-        "macAddress": "MAC 地址"
+        "ipAddress": "IP Address",
+        "macAddress": "MAC Address"
       }
     }
   },
   "feedback": {
     "notifications": {
       "clash": {
-        "restartSuccess": "已重启 Clash 内核",
-        "versionUpdated": "内核版本已更新",
-        "alreadyLatestVersion": "已经是最新内核版本",
-        "changeSuccess": "内核切换成功",
-        "changeFailed": "无法切换内核",
-        "geoDataUpdated": "已更新 GeoData",
-        "smartCacheFlushed": "已清除 Smart 缓存"
+        "restartSuccess": "Clash Core Restarted",
+        "versionUpdated": "Core Version Updated",
+        "alreadyLatestVersion": "Already Using Latest Core Version",
+        "changeSuccess": "Core changed successfully",
+        "changeFailed": "Failed to change core",
+        "geoDataUpdated": "GeoData Updated",
+        "smartCacheFlushed": "Smart Cache Flushed"
       },
       "clashService": {
-        "installSuccess": "已成功安装服务",
-        "uninstallSuccess": "已成功卸载服务"
+        "installSuccess": "Service Installed Successfully",
+        "uninstallSuccess": "Service Uninstalled Successfully"
       },
       "updater": {
-        "withClashProxySuccess": "使用 Clash 代理更新成功",
-        "withClashProxyFailed": "使用 Clash 代理更新失败"
+        "withClashProxySuccess": "Update with Clash proxy successfully",
+        "withClashProxyFailed": "Update failed even with Clash proxy"
       }
     }
   },
   "statuses": {
     "clash": {
-      "stopping": "停止内核中...",
-      "restarting": "重启内核中..."
+      "stopping": "Stopping Core...",
+      "restarting": "Restarting Core..."
     },
     "clashService": {
-      "installing": "安装服务中...",
-      "uninstalling": "卸载服务中..."
+      "installing": "Installing Service...",
+      "uninstalling": "Uninstalling Service..."
     }
   }
 }

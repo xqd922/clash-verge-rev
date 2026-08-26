@@ -410,6 +410,7 @@
         "autoDelayDetection": "Otomatik Gecikme Tespiti",
         "autoDelayDetectionInterval": "Otomatik Gecikme Tespiti Aralığı",
         "trainSmartModel": "Smart Model Training",
+        "trainSmartModelInterval": "Auto Training Interval",
         "defaultLatencyTest": "Varsayılan Gecikme Testi",
         "defaultLatencyTimeout": "Varsayılan Gecikme Zaman Aşımı"
       },
@@ -427,11 +428,10 @@
         "autoLogClean": {
           "never": "Asla Temizleme",
           "retainDays": "{{n}} Gün Sakla"
+        },
+        "trainInterval": {
+          "everyNDays": "Every {{n}} days"
         }
-      },
-      "actions": {
-        "trainSmartModelNow": "Train Now",
-        "trainSmartModelWorking": "Training…"
       }
     },
     "update": {

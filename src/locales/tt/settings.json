@@ -410,6 +410,7 @@
         "autoDelayDetection": "Автоматик тоткарлык ачыклау",
         "autoDelayDetectionInterval": "Автоматик тоткарлык ачыклау интервалы",
         "trainSmartModel": "Smart Model Training",
+        "trainSmartModelInterval": "Auto Training Interval",
         "defaultLatencyTest": "Тоткарлануны тикшерү сылтамасы (defaults)",
         "defaultLatencyTimeout": "Тоткарлануның стандарт таймауты"
       },
@@ -427,11 +428,10 @@
         "autoLogClean": {
           "never": "Беркайчан чистартмаска",
           "retainDays": "{{n}} көн саклау"
+        },
+        "trainInterval": {
+          "everyNDays": "Every {{n}} days"
         }
-      },
-      "actions": {
-        "trainSmartModelNow": "Train Now",
-        "trainSmartModelWorking": "Training…"
       }
     },
     "update": {

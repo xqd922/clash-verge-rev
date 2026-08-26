@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import lightgbm as lgb
@@ -8,6 +9,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import RobustScaler, StandardScaler
 
 from go_parser import EXPECTED_FEATURE_COUNT, GoTransformParser
+
+# Windows 控制台默认 GBK 编码，强制 UTF-8 避免中文/表情输出时崩溃
+for _stream in (sys.stdout, sys.stderr):
+    if _stream is not None and hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -73,7 +79,8 @@ def validate_feature_contract(feature_order: list[str]) -> None:
 def load_and_clean_data(file_path: Path) -> pd.DataFrame | None:
     print(f"--> 正在加载数据: {file_path}")
     try:
-        data = pd.read_csv(file_path)
+        # Smart 内核边运行边追加写入，文件里可能残留撕裂行，跳过字段数异常的行
+        data = pd.read_csv(file_path, on_bad_lines="skip")
     except FileNotFoundError:
         print(f"    错误: 数据文件 '{file_path}' 未找到!")
         return None
@@ -141,6 +148,19 @@ def apply_feature_transforms(
     return scaled_features, standard_scaler, robust_scaler
 
 
+def _train_with(
+    params: dict,
+    train_data: lgb.Dataset,
+    test_data: lgb.Dataset,
+) -> lgb.Booster:
+    return lgb.train(
+        params,
+        train_data,
+        valid_sets=[test_data],
+        callbacks=[lgb.early_stopping(EARLY_STOPPING_ROUNDS, verbose=True)],
+    )
+
+
 def train_model(
     train_features: pd.DataFrame,
     train_target: pd.Series,
@@ -151,12 +171,12 @@ def train_model(
     train_data = lgb.Dataset(train_features, label=train_target)
     test_data = lgb.Dataset(test_features, label=test_target, reference=train_data)
 
-    return lgb.train(
-        LGBM_PARAMS,
-        train_data,
-        valid_sets=[test_data],
-        callbacks=[lgb.early_stopping(EARLY_STOPPING_ROUNDS, verbose=True)],
-    )
+    try:
+        return _train_with(LGBM_PARAMS, train_data, test_data)
+    except lgb.basic.LightGBMError as error:
+        # pip 安装的 lightgbm 为 CPU 构建，无 GPU 环境时自动回退
+        print(f"    GPU 训练不可用（{error}），自动改用 CPU。")
+        return _train_with({**LGBM_PARAMS, "device": "cpu"}, train_data, test_data)
 
 
 def serialize_float_values(values: object) -> str:

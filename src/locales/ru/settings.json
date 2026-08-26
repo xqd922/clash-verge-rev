@@ -410,6 +410,7 @@
         "autoDelayDetection": "Автоматическое измерение задержки",
         "autoDelayDetectionInterval": "Интервал автоматического измерения задержки",
         "trainSmartModel": "Smart Model Training",
+        "trainSmartModelInterval": "Auto Training Interval",
         "defaultLatencyTest": "URL для теста задержки",
         "defaultLatencyTimeout": "Таймаут задержки по умолчанию"
       },
@@ -427,11 +428,10 @@
         "autoLogClean": {
           "never": "Никогда не очищать",
           "retainDays": "Хранить {{n}} дней"
+        },
+        "trainInterval": {
+          "everyNDays": "Every {{n}} days"
         }
-      },
-      "actions": {
-        "trainSmartModelNow": "Train Now",
-        "trainSmartModelWorking": "Training…"
       }
     },
     "update": {

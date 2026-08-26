@@ -410,6 +410,7 @@
         "autoDelayDetection": "Auto Delay Detection",
         "autoDelayDetectionInterval": "Auto Delay Detection Interval",
         "trainSmartModel": "Smart Model Training",
+        "trainSmartModelInterval": "Auto Training Interval",
         "defaultLatencyTest": "Default Latency Test",
         "defaultLatencyTimeout": "Default Latency Timeout"
       },
@@ -427,11 +428,10 @@
         "autoLogClean": {
           "never": "Never Clean",
           "retainDays": "Retain {{n}} Days"
+        },
+        "trainInterval": {
+          "everyNDays": "Every {{n}} days"
         }
-      },
-      "actions": {
-        "trainSmartModelNow": "Train Now",
-        "trainSmartModelWorking": "Training…"
       }
     },
     "update": {
