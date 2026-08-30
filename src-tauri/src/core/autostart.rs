@@ -10,6 +10,25 @@ use tauri_plugin_autostart::ManagerExt as _;
 #[cfg(target_os = "windows")]
 use tauri_plugin_clash_verge_sysinfo::is_current_app_handle_admin;
 
+/// 启动时校正配置与系统自启动任务的一致性。
+/// 计划任务可能被任务管理器、系统清理工具等外部手段删除,而此前只有
+/// 设置开关变化时才会写入,一旦脱节便永久失效(配置显示开启但开机不自启),
+/// 因此每次启动时对齐一次,保证能自愈
+pub async fn sync_launch_on_boot() -> Result<()> {
+    let enable_auto_launch = { Config::verge().await.latest_arc().enable_auto_launch };
+    let want = enable_auto_launch.unwrap_or(false);
+    let have = get_launch_status().unwrap_or(false);
+    if want == have {
+        return Ok(());
+    }
+    logging!(
+        warn,
+        Type::System,
+        "Auto-launch state mismatch: config={want}, system={have}; re-syncing"
+    );
+    update_launch().await
+}
+
 pub async fn update_launch() -> Result<()> {
     let enable_auto_launch = { Config::verge().await.latest_arc().enable_auto_launch };
     let is_enable = enable_auto_launch.unwrap_or(false);

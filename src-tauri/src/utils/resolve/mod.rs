@@ -5,7 +5,7 @@ use anyhow::Result;
 use crate::{
     config::Config,
     core::{
-        CoreManager, Timer,
+        CoreManager, Timer, autostart,
         handle::Handle,
         hotkey::Hotkey,
         logger::Logger,
@@ -72,6 +72,7 @@ pub fn resolve_setup_async() {
             init_auto_lightweight_boot(),
             init_auto_backup(),
             init_silent_updater(),
+            init_autostart_sync(),
         );
 
         Handle::refresh_clash();
@@ -188,7 +189,24 @@ pub(super) async fn init_service_manager() {
 }
 
 pub(super) async fn init_core_manager() {
-    logging_error!(Type::Setup, CoreManager::global().init().await);
+    let manager = CoreManager::global();
+    if manager.init().await.is_ok() {
+        return;
+    }
+    // 开机自启时系统服务可能尚未就绪,核心启动失败后不会有人再触发;有限重试兜底
+    for delay in [3u64, 8] {
+        logging!(warn, Type::Core, "Core init failed, retrying in {delay}s");
+        tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
+        if manager.init().await.is_ok() {
+            logging!(info, Type::Core, "Core init succeeded on retry");
+            return;
+        }
+    }
+    logging!(error, Type::Core, "Core init failed after retries");
+}
+
+pub(super) async fn init_autostart_sync() {
+    logging_error!(Type::Setup, autostart::sync_launch_on_boot().await);
 }
 
 pub(super) async fn init_system_proxy() {
