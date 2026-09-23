@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useReducer } from 'react'
+import { useCallback, useEffect, useReducer, useRef } from 'react'
 
 import { useProfiles } from '@/hooks/use-profiles'
 
-import { ProxySortType } from './use-filter-sort'
+import type { ProxySortType } from './use-filter-sort'
 
 export interface HeadState {
   open?: boolean
@@ -19,6 +19,22 @@ export interface HeadState {
 type HeadStateStorage = Record<string, Record<string, HeadState>>
 
 const HEAD_STATE_KEY = 'proxy-head-state'
+
+function loadHeadState(current: string): Record<string, HeadState> {
+  try {
+    const data = JSON.parse(
+      localStorage.getItem(HEAD_STATE_KEY)!,
+    ) as HeadStateStorage
+    const value = data[current] || {}
+    if (value && typeof value === 'object') {
+      return value
+    }
+  } catch {
+    // ignore
+  }
+  return {}
+}
+
 export const DEFAULT_STATE: HeadState = {
   open: false,
   showType: true,
@@ -58,24 +74,15 @@ export function useHeadStateNew() {
   const { profiles } = useProfiles()
   const current = profiles?.current || ''
 
-  const [state, dispatch] = useReducer(headStateReducer, {})
+  // 同步从 localStorage 加载初始状态，避免首帧渲染空状态导致抖动
+  const [state, dispatch] = useReducer(headStateReducer, current, loadHeadState)
 
+  // 仅在 profile 切换时重新加载
+  const prevCurrentRef = useRef(current)
   useEffect(() => {
-    try {
-      const data = JSON.parse(
-        localStorage.getItem(HEAD_STATE_KEY)!,
-      ) as HeadStateStorage
-
-      const value = data[current] || {}
-
-      if (value && typeof value === 'object') {
-        dispatch({ type: 'replace', payload: value })
-      } else {
-        dispatch({ type: 'reset' })
-      }
-    } catch {
-      dispatch({ type: 'reset' })
-    }
+    if (prevCurrentRef.current === current) return
+    prevCurrentRef.current = current
+    dispatch({ type: 'replace', payload: loadHeadState(current) })
   }, [current])
 
   useEffect(() => {

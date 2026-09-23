@@ -1,4 +1,3 @@
-import { DragDropProvider } from '@dnd-kit/react'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
 import { useLockFn } from 'ahooks'
 import { throttle } from 'lodash-es'
@@ -42,10 +41,6 @@ import {
   ProxyGroupNavigator,
 } from './proxy-group-navigator'
 import { ProxyRender } from './proxy-render'
-import {
-  PROXY_GROUP_HEADER_SENSORS,
-  useProxyGroupHeaderLayout,
-} from './use-proxy-group-header-layout'
 import {
   hasRenderableItems,
   type IRenderItem,
@@ -370,10 +365,7 @@ function NormalProxyGroups(props: { mode: string }) {
     saveScrollPosition,
   } = useProxyRenderState(mode, false, null)
   const emptyList = useEmptyRenderList()
-  const { onDragEnd: onHeaderDragEnd } = useProxyGroupHeaderLayout()
   const renderFirstRef = useRef(true)
-  // Do not persist intermediate positions produced while restoring virtual scroll.
-  const isRestoringRef = useRef(false)
 
   useLayoutEffect(() => {
     if (renderList.length === 0) return
@@ -382,42 +374,11 @@ function NormalProxyGroups(props: { mode: string }) {
     if (!node) return
 
     const savedPosition = getScrollPosition()
-    if (!savedPosition) {
-      renderFirstRef.current = false
-      return
-    }
+    renderFirstRef.current = false
+    if (!savedPosition) return
 
-    // Retry across frames until virtual-list measurements can reach the saved offset.
-    isRestoringRef.current = true
-    let rafId = 0
-    let attempts = 0
-    const maxAttempts = 30
-
-    const step = () => {
-      const el = stickyListRef.current?.getScrollElement()
-      if (!el) {
-        isRestoringRef.current = false
-        return
-      }
-
-      el.scrollTop = savedPosition
-      attempts += 1
-
-      const reached = Math.abs(el.scrollTop - savedPosition) <= 1
-      if (reached || attempts >= maxAttempts) {
-        renderFirstRef.current = false
-        isRestoringRef.current = false
-        return
-      }
-
-      rafId = requestAnimationFrame(step)
-    }
-
-    rafId = requestAnimationFrame(step)
-    return () => {
-      cancelAnimationFrame(rafId)
-      isRestoringRef.current = false
-    }
+    // Set once before paint. Retrying across frames makes the list slide down on cold start.
+    node.scrollTop = savedPosition
   }, [renderList.length, getScrollPosition])
 
   const saveScrollPositionThrottled = useMemo(
@@ -427,7 +388,6 @@ function NormalProxyGroups(props: { mode: string }) {
 
   const handleScroll = useCallback(
     (event: Event) => {
-      if (isRestoringRef.current) return
       const target = event.target as HTMLElement | null
       const nextScrollTop = target?.scrollTop ?? 0
 
@@ -580,21 +540,16 @@ function NormalProxyGroups(props: { mode: string }) {
 
   return (
     <div style={{ position: 'relative', height: '100%' }}>
-      <DragDropProvider
-        sensors={PROXY_GROUP_HEADER_SENSORS}
-        onDragEnd={onHeaderDragEnd}
-      >
-        <StickyVirtualList
-          ref={stickyListRef}
-          items={renderList}
-          isGroupItem={(item) => item.type === 0}
-          getItemKey={(item) => item.key}
-          estimateGroupItemHeight={76}
-          estimateItemHeight={64}
-          renderGroupItem={renderGroupItem}
-          renderItem={renderProxyItem}
-        />
-      </DragDropProvider>
+      <StickyVirtualList
+        ref={stickyListRef}
+        items={renderList}
+        isGroupItem={(item) => item.type === 0}
+        getItemKey={(item) => item.key}
+        estimateGroupItemHeight={76}
+        estimateItemHeight={64}
+        renderGroupItem={renderGroupItem}
+        renderItem={renderProxyItem}
+      />
 
       {mode === 'rule' && (
         <ProxyGroupNavigator

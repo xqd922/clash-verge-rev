@@ -389,7 +389,7 @@ export const ConnectionTable = (props: Props) => {
       {
         field: 'download',
         headerName: t('shared.labels.downloaded'),
-        width: 76,
+        width: 80,
         minWidth: 60,
         align: 'right',
         cell: (_, snapshot) => snapshot.downloadText,
@@ -397,7 +397,7 @@ export const ConnectionTable = (props: Props) => {
       {
         field: 'upload',
         headerName: t('shared.labels.uploaded'),
-        width: 76,
+        width: 80,
         minWidth: 60,
         align: 'right',
         cell: (_, snapshot) => snapshot.uploadText,
@@ -405,7 +405,7 @@ export const ConnectionTable = (props: Props) => {
       {
         field: 'dlSpeed',
         headerName: t('connections.components.fields.dlSpeed'),
-        width: 76,
+        width: 82,
         minWidth: 60,
         align: 'right',
         cell: (_, snapshot) => snapshot.downloadSpeedText,
@@ -413,7 +413,7 @@ export const ConnectionTable = (props: Props) => {
       {
         field: 'ulSpeed',
         headerName: t('connections.components.fields.ulSpeed'),
-        width: 76,
+        width: 82,
         minWidth: 60,
         align: 'right',
         cell: (_, snapshot) => snapshot.uploadSpeedText,
@@ -617,9 +617,17 @@ export const ConnectionTable = (props: Props) => {
 
   const toggleSorting = useCallback((field: ColumnField) => {
     setSorting((current) => {
-      if (!current || current.id !== field) return { id: field, desc: false }
-      if (!current.desc) return { id: field, desc: true }
-      return null
+      // Match TanStack Table: numeric columns sort descending on the first click.
+      const descFirst =
+        field === 'download' ||
+        field === 'upload' ||
+        field === 'dlSpeed' ||
+        field === 'ulSpeed' ||
+        field === 'time'
+      if (!current || current.id !== field)
+        return { id: field, desc: descFirst }
+      if (descFirst) return current.desc ? { id: field, desc: false } : null
+      return current.desc ? null : { id: field, desc: true }
     })
   }, [])
 
@@ -818,11 +826,13 @@ export const ConnectionTable = (props: Props) => {
                         justifyContent:
                           column.align === 'right' ? 'flex-end' : 'flex-start',
                         gap: 4,
+                        minWidth: 0,
                         padding: 8,
                         border: 0,
                         background: 'transparent',
                         color: 'inherit',
                         font: 'inherit',
+                        whiteSpace: 'nowrap',
                         textAlign: column.align === 'right' ? 'right' : 'left',
                         cursor: 'pointer',
                       }}

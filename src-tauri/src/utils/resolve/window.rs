@@ -19,10 +19,12 @@ const DEFAULT_HEIGHT: f64 = 700.0;
 const MINIMAL_WIDTH: f64 = 520.0;
 const MINIMAL_HEIGHT: f64 = 520.0;
 
-#[cfg(target_os = "linux")]
-const DEFAULT_DECORATIONS: bool = false;
-#[cfg(not(target_os = "linux"))]
+// 仅 macOS 使用系统原生标题栏（交通灯按钮）；
+// Windows/Linux 保持无边框以使用应用内的自定义标题栏
+#[cfg(target_os = "macos")]
 const DEFAULT_DECORATIONS: bool = true;
+#[cfg(not(target_os = "macos"))]
+const DEFAULT_DECORATIONS: bool = false;
 
 const fn restored_window_size_is_too_small(width: u32, height: u32) -> bool {
     width < MINIMAL_WIDTH as u32 || height < MINIMAL_HEIGHT as u32
