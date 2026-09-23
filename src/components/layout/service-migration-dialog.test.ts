@@ -49,7 +49,6 @@ it.each([
 
 it.each([
   { service: 'notInstalled', mode: 'NotRunning' },
-  { service: 'versionMismatch', mode: 'NotRunning' },
   { service: 'unavailable', mode: 'NotRunning' },
   { service: 'notInstalled', mode: 'Sidecar', pendingAction: 'install' },
 ] satisfies Partial<RunState>[])(
@@ -61,3 +60,15 @@ it.each([
     expect(ServiceMigrationDialog().props.disableCancel).toBe(false)
   },
 )
+
+it('does not block the window for a service version mismatch', () => {
+  vi.mocked(useState).mockReset()
+  vi.mocked(useState)
+    .mockReturnValueOnce([false, vi.fn()])
+    .mockReturnValueOnce([false, vi.fn()])
+    .mockReturnValueOnce([false, vi.fn()])
+  vi.mocked(useQuery).mockReturnValue({
+    data: { service: 'versionMismatch', mode: 'NotRunning' },
+  } as ReturnType<typeof useQuery>)
+  expect(ServiceMigrationDialog().props.open).toBe(false)
+})

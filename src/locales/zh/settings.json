@@ -25,7 +25,12 @@
       "notifications": {
         "tunMode": {
           "autoDisabled": "由于服务不可用，TUN 模式已自动关闭",
-          "autoDisableFailed": "自动关闭 TUN 模式失败"
+          "autoDisableFailed": "自动关闭 TUN 模式失败",
+          "enabled": "虚拟网卡已开启",
+          "unauthorized": "未授权，虚拟网卡未安装",
+          "enableFailed": "虚拟网卡未能开启",
+          "serviceVersion": "系统服务版本与当前应用不一致，虚拟网卡暂时不能使用。",
+          "serviceUpdateUnauthorized": "未授权，服务未更新"
         }
       }
     },

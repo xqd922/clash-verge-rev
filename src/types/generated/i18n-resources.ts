@@ -1370,6 +1370,11 @@ export interface TranslationResources {
             tunMode: {
               autoDisabled: string
               autoDisableFailed: string
+              enabled: string
+              enableFailed: string
+              serviceUpdateUnauthorized: string
+              serviceVersion: string
+              unauthorized: string
             }
           }
           title: string

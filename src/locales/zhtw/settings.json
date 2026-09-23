@@ -25,7 +25,12 @@
       "notifications": {
         "tunMode": {
           "autoDisabled": "由於服務不可使用，虛擬網路介面卡模式已自動停用",
-          "autoDisableFailed": "自動停用虛擬網路介面卡模式失敗"
+          "autoDisableFailed": "自動停用虛擬網路介面卡模式失敗",
+          "enabled": "Virtual network adapter is on",
+          "unauthorized": "Authorization was denied, so the virtual network adapter was not installed",
+          "enableFailed": "The virtual network adapter could not be turned on",
+          "serviceVersion": "The system service version does not match this app, so the virtual network adapter cannot be used yet.",
+          "serviceUpdateUnauthorized": "Authorization was denied, so the service was not updated"
         }
       }
     },

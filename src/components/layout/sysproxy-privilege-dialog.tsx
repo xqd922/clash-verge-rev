@@ -36,7 +36,6 @@ const EXPLANATION = {
   sysproxyRefused: 'layout.components.sysproxyPrivilege.message',
   sysproxySidecarReady:
     'layout.components.sysproxyPrivilege.serviceReadyMessage',
-  tunNeedsService: 'layout.components.sysproxyPrivilege.tunMessage',
   serviceLocationRefused:
     'layout.components.serviceMigration.locationRefusedMessage',
 } as const
@@ -44,7 +43,6 @@ const EXPLANATION = {
 const TITLE = {
   sysproxyRefused: 'layout.components.sysproxyPrivilege.title',
   sysproxySidecarReady: 'layout.components.sysproxyPrivilege.title',
-  tunNeedsService: 'layout.components.sysproxyPrivilege.tunTitle',
   serviceLocationRefused: 'layout.components.serviceMigration.repair',
 } as const
 

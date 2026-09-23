@@ -25,7 +25,12 @@
       "notifications": {
         "tunMode": {
           "autoDisabled": "서비스를 사용할 수 없어 TUN 모드가 자동으로 비활성화되었습니다",
-          "autoDisableFailed": "TUN 모드를 자동으로 비활성화하지 못했습니다"
+          "autoDisableFailed": "TUN 모드를 자동으로 비활성화하지 못했습니다",
+          "enabled": "Virtual network adapter is on",
+          "unauthorized": "Authorization was denied, so the virtual network adapter was not installed",
+          "enableFailed": "The virtual network adapter could not be turned on",
+          "serviceVersion": "The system service version does not match this app, so the virtual network adapter cannot be used yet.",
+          "serviceUpdateUnauthorized": "Authorization was denied, so the service was not updated"
         }
       }
     },

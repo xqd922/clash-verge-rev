@@ -32,8 +32,15 @@ export const ServiceMigrationDialog = () => {
   })
   // Whether the service needs a decision is derived once, in Rust, and travels with the
   // snapshot; a failed refresh is treated as needing one, since we cannot tell otherwise.
+  // A version mismatch is explained in Settings. Do not cover the window for it.
+  const versionHintOnly =
+    !stateRefreshFailed &&
+    runState?.service === 'versionMismatch' &&
+    !runState.pendingAction &&
+    !runState.opInFlight
   const needsDecision =
-    stateRefreshFailed || Boolean(runState?.serviceNeedsAttention)
+    !versionHintOnly &&
+    (stateRefreshFailed || Boolean(runState?.serviceNeedsAttention))
   // Treat refresh failures as unreachable; an absent Service still needs install after a failed Sidecar attempt.
   const remedy: 'install' | 'repair' | 'reinstall' =
     runState?.pendingAction === 'install'

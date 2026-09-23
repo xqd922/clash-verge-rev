@@ -25,7 +25,12 @@
       "notifications": {
         "tunMode": {
           "autoDisabled": "حالت TUN به دلیل عدم دسترسی به سرویس، به طور خودکار غیرفعال می‌شود",
-          "autoDisableFailed": "غیرفعال کردن خودکار حالت TUN ناموفق بود"
+          "autoDisableFailed": "غیرفعال کردن خودکار حالت TUN ناموفق بود",
+          "enabled": "Virtual network adapter is on",
+          "unauthorized": "Authorization was denied, so the virtual network adapter was not installed",
+          "enableFailed": "The virtual network adapter could not be turned on",
+          "serviceVersion": "The system service version does not match this app, so the virtual network adapter cannot be used yet.",
+          "serviceUpdateUnauthorized": "Authorization was denied, so the service was not updated"
         }
       }
     },

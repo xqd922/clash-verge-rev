@@ -17,8 +17,9 @@ import { useServiceUninstaller } from '@/hooks/use-service-uninstaller'
 import { useSystemProxyState } from '@/hooks/use-system-proxy-state'
 import { useSystemState } from '@/hooks/use-system-state'
 import { useVerge } from '@/hooks/use-verge'
+import { getRuntimeState, installService, restartCore } from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
-import { requestService } from '@/services/service-request'
+import { isAuthorizationCancelled } from '@/utils/is-authorization-cancelled'
 
 interface ProxySwitchProps {
   label?: string
@@ -37,6 +38,8 @@ interface SwitchRowProps {
   onToggle: (value: boolean) => Promise<boolean | void>
   onError?: (err: Error) => void
   highlight?: boolean
+  /** Keep the previous position until the toggle succeeds. */
+  settleOnSuccess?: boolean
 }
 
 /**
@@ -53,23 +56,28 @@ const SwitchRow = ({
   onToggle,
   onError,
   highlight,
+  settleOnSuccess = false,
 }: SwitchRowProps) => {
   const theme = useTheme()
   const [checked, setChecked] = useState(active)
   const pendingRef = useRef(false)
 
   if (pendingRef.current) {
-    if (active === checked) pendingRef.current = false
+    if (!settleOnSuccess && active === checked) pendingRef.current = false
   } else if (checked !== active) {
     setChecked(active)
   }
 
   const handleChange = (_: React.ChangeEvent, value: boolean) => {
     pendingRef.current = true
-    setChecked(value)
+    if (!settleOnSuccess) setChecked(value)
     onToggle(value)
       .then((applied) => {
-        if (applied === false) setChecked(active)
+        if (applied === false) {
+          setChecked(active)
+          return
+        }
+        if (settleOnSuccess) setChecked(value)
       })
       .catch((err: any) => {
         setChecked(active)
@@ -137,7 +145,8 @@ const ProxyControlSwitches = ({
   const { uninstallServiceAndStartSidecar } = useServiceUninstaller()
   const { indicator: systemProxyIndicator, toggleSystemProxy } =
     useSystemProxyState()
-  const { runState, isTunModeAvailable, isLoading } = useSystemState()
+  const { runState, isTunModeAvailable, isLoading, mutateSystemState } =
+    useSystemState()
   // Offer to uninstall only a service that is actually there and working.
   const isServiceInstallReady = runState.serviceUsable
 
@@ -155,17 +164,59 @@ const ProxyControlSwitches = ({
     await toggleSystemProxy(value)
   }
 
-  const handleTunToggle = async (value: boolean) => {
-    if (value && !isTunModeAvailable) {
-      requestService({
-        reason: 'tunNeedsService',
-        restore: { enable_tun_mode: value },
-      })
-      return false
-    }
-    mutateVerge({ ...verge, enable_tun_mode: value }, false)
+  const writeTunMode = async (value: boolean) => {
+    mutateVerge((current) => ({ ...current, enable_tun_mode: value }), false)
     await patchVerge({ enable_tun_mode: value })
   }
+
+  const coreCanUseTun = async () => {
+    const refreshed = await mutateSystemState()
+    const next = refreshed.data ?? (await getRuntimeState())
+    return next.mode === 'Service' || next.tunCapable
+  }
+
+  const enableTunAfterCoreReady = async () => {
+    if (!(await coreCanUseTun())) {
+      showNotice.error(
+        'settings.sections.system.notifications.tunMode.enableFailed',
+      )
+      return false
+    }
+    await writeTunMode(true)
+    showNotice.success('settings.sections.system.notifications.tunMode.enabled')
+    return true
+  }
+
+  const handleTunToggle = useLockFn(async (value: boolean) => {
+    if (!value) {
+      await writeTunMode(false)
+      return
+    }
+    // A mismatched service stays in Settings. This switch does not install it.
+    if (runState.service === 'versionMismatch') return false
+
+    try {
+      if (runState.serviceUsable && runState.mode !== 'Service') {
+        await restartCore()
+        return await enableTunAfterCoreReady()
+      }
+      if (!isTunModeAvailable) {
+        await installService()
+        await restartCore()
+        return await enableTunAfterCoreReady()
+      }
+      await writeTunMode(true)
+    } catch (error) {
+      if (isAuthorizationCancelled(error)) {
+        showNotice.warning(
+          'settings.sections.system.notifications.tunMode.unauthorized',
+        )
+        return false
+      }
+      showNotice.error(error)
+      return false
+    }
+  })
 
   const onUninstallService = useLockFn(async () => {
     try {
@@ -201,6 +252,7 @@ const ProxyControlSwitches = ({
           onInfoClick={() => tunRef.current?.open()}
           onToggle={handleTunToggle}
           onError={onError}
+          settleOnSuccess
           highlight={(enable_tun_mode && isTunModeAvailable) || false}
           extraIcons={
             <>

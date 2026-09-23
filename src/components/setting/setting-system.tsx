@@ -1,9 +1,15 @@
+import { Button } from '@mui/material'
+import { useLockFn } from 'ahooks'
 import React, { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { DialogRef, Switch, TooltipIcon } from '@/components/base'
 import ProxyControlSwitches from '@/components/shared/proxy-control-switches'
+import { useSystemState } from '@/hooks/use-system-state'
 import { useVerge } from '@/hooks/use-verge'
+import { reinstallService, restartCore } from '@/services/cmds'
+import { showNotice } from '@/services/notice-service'
+import { isAuthorizationCancelled } from '@/utils/is-authorization-cancelled'
 
 import { GuardState } from './mods/guard-state'
 import { SettingList, SettingItem } from './mods/setting-comp'
@@ -18,8 +24,27 @@ const SettingSystem = ({ onError }: Props) => {
   const { t } = useTranslation()
 
   const { verge, mutateVerge, patchVerge } = useVerge()
+  const { runState, mutateSystemState } = useSystemState()
 
   const { enable_auto_launch, enable_silent_start } = verge ?? {}
+  const serviceVersionMismatch = runState.service === 'versionMismatch'
+
+  const repairServiceVersion = useLockFn(async () => {
+    try {
+      await reinstallService()
+      await restartCore()
+      await mutateSystemState()
+      showNotice.success('layout.components.serviceMigration.success')
+    } catch (error) {
+      if (isAuthorizationCancelled(error)) {
+        showNotice.warning(
+          'settings.sections.system.notifications.tunMode.serviceUpdateUnauthorized',
+        )
+        return
+      }
+      showNotice.error(error)
+    }
+  })
 
   const sysproxyRef = useRef<DialogRef>(null)
   const tunRef = useRef<DialogRef>(null)
@@ -36,6 +61,18 @@ const SettingSystem = ({ onError }: Props) => {
     <SettingList title={t('settings.sections.system.title')}>
       <SysproxyViewer ref={sysproxyRef} />
       <TunViewer ref={tunRef} />
+
+      {serviceVersionMismatch && (
+        <SettingItem
+          label={t(
+            'settings.sections.system.notifications.tunMode.serviceVersion',
+          )}
+        >
+          <Button size="small" onClick={() => void repairServiceVersion()}>
+            {t('layout.components.serviceMigration.reinstall')}
+          </Button>
+        </SettingItem>
+      )}
 
       <ProxyControlSwitches
         label={t('settings.sections.system.toggles.tunMode')}

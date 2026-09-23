@@ -25,7 +25,12 @@
       "notifications": {
         "tunMode": {
           "autoDisabled": "Hizmet kullanılamadığı için TUN Modu otomatik olarak devre dışı bırakıldı",
-          "autoDisableFailed": "TUN Modu otomatik olarak devre dışı bırakılamadı"
+          "autoDisableFailed": "TUN Modu otomatik olarak devre dışı bırakılamadı",
+          "enabled": "Virtual network adapter is on",
+          "unauthorized": "Authorization was denied, so the virtual network adapter was not installed",
+          "enableFailed": "The virtual network adapter could not be turned on",
+          "serviceVersion": "The system service version does not match this app, so the virtual network adapter cannot be used yet.",
+          "serviceUpdateUnauthorized": "Authorization was denied, so the service was not updated"
         }
       }
     },
