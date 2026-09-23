@@ -1,4 +1,5 @@
 import {
+  BuildRounded,
   DeleteForeverRounded,
   PauseCircleOutlineRounded,
   PlayCircleOutlineRounded,
@@ -13,13 +14,12 @@ import { useTranslation } from 'react-i18next'
 import { type DialogRef, Switch, TooltipIcon } from '@/components/base'
 import { SysproxyViewer } from '@/components/setting/mods/sysproxy-viewer'
 import { TunViewer } from '@/components/setting/mods/tun-viewer'
+import { useServiceInstaller } from '@/hooks/use-service-installer'
 import { useServiceUninstaller } from '@/hooks/use-service-uninstaller'
 import { useSystemProxyState } from '@/hooks/use-system-proxy-state'
 import { useSystemState } from '@/hooks/use-system-state'
 import { useVerge } from '@/hooks/use-verge'
-import { getRuntimeState, installService, restartCore } from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
-import { isAuthorizationCancelled } from '@/utils/is-authorization-cancelled'
 
 interface ProxySwitchProps {
   label?: string
@@ -142,6 +142,7 @@ const ProxyControlSwitches = ({
 }: ProxySwitchProps) => {
   const { t } = useTranslation()
   const { verge, mutateVerge, patchVerge } = useVerge()
+  const { installServiceAndRestartCore } = useServiceInstaller()
   const { uninstallServiceAndStartSidecar } = useServiceUninstaller()
   const { indicator: systemProxyIndicator, toggleSystemProxy } =
     useSystemProxyState()
@@ -169,52 +170,21 @@ const ProxyControlSwitches = ({
     await patchVerge({ enable_tun_mode: value })
   }
 
-  const coreCanUseTun = async () => {
-    const refreshed = await mutateSystemState()
-    const next = refreshed.data ?? (await getRuntimeState())
-    return next.mode === 'Service' || next.tunCapable
-  }
-
-  const enableTunAfterCoreReady = async () => {
-    if (!(await coreCanUseTun())) {
-      showNotice.error(
-        'settings.sections.system.notifications.tunMode.enableFailed',
-      )
+  const handleTunToggle = async (value: boolean) => {
+    if (value && !isTunModeAvailable) {
+      const msgKey = 'settings.sections.proxyControl.tooltips.tunUnavailable'
+      showNotice.error(msgKey)
       return false
     }
-    await writeTunMode(true)
-    showNotice.success('settings.sections.system.notifications.tunMode.enabled')
-    return true
+    await writeTunMode(value)
   }
 
-  const handleTunToggle = useLockFn(async (value: boolean) => {
-    if (!value) {
-      await writeTunMode(false)
-      return
-    }
-    // A mismatched service stays in Settings. This switch does not install it.
-    if (runState.service === 'versionMismatch') return false
-
+  const onInstallService = useLockFn(async () => {
     try {
-      if (runState.serviceUsable && runState.mode !== 'Service') {
-        await restartCore()
-        return await enableTunAfterCoreReady()
-      }
-      if (!isTunModeAvailable) {
-        await installService()
-        await restartCore()
-        return await enableTunAfterCoreReady()
-      }
-      await writeTunMode(true)
-    } catch (error) {
-      if (isAuthorizationCancelled(error)) {
-        showNotice.warning(
-          'settings.sections.system.notifications.tunMode.unauthorized',
-        )
-        return false
-      }
-      showNotice.error(error)
-      return false
+      await installServiceAndRestartCore()
+      await mutateSystemState()
+    } catch {
+      // The installer hook already reports the failure.
     }
   })
 
@@ -252,18 +222,31 @@ const ProxyControlSwitches = ({
           onInfoClick={() => tunRef.current?.open()}
           onToggle={handleTunToggle}
           onError={onError}
-          settleOnSuccess
+          disabled={!isTunModeAvailable}
           highlight={(enable_tun_mode && isTunModeAvailable) || false}
           extraIcons={
             <>
               {!isTunModeAvailable && (
-                <TooltipIcon
-                  title={t(
-                    'settings.sections.proxyControl.tooltips.tunUnavailable',
+                <>
+                  <TooltipIcon
+                    title={t(
+                      'settings.sections.proxyControl.tooltips.tunUnavailable',
+                    )}
+                    icon={WarningRounded}
+                    sx={{ color: 'warning.main', ml: 1 }}
+                  />
+                  {runState.service !== 'versionMismatch' && (
+                    <TooltipIcon
+                      title={t(
+                        'settings.sections.proxyControl.actions.installService',
+                      )}
+                      icon={BuildRounded}
+                      color="primary"
+                      onClick={onInstallService}
+                      sx={{ ml: 1 }}
+                    />
                   )}
-                  icon={WarningRounded}
-                  sx={{ color: 'warning.main', ml: 1 }}
-                />
+                </>
               )}
               {isServiceInstallReady && (
                 <TooltipIcon
