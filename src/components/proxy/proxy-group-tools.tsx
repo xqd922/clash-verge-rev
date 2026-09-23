@@ -1,8 +1,8 @@
 import AccessTimeRounded from '@mui/icons-material/AccessTimeRounded'
+import FilterAltOffRounded from '@mui/icons-material/FilterAltOffRounded'
+import FilterAltRounded from '@mui/icons-material/FilterAltRounded'
 import MyLocationRounded from '@mui/icons-material/MyLocationRounded'
 import NetworkCheckRounded from '@mui/icons-material/NetworkCheckRounded'
-import SearchOffRounded from '@mui/icons-material/SearchOffRounded'
-import SearchRounded from '@mui/icons-material/SearchRounded'
 import SortByAlphaRounded from '@mui/icons-material/SortByAlphaRounded'
 import SortRounded from '@mui/icons-material/SortRounded'
 import VisibilityOffRounded from '@mui/icons-material/VisibilityOffRounded'
@@ -159,7 +159,7 @@ export const ProxyGroupTools = memo(function ProxyGroupTools(props: Props) {
           onLocation()
         }}
       >
-        <MyLocationRounded fontSize="inherit" />
+        <MyLocationRounded />
       </IconButton>
 
       <IconButton
@@ -183,7 +183,7 @@ export const ProxyGroupTools = memo(function ProxyGroupTools(props: Props) {
           onCheckDelay()
         }}
       >
-        <NetworkCheckRounded fontSize="inherit" />
+        <NetworkCheckRounded />
       </IconButton>
 
       <IconButton
@@ -207,9 +207,9 @@ export const ProxyGroupTools = memo(function ProxyGroupTools(props: Props) {
           })
         }}
       >
-        {sortType !== 1 && sortType !== 2 && <SortRounded fontSize="inherit" />}
-        {sortType === 1 && <AccessTimeRounded fontSize="inherit" />}
-        {sortType === 2 && <SortByAlphaRounded fontSize="inherit" />}
+        {sortType !== 1 && sortType !== 2 && <SortRounded />}
+        {sortType === 1 && <AccessTimeRounded />}
+        {sortType === 2 && <SortByAlphaRounded />}
       </IconButton>
 
       <IconButton
@@ -226,9 +226,9 @@ export const ProxyGroupTools = memo(function ProxyGroupTools(props: Props) {
         }}
       >
         {textState === 'url' ? (
-          <WifiTetheringRounded fontSize="inherit" />
+          <WifiTetheringRounded />
         ) : (
-          <WifiTetheringOffRounded fontSize="inherit" />
+          <WifiTetheringOffRounded />
         )}
       </IconButton>
 
@@ -249,11 +249,7 @@ export const ProxyGroupTools = memo(function ProxyGroupTools(props: Props) {
           onHeadState({ showType: !showType })
         }}
       >
-        {showType ? (
-          <VisibilityRounded fontSize="inherit" />
-        ) : (
-          <VisibilityOffRounded fontSize="inherit" />
-        )}
+        {showType ? <VisibilityRounded /> : <VisibilityOffRounded />}
       </IconButton>
 
       <IconButton
@@ -271,9 +267,9 @@ export const ProxyGroupTools = memo(function ProxyGroupTools(props: Props) {
         }}
       >
         {textState === 'filter' ? (
-          <SearchOffRounded fontSize="inherit" />
+          <FilterAltRounded />
         ) : (
-          <SearchRounded fontSize="inherit" />
+          <FilterAltOffRounded />
         )}
       </IconButton>
       {side === 'left' && textInput}

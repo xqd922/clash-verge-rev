@@ -1,9 +1,9 @@
 import {
   AccessTimeRounded,
+  FilterAltOffRounded,
+  FilterAltRounded,
   MyLocationRounded,
   NetworkCheckRounded,
-  SearchOffRounded,
-  SearchRounded,
   VisibilityRounded,
   VisibilityOffRounded,
   WifiTetheringRounded,
@@ -162,7 +162,11 @@ export const ProxyHead = ({
           onHeadState({ textState: textState === 'filter' ? null : 'filter' })
         }
       >
-        {textState === 'filter' ? <SearchOffRounded /> : <SearchRounded />}
+        {textState === 'filter' ? (
+          <FilterAltRounded />
+        ) : (
+          <FilterAltOffRounded />
+        )}
       </IconButton>
 
       {textState === 'filter' && (
