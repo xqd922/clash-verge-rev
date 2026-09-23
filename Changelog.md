@@ -1,3 +1,61 @@
+## v2.5.5-4
+
+<details>
+<summary><strong> 🐞 修复问题 </strong></summary>
+
+- 修复日志页每次打开都播放下拉动画的问题，改为直接定位到最新日志
+- 修复打开虚拟网卡前多弹出一层确认的问题，改为直接使用系统授权
+- 取消授权后开关保持关闭；服务已安装时直接切换开启，版本不符改到「设置」处理
+
+</details>
+
+<details>
+<summary><strong> 🚀 优化改进 </strong></summary>
+
+- 未自定义延迟测试时，默认地址改为 `https://www.gstatic.com/generate_204`，超时改为 2000 毫秒
+
+</details>
+
+## v2.5.5-3
+
+<details>
+<summary><strong> 🐞 修复问题 </strong></summary>
+
+- 修复代理组的延迟测试、定位、筛选和排序单独占一行的问题，改回标题左侧
+- 修复连接页第一次点击速度、流量或时长时未按从大到小排序的问题
+- 修复订阅页常见宽度下一排只有两张卡片的问题，恢复一排三个
+- 修复冷启动时页面先下移再弹回的问题
+
+</details>
+
+<details>
+<summary><strong> 🚀 优化改进 </strong></summary>
+
+- 优化连接表表头不再换行，并加宽速度列和流量列
+- 优化代理组展开状态，打开时直接使用上次的展开记录
+
+</details>
+
+## v2.5.5-2
+
+<details>
+<summary><strong> 🚀 优化改进 </strong></summary>
+
+- 优化代理组筛选图标，改回漏斗样式
+- 优化标题栏为系统原生按钮样式，并调整高度，避免更新提示挡住标题
+
+</details>
+
+## v2.5.5-1
+
+<details>
+<summary><strong> 🚀 优化改进 </strong></summary>
+
+- 隐藏侧边栏首页，启动后直接进入代理页
+- 隐藏订阅页的全局扩展和脚本覆写入口
+
+</details>
+
 ## v2.5.5
 
 <details>
