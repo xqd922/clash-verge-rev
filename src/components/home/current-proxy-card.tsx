@@ -159,7 +159,7 @@ function getSignalIcon(
       text: translate('home.components.currentProxy.status.error'),
       color: 'error.main',
     }
-  if (delay === 0 || delay >= 10000)
+  if (delay === 0 || delay >= DEFAULT_DELAY_TIMEOUT)
     return {
       icon: <SignalError />,
       text: translate('home.components.currentProxy.status.timeout'),
@@ -627,12 +627,12 @@ export const CurrentProxyCard = () => {
 
   const autoCheckInProgressRef = useRef(false)
   const latestTimeoutRef = useRef<number>(
-    verge?.default_latency_timeout || 10000,
+    verge?.default_latency_timeout || 2000,
   )
   const latestProxyMemberRef = useRef<ResolvedProxyMember | null>(null)
 
   useEffect(() => {
-    latestTimeoutRef.current = verge?.default_latency_timeout || 10000
+    latestTimeoutRef.current = verge?.default_latency_timeout || 2000
   }, [verge?.default_latency_timeout])
 
   const selectableGroups = useMemo(() => {
@@ -818,7 +818,7 @@ export const CurrentProxyCard = () => {
 
     autoCheckInProgressRef.current = true
 
-    const timeout = latestTimeoutRef.current || 10000
+    const timeout = latestTimeoutRef.current || 2000
 
     try {
       debugLog(
@@ -884,7 +884,7 @@ export const CurrentProxyCard = () => {
 
     debugLog(`[CurrentProxyCard] 开始测试所有延迟，组: ${groupName}`)
 
-    const timeout = verge?.default_latency_timeout || 10000
+    const timeout = verge?.default_latency_timeout || 2000
 
     const interactable = unsortedProxyOptions
       .map(({ member }) => member)

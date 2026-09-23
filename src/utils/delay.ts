@@ -1,6 +1,6 @@
 /** Normalizes latency values and the core's non-measurement sentinels. */
 
-export const DEFAULT_DELAY_TIMEOUT = 10000
+export const DEFAULT_DELAY_TIMEOUT = 2000
 
 const TESTING = -2
 

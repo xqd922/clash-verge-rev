@@ -192,7 +192,7 @@ export const useRenderList = (
     if (interactable.length === 0) return
 
     const handle = setTimeout(() => {
-      const timeout = verge?.default_latency_timeout || 10000
+      const timeout = verge?.default_latency_timeout || 2000
       debugLog(`[ChainMode] 开始计算 ${interactable.length} 个节点的延迟`)
       void delayManager.checkListDelay(interactable, chainDelayGroup, timeout)
     }, 100)

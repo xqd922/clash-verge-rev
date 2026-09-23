@@ -1,7 +1,7 @@
 import { afterEach, expect, test, vi } from 'vitest'
 
 import delayManager from '@/services/delay'
-import { compareByDelay } from '@/utils/delay'
+import { compareByDelay, DEFAULT_DELAY_TIMEOUT } from '@/utils/delay'
 
 import { filterSort } from './use-filter-sort'
 import type { ResolvedMemberOccurrence } from './use-render-list'
@@ -45,7 +45,7 @@ test('matches the previous comparator for cached, fallback and sentinel delays',
           compareByDelay(
             delayManager.getDelayFix(a.member, group),
             delayManager.getDelayFix(b.member, group),
-            timeout > 0 ? timeout : 10000,
+            timeout > 0 ? timeout : DEFAULT_DELAY_TIMEOUT,
           ),
         )
       const before = list.slice()

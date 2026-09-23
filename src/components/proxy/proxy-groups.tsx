@@ -96,7 +96,7 @@ function useProxyRenderState(
     [activeSelectedGroup, isChainMode, mode],
   )
 
-  const timeout = verge?.default_latency_timeout || 10000
+  const timeout = verge?.default_latency_timeout || 2000
 
   const handleCheckAll = useStableCallback(
     useLockFn(async (groupName: string) => {

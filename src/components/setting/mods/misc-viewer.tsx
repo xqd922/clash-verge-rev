@@ -32,7 +32,7 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
     autoDelayDetectionIntervalMinutes: 5,
     defaultLatencyTest: '',
     autoLogClean: 2,
-    defaultLatencyTimeout: 10000,
+    defaultLatencyTimeout: 2000,
   })
 
   useImperativeHandle(ref, () => ({
@@ -51,7 +51,7 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
           verge?.auto_delay_detection_interval_minutes ?? 5,
         defaultLatencyTest: verge?.default_latency_test || '',
         autoLogClean: verge?.auto_log_clean || 0,
-        defaultLatencyTimeout: verge?.default_latency_timeout || 10000,
+        defaultLatencyTimeout: verge?.default_latency_timeout || 2000,
       })
     },
     close: () => setOpen(false),
@@ -383,7 +383,7 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
             spellCheck="false"
             sx={{ width: 250, marginLeft: 'auto' }}
             value={values.defaultLatencyTest}
-            placeholder="http://cp.cloudflare.com/generate_204"
+            placeholder="https://www.gstatic.com/generate_204"
             onChange={(e) =>
               setValues((v) => ({ ...v, defaultLatencyTest: e.target.value }))
             }
@@ -403,7 +403,7 @@ export const MiscViewer = forwardRef<DialogRef>((props, ref) => {
             spellCheck="false"
             sx={{ width: 250 }}
             value={values.defaultLatencyTimeout}
-            placeholder="10000"
+            placeholder="2000"
             onChange={(e) =>
               setValues((v) => ({
                 ...v,

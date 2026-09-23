@@ -65,9 +65,14 @@ const LogPage = () => {
   const virtuosoRef = useRef<VirtualListHandle>(null)
 
   useEffect(() => {
-    if (!isDescending && scrollRef.current.isNearBottom) {
+    if (
+      !isDescending &&
+      filteredLogs.length > 0 &&
+      scrollRef.current.isNearBottom
+    ) {
       virtuosoRef.current?.scrollToIndex(filteredLogs.length - 1, {
-        behavior: 'smooth',
+        align: 'end',
+        behavior: 'auto',
       })
     }
   }, [isDescending, filteredLogs.length])
