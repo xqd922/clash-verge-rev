@@ -1,6 +1,5 @@
 import DnsOutlinedIcon from '@mui/icons-material/DnsOutlined'
 import ForkRightOutlinedIcon from '@mui/icons-material/ForkRightOutlined'
-import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
 import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined'
 import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
@@ -9,7 +8,6 @@ import WifiOutlinedIcon from '@mui/icons-material/WifiOutlined'
 import { type ComponentType, type ReactNode } from 'react'
 
 import ConnectionsSvg from '@/assets/image/itemicon/connections.svg?react'
-import HomeSvg from '@/assets/image/itemicon/home.svg?react'
 import LogsSvg from '@/assets/image/itemicon/logs.svg?react'
 import ProfilesSvg from '@/assets/image/itemicon/profiles.svg?react'
 import ProxiesSvg from '@/assets/image/itemicon/proxies.svg?react'
@@ -19,7 +17,6 @@ import UnlockSvg from '@/assets/image/itemicon/unlock.svg?react'
 
 import { navigationItems } from './_navigation-meta'
 import ConnectionsPage from './connections'
-import HomePage from './home'
 import LogsPage from './logs'
 import ProfilePage from './profiles'
 import ProxyPage from './proxies'
@@ -35,11 +32,6 @@ type NavigationItem = {
 }
 
 export const navItems: NavigationItem[] = [
-  {
-    ...navigationItems.home,
-    icon: [<HomeOutlinedIcon key="mui" />, <HomeSvg key="svg" />],
-    Component: HomePage,
-  },
   {
     ...navigationItems.proxies,
     icon: [<WifiOutlinedIcon key="mui" />, <ProxiesSvg key="svg" />],

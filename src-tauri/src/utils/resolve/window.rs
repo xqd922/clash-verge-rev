@@ -49,7 +49,7 @@ pub async fn build_new_window() -> Result<WebviewWindow, String> {
 
     let config = Config::verge().await;
     let latest = config.latest_arc();
-    let start_page = latest.start_page.as_deref().unwrap_or("/");
+    let start_page = latest.start_page.as_deref().unwrap_or("/proxies");
     let initial_theme_mode = match latest.theme_mode.as_deref() {
         Some("dark") => "dark",
         Some("light") => "light",

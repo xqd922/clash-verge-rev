@@ -304,9 +304,9 @@ impl IVerge {
             Ok(path) => match help::read_yaml::<Self>(&path).await {
                 Ok(mut config) => {
                     if let Some(start_page) = config.start_page.clone()
-                        && start_page == "/home"
+                        && (start_page == "/home" || start_page == "/")
                     {
-                        config.start_page = Some(String::from("/"));
+                        config.start_page = Some(String::from("/proxies"));
                     }
                     config
                 }
@@ -333,7 +333,7 @@ impl IVerge {
             env_type: Some("bash".into()),
             #[cfg(target_os = "windows")]
             env_type: Some("powershell".into()),
-            start_page: Some("/".into()),
+            start_page: Some("/proxies".into()),
             traffic_graph: Some(true),
             enable_memory_usage: Some(true),
             enable_group_icon: Some(true),

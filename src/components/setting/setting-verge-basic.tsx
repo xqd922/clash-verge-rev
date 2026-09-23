@@ -180,7 +180,7 @@ const SettingVergeBasic = ({ onError }: Props) => {
         label={t('settings.components.verge.basic.fields.startPage')}
       >
         <GuardState
-          value={start_page ?? '/'}
+          value={start_page ?? '/proxies'}
           onCatch={onError}
           onFormat={(e: any) => e.target.value}
           onChange={(e) => onChangeData({ start_page: e })}

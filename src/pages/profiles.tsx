@@ -16,7 +16,7 @@ import {
   RefreshRounded,
   TextSnippetOutlined,
 } from '@mui/icons-material'
-import { Box, Button, Divider, Grid, IconButton, Stack } from '@mui/material'
+import { Box, Button, IconButton, Stack } from '@mui/material'
 import { TauriEvent } from '@tauri-apps/api/event'
 import { readText } from '@tauri-apps/plugin-clipboard-manager'
 import { readTextFile } from '@tauri-apps/plugin-fs'
@@ -33,7 +33,6 @@ import {
   type DialogRef,
 } from '@/components/base'
 import { ProfileItem } from '@/components/profile/profile-item'
-import { ProfileMore } from '@/components/profile/profile-more'
 import {
   ProfileViewer,
   type ProfileViewerRef,
@@ -53,11 +52,7 @@ import {
 import { subscribeVergeEvents } from '@/services/events'
 import { errorDetail, showNotice } from '@/services/notice-service'
 import { revalidateQuery, useQuery } from '@/services/query-client'
-import {
-  useLoadingCache,
-  useSetLoadingCache,
-  useThemeMode,
-} from '@/services/states'
+import { useLoadingCache, useSetLoadingCache } from '@/services/states'
 import { debugLog } from '@/utils/debug'
 import { isValidUrl } from '@/utils/network'
 
@@ -190,7 +185,7 @@ const ProfilePage = () => {
     }
   })
 
-  const { data: chainLogs = {}, refetch: refetchLogs } = useQuery({
+  const { refetch: refetchLogs } = useQuery({
     queryKey: ['getRuntimeLogs'],
     queryFn: getRuntimeLogs,
   })
@@ -685,12 +680,6 @@ const ProfilePage = () => {
     }
   })
 
-  const mode = useThemeMode()
-  const isLight = mode === 'light'
-  const dividercolor = isLight
-    ? 'rgba(0, 0, 0, 0.06)'
-    : 'rgba(255, 255, 255, 0.06)'
-
   // 卸载后不再执行尚未发送的切换意图。
   useEffect(() => {
     profilePageMountedRef.current = true
@@ -950,36 +939,6 @@ const ProfilePage = () => {
             ))}
           </Box>
         </DragDropProvider>
-        <Divider
-          variant="middle"
-          flexItem
-          sx={{ width: `calc(100% - 32px)`, borderColor: dividercolor }}
-        ></Divider>
-        <Box sx={{ mt: 1.5, mb: '10px' }}>
-          <Grid container spacing={{ xs: 1, lg: 1 }}>
-            <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-              <ProfileMore
-                id="Merge"
-                onSave={async (prev, curr) => {
-                  if (prev !== curr) {
-                    await onEnhance(false)
-                  }
-                }}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-              <ProfileMore
-                id="Script"
-                logInfo={chainLogs['Script']}
-                onSave={async (prev, curr) => {
-                  if (prev !== curr) {
-                    await onEnhance(false)
-                  }
-                }}
-              />
-            </Grid>
-          </Grid>
-        </Box>
       </Box>
 
       <ProfileViewer
