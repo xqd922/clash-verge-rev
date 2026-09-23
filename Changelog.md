@@ -1,3 +1,16 @@
+## v2.5.5-5
+
+<details>
+<summary><strong> 🚀 优化改进 </strong></summary>
+
+- 默认关闭「自动检查更新」，打开软件时不再自动检查
+
+**🖥️/🍎 Windows/macOS**
+
+- macOS 默认打开「优先使用系统标题栏」，Windows 默认关闭
+
+</details>
+
 ## v2.5.5-4
 
 <details>
