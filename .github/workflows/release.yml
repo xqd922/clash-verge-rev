@@ -629,14 +629,28 @@ jobs:
           sudo apt-get update
           sudo apt-get install jq
           echo "VERSION=$(cat package.json | jq '.version' | tr -d '"')" >> $GITHUB_ENV
+      - name: Check Winget token
+        id: winget
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          if [ -n "$WINGET_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "WINGET_TOKEN is not set, skipping Winget submission"
+          fi
+
       - name: Submit to Winget
+        if: steps.winget.outputs.enabled == 'true'
+        continue-on-error: true
         uses: vedantmgoyal9/winget-releaser@main
         with:
           identifier: ClashVergeRev.ClashVergeRev
           version: ${{env.VERSION}}
           release-tag: v${{env.VERSION}}
           installers-regex: '_(arm64|x64|x86)-setup\.exe$'
-          token: ${{ secrets.WINGET_TOKEN  }}
+          token: ${{ secrets.WINGET_TOKEN }}
 
   notify-telegram:
     if: ${{ !contains(github.ref_name, '-rc') }}

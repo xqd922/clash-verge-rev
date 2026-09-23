@@ -111,6 +111,7 @@ pub async fn build_new_window() -> Result<WebviewWindow, String> {
         Ok(window) => {
             logging_error!(Type::Window, window.set_background_color(Some(background_color)));
             restore_default_size_if_needed(&window);
+            apply_platform_titlebar_default_once(&window);
             // A new page supersedes any reload marker left by the old window.
             #[cfg(target_os = "macos")]
             take_webview_needs_reload();
@@ -118,6 +119,22 @@ pub async fn build_new_window() -> Result<WebviewWindow, String> {
         }
         Err(e) => Err(e.to_string()),
     }
+}
+
+/// macOS 默认打开系统标题栏，Windows 和 Linux 默认关闭。
+/// 只写一次，避免覆盖用户后来在界面里改过的选择。
+fn apply_platform_titlebar_default_once(window: &WebviewWindow) {
+    let Ok(marker) = crate::utils::dirs::platform_titlebar_default_path() else {
+        return;
+    };
+    if marker.exists() {
+        return;
+    }
+
+    if window.set_decorations(DEFAULT_DECORATIONS).is_err() {
+        return;
+    }
+    let _ = std::fs::write(marker, b"");
 }
 
 /// Defers recovery of a terminated hidden main webview until its next activation.

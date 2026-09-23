@@ -245,6 +245,14 @@ impl IVerge {
 
         let mut needs_fix = false;
 
+        let auto_check_marker = dirs::auto_check_default_off_path().ok();
+        let apply_auto_check_default = auto_check_marker.as_ref().is_some_and(|path| !path.exists());
+        if apply_auto_check_default && config.auto_check_update != Some(false) {
+            logging!(info, Type::Config, "自动检查更新改为默认关闭，启动时不再检查");
+            config.auto_check_update = Some(false);
+            needs_fix = true;
+        }
+
         if let Some(ref core) = config.clash_core {
             let core_str = core.trim();
             if core_str.is_empty() || !Self::VALID_CLASH_CORES.contains(&core_str) {
@@ -275,6 +283,10 @@ impl IVerge {
             Self::reload_config_after_fix(config).await;
         } else {
             logging!(debug, Type::Config, "clash_core配置验证通过: {:?}", config.clash_core);
+        }
+
+        if apply_auto_check_default && let Some(marker) = auto_check_marker {
+            let _ = std::fs::write(marker, b"");
         }
 
         Ok(())
@@ -372,7 +384,7 @@ impl IVerge {
             use_default_bypass: Some(true),
             proxy_guard_duration: Some(30),
             auto_close_connection: Some(true),
-            auto_check_update: Some(true),
+            auto_check_update: Some(false),
             enable_builtin_enhanced: Some(true),
             auto_log_clean: Some(2), // 1: 1天, 2: 7天, 3: 30天, 4: 90天
             enable_auto_backup_schedule: Some(false),

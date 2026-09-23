@@ -23,6 +23,10 @@ pub static VERGE_CONFIG: &str = "verge.yaml";
 pub static PROFILE_YAML: &str = "profiles.yaml";
 /// Marks that the one-shot raise of too-short auto-update intervals has already run.
 pub static UPDATE_INTERVAL_MIGRATED: &str = ".update-interval-migrated";
+/// Marks that auto-update checks have been switched to opt-in once.
+pub static AUTO_CHECK_DEFAULT_OFF: &str = ".auto-check-update-default-off";
+/// Marks that the platform title-bar default has been applied once.
+pub static PLATFORM_TITLEBAR_DEFAULT: &str = ".platform-titlebar-default";
 
 /// Uses the same platform data resolver as Tauri, including before its handle exists.
 pub fn app_home_dir() -> Result<PathBuf> {
@@ -112,6 +116,14 @@ pub fn profiles_path() -> Result<PathBuf> {
 
 pub fn update_interval_migrated_path() -> Result<PathBuf> {
     Ok(app_home_dir()?.join(UPDATE_INTERVAL_MIGRATED))
+}
+
+pub fn auto_check_default_off_path() -> Result<PathBuf> {
+    Ok(app_home_dir()?.join(AUTO_CHECK_DEFAULT_OFF))
+}
+
+pub fn platform_titlebar_default_path() -> Result<PathBuf> {
+    Ok(app_home_dir()?.join(PLATFORM_TITLEBAR_DEFAULT))
 }
 
 #[cfg(target_os = "macos")]
