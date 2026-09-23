@@ -24,19 +24,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check if tag is from main branch
+      - name: Check if tag is from upstream-v2.5.5
         run: |
           TAG_REF="${GITHUB_REF##*/}"
-          echo "Checking if tag $TAG_REF is from main branch..."
+          RELEASE_BRANCH="upstream-v2.5.5"
+          echo "Checking if tag $TAG_REF is from $RELEASE_BRANCH..."
 
-          TAG_COMMIT=$(git rev-list -n 1 $TAG_REF)
-          MAIN_COMMITS=$(git rev-list origin/main)
+          git fetch origin "$RELEASE_BRANCH"
+          TAG_COMMIT=$(git rev-list -n 1 "$TAG_REF")
 
-          if echo "$MAIN_COMMITS" | grep -q "$TAG_COMMIT"; then
-            echo "✅ Tag $TAG_REF is from main branch"
+          if git merge-base --is-ancestor "$TAG_COMMIT" "origin/$RELEASE_BRANCH"; then
+            echo "✅ Tag $TAG_REF is from $RELEASE_BRANCH"
           else
-            echo "❌ Tag $TAG_REF is not from main branch"
-            echo "This release workflow only accepts tags from main branch."
+            echo "❌ Tag $TAG_REF is not from $RELEASE_BRANCH"
+            echo "This release workflow only accepts tags from $RELEASE_BRANCH."
             exit 1
           fi
 
@@ -248,6 +249,37 @@ jobs:
           rustup target list --installed
           echo "Rust target ${{ matrix.target }} installed."
 
+      - name: Configure Apple signing
+        if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set_if_present() {
+            local name="$1"
+            local value="$2"
+            if [ -n "$value" ]; then
+              delimiter="APPLE_SECRET_${name}"
+              {
+                echo "${name}<<${delimiter}"
+                printf '%s\n' "$value"
+                echo "${delimiter}"
+              } >> "$GITHUB_ENV"
+            else
+              echo "Skipping unset ${name}"
+            fi
+          }
+          set_if_present APPLE_CERTIFICATE "$APPLE_CERTIFICATE"
+          set_if_present APPLE_CERTIFICATE_PASSWORD "$APPLE_CERTIFICATE_PASSWORD"
+          set_if_present APPLE_SIGNING_IDENTITY "$APPLE_SIGNING_IDENTITY"
+          set_if_present APPLE_ID "$APPLE_ID"
+          set_if_present APPLE_PASSWORD "$APPLE_PASSWORD"
+          set_if_present APPLE_TEAM_ID "$APPLE_TEAM_ID"
+
       - name: Tauri build
         # 上游 5.24 修改了 latest.json 的生成逻辑，且依赖 tauri-plugin-update 2.10.0 暂未发布，故锁定在 0.5.23 版本
         uses: tauri-apps/tauri-action@v1.0.0
@@ -256,12 +288,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           releaseId: ${{ needs.prepare_release.outputs.release_id }}
           tagName: ${{ github.ref_name }}
