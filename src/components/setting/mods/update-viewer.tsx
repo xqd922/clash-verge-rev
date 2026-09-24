@@ -1,5 +1,5 @@
 import { alpha, Box, Button, LinearProgress } from '@mui/material'
-import type { DownloadEvent } from '@tauri-apps/plugin-updater'
+import type { DownloadEvent, Update } from '@tauri-apps/plugin-updater'
 import { useLockFn } from 'ahooks'
 import type { Ref } from 'react'
 import {
@@ -13,7 +13,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import type { Options as ReactMarkdownOptions } from 'react-markdown'
 
-import { BaseDialog, DialogRef } from '@/components/base'
+import { BaseDialog } from '@/components/base'
 import { useUpdate } from '@/hooks/use-update'
 import { restartApp } from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
@@ -171,14 +171,21 @@ const remarkGitHubAlerts = (labels: Record<GitHubAlertType, string>) => {
   return visit
 }
 
-export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
+export interface UpdateViewerRef {
+  open: (update?: Update | null) => void
+  close: () => void
+}
+
+export function UpdateViewer({ ref }: { ref?: Ref<UpdateViewerRef> }) {
   const { t, i18n } = useTranslation()
 
   const [open, setOpen] = useState(false)
   const updateState = useUpdateState()
   const setUpdateState = useSetUpdateState()
 
-  const { updateInfo } = useUpdate()
+  const { updateInfo: cachedUpdate } = useUpdate()
+  const [manualUpdate, setManualUpdate] = useState<Update | null>(null)
+  const updateInfo = manualUpdate ?? cachedUpdate
 
   const [downloaded, setDownloaded] = useState(0)
   const [total, setTotal] = useState(0)
@@ -195,7 +202,10 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
   }, [downloaded, total])
 
   useImperativeHandle(ref, () => ({
-    open: () => setOpen(true),
+    open: (update?: Update | null) => {
+      setManualUpdate(update ?? null)
+      setOpen(true)
+    },
     close: () => setOpen(false),
   }))
 
@@ -233,7 +243,7 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
   }, [updateInfo])
 
   const onUpdate = useLockFn(async () => {
-    if (!updateInfo?.body) return
+    if (!updateInfo) return
     if (breakChangeFlag) {
       showNotice.error('settings.modals.update.messages.breakChangeError')
       return
@@ -315,7 +325,7 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
             sx={{ whiteSpace: 'nowrap' }}
             onClick={() => {
               openUrlWithNotice(
-                `https://github.com/clash-verge-rev/clash-verge-rev/releases/tag/v${updateInfo?.version}`,
+                `https://github.com/xqd922/clash-verge-rev/releases/tag/v${updateInfo?.version}`,
               )
             }}
           >

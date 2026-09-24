@@ -21,7 +21,7 @@ import { MiscViewer } from './mods/misc-viewer'
 import { SettingItem, SettingList } from './mods/setting-comp'
 import { ThemeModeSwitch } from './mods/theme-mode-switch'
 import { ThemeViewer } from './mods/theme-viewer'
-import { UpdateViewer } from './mods/update-viewer'
+import { UpdateViewer, type UpdateViewerRef } from './mods/update-viewer'
 
 interface Props {
   onError?: (err: Error) => void
@@ -66,7 +66,7 @@ const SettingVergeBasic = ({ onError }: Props) => {
   const miscRef = useRef<DialogRef>(null)
   const themeRef = useRef<DialogRef>(null)
   const layoutRef = useRef<DialogRef>(null)
-  const updateRef = useRef<DialogRef>(null)
+  const updateRef = useRef<UpdateViewerRef>(null)
   const backupRef = useRef<DialogRef>(null)
 
   const onChangeData = (patch: any) => {
