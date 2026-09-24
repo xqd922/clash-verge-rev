@@ -1,5 +1,5 @@
 const SERVICE_URL_PREFIX =
-  'https://github.com/clash-verge-rev/clash-verge-service-ipc/releases/download'
+  'https://github.com/xqd922/clash-verge-service-ipc/releases/download'
 
 export function resolveServiceRelease(cargoManifest, host, platform) {
   const dependency = cargoManifest

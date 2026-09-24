@@ -1,3 +1,12 @@
+## v2.5.5-8
+
+<details>
+<summary><strong> 🚀 优化改进 </strong></summary>
+
+- 安装包附带自己的服务程序，服务模式下切换订阅时按 URL 保留已下载的规则集
+
+</details>
+
 ## v2.5.5-7
 
 <details>
