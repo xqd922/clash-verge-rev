@@ -1,3 +1,20 @@
+## v2.5.5-7
+
+<details>
+<summary><strong> 🐞 修复问题 </strong></summary>
+
+- 修复检查更新仍指向官方仓库的问题，改为使用自己的发布地址
+- 修复手动检查更新后不显示这次结果的问题
+
+</details>
+
+<details>
+<summary><strong> 🚀 优化改进 </strong></summary>
+
+- 服务模式下切换订阅时，按 URL 保留已下载的远程规则集，切回同一订阅不再重新下载
+
+</details>
+
 ## v2.5.5-6
 
 <details>
