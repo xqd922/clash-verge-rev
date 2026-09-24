@@ -5,12 +5,12 @@ import { useTranslation } from 'react-i18next'
 import { BaseLoading } from '@/components/base'
 import { useProxyDelayState } from '@/hooks/use-proxy-delay-state'
 import delayManager from '@/services/delay'
-import { classifyDelay } from '@/utils/delay'
 import {
   memberDetails,
   type ProxyGroupView,
   type ResolvedProxyMember,
 } from '@/types/proxy-view'
+import { classifyDelay } from '@/utils/delay'
 
 interface Props {
   group: ProxyGroupView
