@@ -1,3 +1,21 @@
+## v2.5.5-6
+
+<details>
+<summary><strong> 🐞 修复问题 </strong></summary>
+
+- 修复超时和 Error 节点悬停时显示成「检测」的问题，继续显示 Timeout 或 Error
+- 修复切换订阅时遮罩出现偏晚的问题，点击后立即覆盖
+- 修复代理组标题下滑时看起来浮在列表上的问题
+
+</details>
+
+<details>
+<summary><strong> 🚀 优化改进 </strong></summary>
+
+- 新配置中「IPv6」和「统一延迟」默认关闭
+
+</details>
+
 ## v2.5.5-5
 
 <details>
