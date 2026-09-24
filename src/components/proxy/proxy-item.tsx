@@ -20,6 +20,7 @@ import {
   type ProxyGroupView,
   type ResolvedProxyMember,
 } from '@/types/proxy-view'
+import { classifyDelay } from '@/utils/delay'
 
 interface Props {
   group: ProxyGroupView
@@ -62,6 +63,9 @@ export const ProxyItem = (props: Props) => {
     member,
     group.name,
   )
+  const delayKind = classifyDelay(delayValue, timeout)
+  const showResult =
+    delayKind === 'measured' || delayKind === 'timeout' || delayKind === 'error'
 
   return (
     <ListItem sx={sx}>
@@ -75,11 +79,9 @@ export const ProxyItem = (props: Props) => {
           ({ palette: { mode, primary } }) => {
             const bgcolor = mode === 'light' ? '#ffffff' : '#24252f'
             const selectColor = mode === 'light' ? primary.main : primary.light
-            const showDelay = delayValue > 0
-
             return {
-              '&:hover .the-check': { display: !showDelay ? 'block' : 'none' },
-              '&:hover .the-delay': { display: showDelay ? 'block' : 'none' },
+              '&:hover .the-check': { display: !showResult ? 'block' : 'none' },
+              '&:hover .the-delay': { display: showResult ? 'block' : 'none' },
               '&:hover .the-icon': { display: 'none' },
               '&.Mui-selected': {
                 width: `calc(100% + 3px)`,
@@ -162,7 +164,7 @@ export const ProxyItem = (props: Props) => {
             </Widget>
           )}
 
-          {!unresolved && delayValue > 0 && (
+          {!unresolved && showResult && (
             // 显示延迟
             <Widget
               className="the-delay"
@@ -180,7 +182,7 @@ export const ProxyItem = (props: Props) => {
             </Widget>
           )}
 
-          {!unresolved && delayValue !== -2 && delayValue <= 0 && selected && (
+          {!unresolved && !showResult && delayValue !== -2 && selected && (
             // 展示已选择的 icon
             <CheckCircleOutlineRounded
               className="the-icon"

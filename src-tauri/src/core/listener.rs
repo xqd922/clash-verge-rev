@@ -247,7 +247,7 @@ fn proxy_claims(config: &Mapping) -> Result<Vec<BindClaim>> {
 }
 
 fn proxy_bind_addresses(config: &Mapping) -> Result<Vec<IpAddr>> {
-    let ipv6 = config.get("ipv6").and_then(Value::as_bool).unwrap_or(true);
+    let ipv6 = config.get("ipv6").and_then(Value::as_bool).unwrap_or(false);
     let allow_lan = config.get("allow-lan").and_then(Value::as_bool).unwrap_or(false);
 
     if !allow_lan {

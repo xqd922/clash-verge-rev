@@ -58,7 +58,6 @@ import { isValidUrl } from '@/utils/network'
 
 // 与 src-tauri/src/main.rs 的 worker_limit 上限(8)保持一致，避免前后端更新风暴不对齐
 const PROFILE_UPDATE_WORKER_LIMIT = 8
-const PROFILE_SWITCH_LOADING_DELAY = 400
 const profilePointerSensor = PointerSensor.configure({
   activationConstraints: () => undefined,
 })
@@ -103,9 +102,6 @@ const ProfilePage = () => {
   const latestSwitchTargetRef = useRef<string | null>(null)
   const queuedSwitchRef = useRef<ProfileSwitchRequest | null>(null)
   const switchRunnerRef = useRef<Promise<void> | null>(null)
-  const switchLoadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  )
   const currentProfileRef = useRef<string | undefined>(undefined)
   const profilePageMountedRef = useRef(true)
   const { current } = location.state || {}
@@ -408,18 +404,7 @@ const ProfilePage = () => {
       latestSwitchTargetRef.current = profile
       queuedSwitchRef.current = { profile, notifySuccess, force }
       setSwitchTarget(profile)
-      setVisibleSwitchingProfile(null)
-      if (switchLoadingTimerRef.current) {
-        window.clearTimeout(switchLoadingTimerRef.current)
-      }
-      switchLoadingTimerRef.current = window.setTimeout(() => {
-        if (
-          profilePageMountedRef.current &&
-          latestSwitchTargetRef.current === profile
-        ) {
-          setVisibleSwitchingProfile(profile)
-        }
-      }, PROFILE_SWITCH_LOADING_DELAY)
+      setVisibleSwitchingProfile(profile)
 
       if (switchRunnerRef.current) {
         debugProfileSwitch('SWITCH_QUEUED', profile)
@@ -430,10 +415,6 @@ const ProfilePage = () => {
         if (switchRunnerRef.current === runner) {
           switchRunnerRef.current = null
           latestSwitchTargetRef.current = null
-          if (switchLoadingTimerRef.current) {
-            window.clearTimeout(switchLoadingTimerRef.current)
-            switchLoadingTimerRef.current = null
-          }
           if (profilePageMountedRef.current) {
             setSwitchTarget(null)
             setVisibleSwitchingProfile(null)
@@ -687,10 +668,6 @@ const ProfilePage = () => {
       profilePageMountedRef.current = false
       queuedSwitchRef.current = null
       latestSwitchTargetRef.current = null
-      if (switchLoadingTimerRef.current) {
-        window.clearTimeout(switchLoadingTimerRef.current)
-        switchLoadingTimerRef.current = null
-      }
     }
   }, [])
 

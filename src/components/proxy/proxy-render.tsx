@@ -85,15 +85,18 @@ export const ProxyRender = memo(function ProxyRender(props: RenderProps) {
 
   if (type === 0) {
     return (
-      <div style={{ padding: '4px 8px' }}>
+      <div
+        style={{
+          padding: '4px 8px',
+          background: stickyed
+            ? isDark
+              ? '#1e1f27'
+              : 'var(--background-color)'
+            : undefined,
+        }}
+      >
         <ListItemButton
           dense
-          sx={{
-            boxShadow:
-              stickyed && headState?.open
-                ? '0 4px 8px rgba(0, 0, 0, 0.2) !important'
-                : undefined,
-          }}
           style={{
             background: itembackgroundcolor,
             height: '100%',

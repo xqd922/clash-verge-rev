@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { BaseLoading } from '@/components/base'
 import { useProxyDelayState } from '@/hooks/use-proxy-delay-state'
 import delayManager from '@/services/delay'
+import { classifyDelay } from '@/utils/delay'
 import {
   memberDetails,
   type ProxyGroupView,
@@ -35,6 +36,9 @@ export const ProxyItemMini = (props: Props) => {
     member,
     group.name,
   )
+  const delayKind = classifyDelay(delayValue, timeout)
+  const showResult =
+    delayKind === 'measured' || delayKind === 'timeout' || delayKind === 'error'
 
   return (
     <ListItemButton
@@ -53,12 +57,11 @@ export const ProxyItemMini = (props: Props) => {
         },
         ({ palette: { mode, primary } }) => {
           const bgcolor = mode === 'light' ? '#ffffff' : '#24252f'
-          const showDelay = delayValue > 0
           const selectColor = mode === 'light' ? primary.main : primary.light
 
           return {
-            '&:hover .the-check': { display: !showDelay ? 'block' : 'none' },
-            '&:hover .the-delay': { display: showDelay ? 'block' : 'none' },
+            '&:hover .the-check': { display: !showResult ? 'block' : 'none' },
+            '&:hover .the-delay': { display: showResult ? 'block' : 'none' },
             '&:hover .the-icon': { display: 'none' },
             '& .the-pin, & .the-unpin': {
               position: 'absolute',
@@ -179,7 +182,7 @@ export const ProxyItemMini = (props: Props) => {
           </Widget>
         )}
 
-        {!unresolved && delayValue >= 0 && (
+        {!unresolved && showResult && (
           // 显示延迟
           <Widget
             className="the-delay"
