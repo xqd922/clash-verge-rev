@@ -22,6 +22,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { updateProxyProvider } from 'tauri-plugin-mihomo-api'
 
+import { useRuntimeConfig } from '@/hooks/use-clash'
 import { useAppRefreshers, useProxiesData } from '@/providers/app-data-context'
 import { syncRuntimeProviders } from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
@@ -50,8 +51,12 @@ export const ProviderButton = () => {
   const { proxyView } = useProxiesData()
   const { refreshProxy } = useAppRefreshers()
   const [updating, setUpdating] = useState<Record<string, boolean>>({})
+  const { data: runtimeConfig } = useRuntimeConfig()
   const providers = proxyView?.providers ?? []
   const providerUnavailable = proxyView?.providerState === 'unavailable'
+  const declaredProviders = runtimeConfig?.['proxy-providers']
+  const hasDeclaredProviders =
+    !!declaredProviders && Object.keys(declaredProviders).length > 0
 
   const updateProvider = useLockFn(async (name: string) => {
     try {
@@ -121,7 +126,12 @@ export const ProviderButton = () => {
     setOpen(false)
   }
 
-  if (providers.length === 0 && !providerUnavailable) return null
+  if (
+    providers.length === 0 &&
+    !(providerUnavailable && hasDeclaredProviders)
+  ) {
+    return null
+  }
 
   return (
     <>

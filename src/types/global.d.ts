@@ -80,6 +80,7 @@ interface IConfigData {
     proxy?: string
   }[]
   'proxy-groups'?: IProxyGroupItem[]
+  'proxy-providers'?: Record<string, unknown>
 }
 
 interface IProxyItem {

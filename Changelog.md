@@ -1,3 +1,12 @@
+## Unreleased
+
+<details>
+<summary><strong> 🐞 修复问题 </strong></summary>
+
+- 修复未配置代理集合时，订阅更新后「代理」页顶栏仍会出现「代理集合」按钮的问题
+
+</details>
+
 ## v2.5.6-1
 
 <details>
