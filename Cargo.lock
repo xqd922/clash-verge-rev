@@ -1223,8 +1223,8 @@ dependencies = [
 
 [[package]]
 name = "clash_verge_service_ipc"
-version = "2.7.3"
-source = "git+https://github.com/xqd922/clash-verge-service-ipc.git?rev=a0d1cde09429521257ec3d4ecc31e6df7f7d448c#a0d1cde09429521257ec3d4ecc31e6df7f7d448c"
+version = "2.7.4"
+source = "git+https://github.com/clash-verge-rev/clash-verge-service-ipc.git?tag=v2.7.4#b4f66bd5a365875562a622065d189e3514654b7f"
 dependencies = [
  "anyhow",
  "kode-bridge",
@@ -7071,9 +7071,9 @@ checksum = "adb6935a6f5c20170eeceb1a3835a49e12e19d792f6dd344ccc76a985ca5a6ca"
 
 [[package]]
 name = "tauri"
-version = "2.11.5"
+version = "2.11.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "667b20e2726d572dea2de7370da16e188eb06008faf9a92fab7cdc46791190b5"
+checksum = "6fa5bacdb9bbad5954af3d1bd6cf6ae9192cab1b2e270f4a07f904610b9e85f4"
 dependencies = [
  "anyhow",
  "bytes",
@@ -7350,9 +7350,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-http"
-version = "2.6.0"
+version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7241a0c762649be8fba7dd4cc84684d0e409f26b335a978ef4dd5fe78da74ce6"
+checksum = "d4c07d3be2c68e22e64012eb6c4ec969247e3800da26ef3f3856afbcd07a1ce6"
 dependencies = [
  "bytes",
  "cookie_store",
@@ -7375,7 +7375,7 @@ dependencies = [
 [[package]]
 name = "tauri-plugin-mihomo"
 version = "0.6.0"
-source = "git+https://github.com/clash-verge-rev/tauri-plugin-mihomo?branch=main#17c7757389ca73d29882753ecf7a160de29aabbe"
+source = "git+https://github.com/clash-verge-rev/tauri-plugin-mihomo?branch=main#ba8434c08c869916b8041d707ad66599bb5230b2"
 dependencies = [
  "arc-swap",
  "clashmap",
@@ -7471,9 +7471,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-updater"
-version = "2.11.0"
+version = "2.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b28d8cabdeb0564f03ae261963de4bc3d98321cd3d213e76a81b7d344e5df606"
+checksum = "7a5cad8ed5948d988e1018ecd31e27cacedbf72ce3fb972940c3e4bf51639e4b"
 dependencies = [
  "base64 0.22.1",
  "dirs 6.0.0",
