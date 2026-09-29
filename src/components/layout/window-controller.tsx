@@ -109,9 +109,10 @@ export const WindowControls = forwardRef(function WindowControls(props, ref) {
 
   // Windows 11 原生规格：46×全高、Segoe Fluent 发丝字形（10px）、
   // 关闭键悬停系统红 C42B1C（Win10 老红 E81123 已弃用），按压降为 90%
+  // 字形墨迹本就是 1em，所以 fontSize 就是系统实际绘制的 10px
   const winGlyph = {
     fontFamily: '"Segoe Fluent Icons", "Segoe MDL2 Assets"',
-    fontSize: 12,
+    fontSize: 10,
     lineHeight: 1,
   } as const
   const winCaption = {
