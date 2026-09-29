@@ -10,14 +10,27 @@ interface ProxyGroupNavigatorProps {
 
 export const DEFAULT_HOVER_DELAY = 280
 
+const EMOJI_PATTERN = /\p{Extended_Pictographic}/u
+const EMOJI_PRESENTATION_PATTERN = /\p{Emoji_Presentation}/u
+
 // 提取代理组名的第一个字符
 const getGroupDisplayChar = (groupName: string): string => {
   if (!groupName) return '?'
 
   // 直接返回第一个字符，支持表情符号
-  const firstChar = Array.from(groupName)[0]
-  return firstChar || '?'
+  const [firstChar, secondChar] = Array.from(groupName)
+  if (!firstChar) return '?'
+
+  // 保留变体选择符，否则♻️ 这类默认文字呈现的 emoji 会退化成单色字形
+  return secondChar === '\uFE0F' ? `${firstChar}${secondChar}` : firstChar
 }
+
+// 只有浏览器会用彩色 emoji 字体渲染的字符才需要保留原色
+// ♻/❤ 这类默认文字呈现的字符需要 FE0F 才会变彩色
+const isEmojiChar = (displayChar: string) =>
+  EMOJI_PATTERN.test(displayChar) &&
+  (displayChar.includes('\uFE0F') ||
+    EMOJI_PRESENTATION_PATTERN.test(displayChar))
 
 export const ProxyGroupNavigator = ({
   proxyGroupNames,
@@ -133,7 +146,10 @@ export const ProxyGroupNavigator = ({
               fontWeight: 600,
               padding: 0,
               borderRadius: 0.25,
-              color: 'text.secondary',
+              // emoji 自带配色，text.secondary 的半透明会把它一并冲淡
+              color: isEmojiChar(displayChar)
+                ? 'text.primary'
+                : 'text.secondary',
               textAlign: 'center',
               justifyContent: 'center',
               textTransform: 'none',
