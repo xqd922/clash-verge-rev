@@ -1,3 +1,16 @@
+## v2.5.6-3
+
+<details>
+<summary><strong> 🐞 修复问题 </strong></summary>
+
+- 修复代理页代理组快捷导航条里 emoji 图标颜色异常的问题：不再被冲淡，♻️ 也不再退化成灰色
+
+**🖥️ Windows**
+
+- 修复 Windows 标题栏最小化、最大化、关闭图标偏大的问题，恢复系统原生尺寸
+
+</details>
+
 ## v2.5.6-2
 
 <details>
