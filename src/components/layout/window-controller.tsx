@@ -108,10 +108,10 @@ export const WindowControls = forwardRef(function WindowControls(props, ref) {
   } as const
 
   // Windows 11 原生规格：46×全高、Segoe Fluent 发丝字形（10px）、
-  // 关闭键悬停系统红 C42B1C（Win10 老红 E81123 已弃用），按压降为 90%
+  // 关闭键悬停系统红 C42B1C（Win10 老红 E81123 已弃用），按压为更亮的 C7472E
   const winGlyph = {
     fontFamily: '"Segoe Fluent Icons", "Segoe MDL2 Assets"',
-    fontSize: 12,
+    fontSize: 10,
     lineHeight: 1,
   } as const
   const winCaption = {
@@ -125,7 +125,7 @@ export const WindowControls = forwardRef(function WindowControls(props, ref) {
   const winClose = {
     ...winCaption,
     ':hover': { bgcolor: '#C42B1C', color: '#fff' },
-    ':active': { bgcolor: '#C42B1CE6', color: 'rgba(255, 255, 255, 0.7)' },
+    ':active': { bgcolor: '#C7472E', color: '#fff' },
   } as const
 
   // Segoe Fluent Icons 的 Chrome 系字形位于 PUA 区，用码点显式生成
