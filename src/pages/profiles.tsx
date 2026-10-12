@@ -57,6 +57,9 @@ import { queryClient } from '@/services/query-client'
 import { useSetLoadingCache } from '@/services/states'
 import { debugLog } from '@/utils/debug'
 
+// 切换完成得快时不要闪 spinner；超过这个时间才认为用户需要看到进度。
+const PROFILE_SWITCH_LOADING_DELAY = 400
+
 const ProfilePage = () => {
   const { t } = useTranslation()
   const location = useLocation()
@@ -65,6 +68,9 @@ const ProfilePage = () => {
   const [disabled, setDisabled] = useState(false)
   const [activatings, setActivatings] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
+  // 点击后立即高亮目标卡片，不等后端返回；微调完成时把 spinner 推迟到 400ms 之后再显示，
+  // 这样快速的切换在视觉上不会出现一次多余的转圈。
+  const [switchTarget, setSwitchTarget] = useState<string | null>(null)
 
   // Batch selection states
   const [batchMode, setBatchMode] = useState(false)
@@ -74,6 +80,7 @@ const ProfilePage = () => {
 
   // 防止重复切换
   const switchingProfileRef = useRef<string | null>(null)
+  const switchLoadingTimerRef = useRef<number | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -306,9 +313,16 @@ const ProfilePage = () => {
       if (profiles.current === profile && !notifySuccess) return
 
       switchingProfileRef.current = profile
-      setActivatings((prev) =>
-        prev.includes(profile) ? prev : [...prev, profile],
-      )
+      // 同步高亮目标卡片，并在 400ms 后才显示转圈：快速的切换不会闪一次 spinner。
+      setSwitchTarget(profile)
+      if (switchLoadingTimerRef.current) {
+        window.clearTimeout(switchLoadingTimerRef.current)
+      }
+      switchLoadingTimerRef.current = window.setTimeout(() => {
+        setActivatings((prev) =>
+          prev.includes(profile) ? prev : [...prev, profile],
+        )
+      }, PROFILE_SWITCH_LOADING_DELAY)
 
       try {
         const success = await patchProfiles({ current: profile })
@@ -332,7 +346,13 @@ const ProfilePage = () => {
         console.error(`[Profile] 切换失败:`, err)
         showNotice.error(err, 4000)
       } finally {
+        // 成功时 patchProfiles 已把新值写进缓存，失败时缓存未动——两种情况都让真实状态接管。
+        setSwitchTarget(null)
         switchingProfileRef.current = null
+        if (switchLoadingTimerRef.current) {
+          window.clearTimeout(switchLoadingTimerRef.current)
+          switchLoadingTimerRef.current = null
+        }
       }
     },
     [profiles, patchProfiles, activateSelected, mutateLogs],
@@ -781,7 +801,7 @@ const ProfilePage = () => {
                   <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={item.file}>
                     <ProfileItem
                       id={item.uid}
-                      selected={profiles.current === item.uid}
+                      selected={(switchTarget ?? profiles.current) === item.uid}
                       activating={activatings.includes(item.uid)}
                       itemData={item}
                       mutateProfiles={mutateProfiles}

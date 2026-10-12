@@ -47,17 +47,26 @@ export const useProfiles = () => {
       if (signal?.aborted) {
         throw new DOMException('Operation was aborted', 'AbortError')
       }
-      const success = await patchProfilesConfig(value)
+      const outcome = await patchProfilesConfig(value)
 
       if (signal?.aborted) {
         throw new DOMException('Operation was aborted', 'AbortError')
       }
 
-      if (!options?.deferRefreshOnSuccess || !success) {
+      // A valid switch needs no round trip: write what we asked for into the cache so the
+      // UI settles immediately, and let the events triggered by the backend refetch later.
+      // Busy leaves local state untouched, exactly as before.
+      if (outcome.status === 'valid') {
+        if (!options?.deferRefreshOnSuccess) {
+          queryClient.setQueryData<IProfilesConfig>(['getProfiles'], (cur) =>
+            cur ? { ...cur, ...value } : cur,
+          )
+        }
+      } else if (outcome.status !== 'busy') {
         await mutateProfiles()
       }
 
-      return success
+      return outcome.status === 'valid'
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         throw error

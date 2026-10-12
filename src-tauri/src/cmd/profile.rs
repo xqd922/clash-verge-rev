@@ -214,14 +214,6 @@ async fn handle_success(current_value: Option<&String>) -> CmdResult<ValidationO
     Config::profiles().await.apply();
     handle::Handle::refresh_clash();
 
-    if let Err(e) = Tray::global().update_tooltip().await {
-        logging!(warn, Type::Cmd, "Warning: 异步更新托盘提示失败: {e}");
-    }
-
-    if let Err(e) = Tray::global().update_menu().await {
-        logging!(warn, Type::Cmd, "Warning: 异步更新托盘菜单失败: {e}");
-    }
-
     if let Err(e) = profiles_save_file_safe().await {
         logging!(warn, Type::Cmd, "Warning: 异步保存配置文件失败: {e}");
     }
@@ -232,6 +224,18 @@ async fn handle_success(current_value: Option<&String>) -> CmdResult<ValidationO
         logging!(info, Type::Cmd, "向前端发送配置变更事件: {}", current);
         handle::Handle::notify_profile_changed(current);
     }
+
+    // 托盘重建要等 mihomo 的 /proxies 返回(最多 1 秒)，且它发生在核心刚被要求重载配置之后。
+    // 放到后台执行，别让它占用切换的等待时间——前端不依赖托盘的实时状态。
+    crate::process::AsyncHandler::spawn(move || async move {
+        if let Err(e) = Tray::global().update_tooltip().await {
+            logging!(warn, Type::Cmd, "Warning: 异步更新托盘提示失败: {e}");
+        }
+
+        if let Err(e) = Tray::global().update_menu().await {
+            logging!(warn, Type::Cmd, "Warning: 异步更新托盘菜单失败: {e}");
+        }
+    });
 
     Ok(ValidationOutcome::Valid)
 }

@@ -1,6 +1,6 @@
 use crate::process::AsyncHandler;
 
-use super::use_lowercase;
+use super::{field::use_lowercase_owned, use_lowercase};
 use anyhow::{Error, Result};
 use boa_engine::{Context, JsString, JsValue, Source, native_function::NativeFunction};
 use clash_verge_logging::{Type, logging_error};
@@ -16,6 +16,13 @@ const MAX_LOOP_ITERATIONS: u64 = 10_000_000;
 const SCRIPT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 
 pub async fn use_script(script: String, config: Mapping, name: String) -> Result<(Mapping, Vec<(String, String)>)> {
+    // The stock template is `function main(config) { return config; }` — it only ever yields
+    // the lowercased input, so running it costs a Boa context plus a parse of the whole config
+    // embedded in the program source. Untouched profiles hit this on every switch.
+    if script == crate::utils::tmpl::ITEM_SCRIPT {
+        return Ok((use_lowercase_owned(config), vec![]));
+    }
+
     let handle = AsyncHandler::spawn_blocking(move || use_script_sync(script, &config, &name));
     match tokio::time::timeout(SCRIPT_TIMEOUT, handle).await {
         Ok(Ok(result)) => result,
@@ -176,6 +183,32 @@ fn escape_js_string_for_single_quote(s: &str) -> String {
         .replace('\n', "\\n") // 添加换行符转义
         .replace('\r', "\\r") // 添加回车转义
         .into()
+}
+
+#[tokio::test]
+#[allow(clippy::expect_used)]
+async fn identity_template_skips_boa_but_still_lowercases() {
+    let config: Mapping = serde_yaml_ng::from_str("MODE: script\nProxies: []\n").expect("Failed to parse test config");
+    let (config, logs) = use_script(crate::utils::tmpl::ITEM_SCRIPT.into(), config, String::from(""))
+        .await
+        .expect("the identity template must not fail");
+
+    assert!(logs.is_empty(), "the identity template produces no logs");
+    assert_eq!(config.get("mode").and_then(|v| v.as_str()), Some("script"));
+    assert!(config.get("Proxies").is_none(), "keys must be lowercased");
+    assert!(config.get("proxies").is_some());
+}
+
+#[tokio::test]
+#[allow(clippy::expect_used)]
+async fn real_script_still_runs_through_boa() {
+    let script = "function main(config) { config.added = true; return config; }";
+    let config: Mapping = serde_yaml_ng::from_str("mode: rule\n").expect("Failed to parse test config");
+    let (config, _logs) = use_script(script.into(), config, String::from(""))
+        .await
+        .expect("a real script must execute");
+
+    assert_eq!(config.get("added").and_then(|v| v.as_bool()), Some(true));
 }
 
 #[test]

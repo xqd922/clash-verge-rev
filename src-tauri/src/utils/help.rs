@@ -7,6 +7,7 @@ use serde_yaml_ng::Mapping;
 #[cfg(target_os = "windows")]
 use std::path::Path;
 use std::{path::PathBuf, str::FromStr};
+use tokio::io::AsyncWriteExt as _;
 
 /// read data from yaml as struct T
 pub async fn read_yaml<T: DeserializeOwned>(path: &PathBuf) -> Result<T> {
@@ -66,12 +67,64 @@ pub async fn save_yaml<T: Serialize + Sync>(path: &PathBuf, data: &T, prefix: Op
         None => data_str,
     };
 
+    save_yaml_str(path, &yaml_str).await
+}
+
+/// Atomically replace `path` with pre-serialized content.
+///
+/// Writing to a temporary file and renaming it means a reader can never observe a
+/// half-written runtime config. This replaces the fixed 50 ms sleep that used to sit after
+/// the write, which was pure dead time on the profile-switch path (it is awaited twice per
+/// switch) and never actually guaranteed the file was complete.
+pub async fn save_yaml_str(path: &PathBuf, yaml_str: &str) -> Result<()> {
     let path_str = path.as_os_str().to_string_lossy().to_string();
-    tokio::fs::write(path, yaml_str.as_bytes())
-        .await
-        .with_context(|| format!("failed to save file \"{path_str}\""))?;
-    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-    Ok(())
+
+    let (temporary, mut file) = loop {
+        let temporary = path.with_extension(format!("tmp-{}-{}", std::process::id(), get_uid("")));
+        match tokio::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temporary)
+            .await
+        {
+            Ok(file) => break (temporary, file),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(error) => {
+                return Err(error).with_context(|| {
+                    format!(
+                        "failed to create temporary file \"{}\" for \"{path_str}\"",
+                        temporary.display()
+                    )
+                });
+            }
+        }
+    };
+
+    let result = async {
+        file.write_all(yaml_str.as_bytes())
+            .await
+            .with_context(|| format!("failed to write temporary file for \"{path_str}\""))?;
+        file.flush()
+            .await
+            .with_context(|| format!("failed to flush temporary file for \"{path_str}\""))?;
+        drop(file);
+
+        // Preserve the original permissions where the target already exists.
+        if let Ok(metadata) = tokio::fs::metadata(path).await {
+            let _ = tokio::fs::set_permissions(&temporary, metadata.permissions()).await;
+        }
+
+        tokio::fs::rename(&temporary, path)
+            .await
+            .with_context(|| format!("failed to replace file \"{path_str}\""))
+    }
+    .await;
+
+    if result.is_err() {
+        let _ = tokio::fs::remove_file(&temporary).await;
+    }
+
+    result
 }
 
 const ALPHABET: [char; 62] = [

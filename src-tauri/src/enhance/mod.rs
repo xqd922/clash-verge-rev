@@ -7,7 +7,7 @@ mod tun;
 
 use self::{
     chain::{AsyncChainItemFrom as _, ChainItem, ChainType},
-    field::{use_keys, use_lowercase, use_sort},
+    field::{use_keys, use_lowercase, use_lowercase_owned, use_sort},
     merge::use_merge,
     script::use_script,
     seq::{SeqMap, use_seq},
@@ -474,19 +474,58 @@ async fn apply_builtin_scripts(
 ) -> Mapping {
     if enable_builtin {
         let items = builtin_items_for_core(clash_core.as_deref(), enable_smart_convert);
-        for item in items {
-            logging!(debug, Type::Core, "run builtin script {}", item.uid);
-            if let ChainType::Script(script) = item.data {
-                match use_script(script, config.clone(), String::from("")).await {
-                    Ok((res_config, _)) => {
-                        config = res_config;
-                    }
-                    Err(err) => {
-                        logging!(error, Type::Core, "builtin script error `{err}`");
+        if !items.is_empty() {
+            // The JS path saw a lowercased view; lowercase once, only when a builtin runs.
+            config = use_lowercase_owned(config);
+            for item in items {
+                logging!(debug, Type::Core, "run builtin script {}", item.uid);
+                match item.uid.as_str() {
+                    // Hand-written equivalents. The JS versions each cost a Boa context plus a
+                    // parse of the whole config embedded in the program source, per switch.
+                    "verge_hy_alpn" => config = builtin_hy_alpn(config),
+                    "verge_meta_guard" => config = builtin_meta_guard(config),
+                    _ => {
+                        if let ChainType::Script(script) = item.data {
+                            let current = std::mem::take(&mut config);
+                            match use_script(script, current.clone(), String::from("")).await {
+                                Ok((res_config, _)) => {
+                                    config = res_config;
+                                }
+                                Err(err) => {
+                                    // `use_script` consumes the config, so keep the fallback.
+                                    config = current;
+                                    logging!(error, Type::Core, "builtin script error `{err}`");
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+
+    config
+}
+
+/// meta 1.13.2 起 `alpn` 需要数组，字符串形式会被核心拒绝。
+fn builtin_hy_alpn(mut config: Mapping) -> Mapping {
+    if let Some(Value::Sequence(proxies)) = config.get_mut("proxies") {
+        for proxy in proxies.iter_mut() {
+            let Some(proxy) = proxy.as_mapping_mut() else { continue };
+            let is_hysteria = proxy.get("type").and_then(Value::as_str) == Some("hysteria");
+            if is_hysteria && let Some(Value::String(alpn)) = proxy.get("alpn").cloned() {
+                proxy.insert("alpn".into(), Value::Sequence(vec![Value::String(alpn)]));
+            }
+        }
+    }
+
+    config
+}
+
+/// `mode: script` 只有原版 Clash 支持，Meta 内核需要回退到 `rule`。
+fn builtin_meta_guard(mut config: Mapping) -> Mapping {
+    if config.get("mode").and_then(Value::as_str) == Some("script") {
+        config.insert(Value::from("mode"), Value::from("rule"));
     }
 
     config
@@ -800,6 +839,97 @@ proxy-groups:
             .and_then(Value::as_mapping)
             .expect("manual group should exist");
         assert_eq!(manual.get("type").and_then(Value::as_str), Some("select"));
+    }
+
+    #[tokio::test]
+    async fn builtin_hy_alpn_wraps_string_alpn_for_hysteria() {
+        let config_str = r#"
+proxies:
+  - name: "hy"
+    type: hysteria
+    alpn: h3
+  - name: "hy-array"
+    type: hysteria
+    alpn:
+      - h3
+  - name: "ss"
+    type: ss
+    alpn: h3
+"#;
+
+        let config: serde_yaml_ng::Mapping = serde_yaml_ng::from_str(config_str).expect("Failed to parse test yaml");
+        let config = apply_builtin_scripts(config, Some("verge-mihomo".into()), true, false).await;
+        let proxies = config
+            .get("proxies")
+            .and_then(Value::as_sequence)
+            .expect("proxies should be a sequence");
+        let proxy = |name: &str| {
+            proxies
+                .iter()
+                .find(|p| p.get("name").and_then(Value::as_str) == Some(name))
+                .and_then(Value::as_mapping)
+                .expect("proxy should exist")
+        };
+
+        assert_eq!(
+            proxy("hy").get("alpn").and_then(Value::as_sequence),
+            Some(&vec![Value::from("h3")]),
+            "a string alpn on hysteria must become a one-element array"
+        );
+        assert_eq!(
+            proxy("hy-array").get("alpn").and_then(Value::as_sequence),
+            Some(&vec![Value::from("h3")]),
+            "an existing array alpn must be left alone"
+        );
+        assert_eq!(
+            proxy("ss").get("alpn").and_then(Value::as_str),
+            Some("h3"),
+            "a non-hysteria proxy must be left alone"
+        );
+    }
+
+    #[tokio::test]
+    async fn builtin_meta_guard_reverts_script_mode() {
+        let config: serde_yaml_ng::Mapping =
+            serde_yaml_ng::from_str("mode: script\nlog-level: info\n").expect("Failed to parse test yaml");
+        let config = apply_builtin_scripts(config, Some("verge-mihomo".into()), true, false).await;
+
+        assert_eq!(config.get("mode").and_then(Value::as_str), Some("rule"));
+    }
+
+    #[tokio::test]
+    async fn builtin_meta_guard_leaves_other_modes_alone() {
+        let config: serde_yaml_ng::Mapping =
+            serde_yaml_ng::from_str("mode: global\n").expect("Failed to parse test yaml");
+        let config = apply_builtin_scripts(config, Some("verge-mihomo".into()), true, false).await;
+
+        assert_eq!(config.get("mode").and_then(Value::as_str), Some("global"));
+    }
+
+    #[tokio::test]
+    async fn builtins_lowercase_top_level_keys() {
+        // The builtin scripts used to run against a lowercased view; the native path must
+        // keep that behaviour so downstream stages see the same key casing.
+        let config: serde_yaml_ng::Mapping =
+            serde_yaml_ng::from_str("MODE: script\nProxies: []\n").expect("Failed to parse test yaml");
+        let config = apply_builtin_scripts(config, Some("verge-mihomo".into()), true, false).await;
+
+        assert_eq!(config.get("mode").and_then(Value::as_str), Some("rule"));
+        assert!(config.get("Proxies").is_none());
+        assert!(config.get("proxies").is_some());
+    }
+
+    #[tokio::test]
+    async fn builtins_are_skipped_when_disabled() {
+        let config: serde_yaml_ng::Mapping =
+            serde_yaml_ng::from_str("MODE: script\n").expect("Failed to parse test yaml");
+        let config = apply_builtin_scripts(config, Some("verge-mihomo".into()), false, false).await;
+
+        assert_eq!(
+            config.get("MODE").and_then(Value::as_str),
+            Some("script"),
+            "nothing should run or be lowercased when builtins are off"
+        );
     }
 
     #[test]

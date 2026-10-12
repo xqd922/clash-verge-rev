@@ -20,10 +20,7 @@ export async function enhanceProfiles() {
 }
 
 export async function patchProfilesConfig(profiles: IProfilesConfig) {
-  return (
-    (await invoke<ValidationOutcome>('patch_profiles_config', { profiles }))
-      .status === 'valid'
-  )
+  return invoke<ValidationOutcome>('patch_profiles_config', { profiles })
 }
 
 export async function createProfile(
