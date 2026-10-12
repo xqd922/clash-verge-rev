@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_yaml_ng::Mapping;
 use smartstring::alias::String;
 use std::collections::HashSet;
+use std::path::{Component, Path};
 use tokio::fs;
 
 /// Define the `profiles.yaml` schema
@@ -166,31 +167,31 @@ impl IProfiles {
 
     /// reorder items
     pub async fn reorder(&mut self, active_id: &String, over_id: &String) -> Result<()> {
-        let mut items = self.items.take().unwrap_or_default();
-        let mut old_index = None;
-        let mut new_index = None;
-
-        for (i, _) in items.iter().enumerate() {
-            if items[i].uid.as_ref() == Some(active_id) {
-                old_index = Some(i);
-            }
-            if items[i].uid.as_ref() == Some(over_id) {
-                new_index = Some(i);
-            }
+        // Reorder the live list in place: an earlier version took `items` and returned early
+        // on a missing id, leaving the draft without a list until the next save wrote it back.
+        // Upstream keeps the list intact when either id is gone (profile deleted mid-drag)
+        // and only touches disk when the order actually changed.
+        {
+            let Some(items) = self.items.as_mut() else {
+                return Ok(());
+            };
+            let old_index = items.iter().rposition(|item| item.uid.as_deref() == Some(active_id));
+            let new_index = items.iter().rposition(|item| item.uid.as_deref() == Some(over_id));
+            let (Some(old_idx), Some(new_idx)) = (old_index, new_index) else {
+                return Ok(());
+            };
+            let item = items.remove(old_idx);
+            items.insert(new_idx, item);
         }
-
-        let (old_idx, new_idx) = match (old_index, new_index) {
-            (Some(old), Some(new)) => (old, new),
-            _ => return Ok(()),
-        };
-        let item = items.remove(old_idx);
-        items.insert(new_idx, item);
-        self.items = Some(items);
         self.save_file().await
     }
 
     /// update the item value
     pub async fn patch_item(&mut self, uid: &String, item: &PrfItem) -> Result<()> {
+        if let Some(file) = &item.file {
+            Self::validate_profile_file(file)?;
+        }
+
         let mut items = self.items.take().unwrap_or_default();
 
         for each in items.iter_mut() {
@@ -212,6 +213,24 @@ impl IProfiles {
 
         self.items = Some(items);
         bail!("failed to find the profile item \"uid:{uid}\"")
+    }
+
+    /// A profile `file` is joined onto the profiles directory, so anything with a separator or
+    /// a `..` component writes outside it. Reject such values outright.
+    fn validate_profile_file(file: &str) -> Result<()> {
+        let mut components = Path::new(file).components();
+        if file.is_empty()
+            || file.contains('/')
+            || file.contains('\\')
+            || !matches!(
+                (components.next(), components.next()),
+                (Some(Component::Normal(_)), None)
+            )
+        {
+            bail!("profile file must be a single filename");
+        }
+
+        Ok(())
     }
 
     /// be used to update the remote item
@@ -509,19 +528,18 @@ impl IProfiles {
         // r12345678.yaml (rules)
         // p12345678.yaml (proxies)
         // g12345678.yaml (groups)
+        //
+        // Compiled once (upstream 35c534ae): this runs per file in a directory scan, and an
+        // earlier version rebuilt the four Regexes for every single entry. A literal pattern
+        // can't fail to compile, but keep the `false` fallback of the old code if it somehow does.
+        static PROFILE_FILE_RE: std::sync::LazyLock<Option<regex::Regex>> = std::sync::LazyLock::new(|| {
+            regex::Regex::new(
+                r"^([RL][a-zA-Z0-9]+\.yaml|m[a-zA-Z0-9]+\.yaml|s[a-zA-Z0-9]+\.js|[rpg][a-zA-Z0-9]+\.yaml)$",
+            )
+            .ok()
+        });
 
-        let patterns = [
-            r"^[RL][a-zA-Z0-9]+\.yaml$",  // Remote/Local profiles
-            r"^m[a-zA-Z0-9]+\.yaml$",     // Merge files
-            r"^s[a-zA-Z0-9]+\.js$",       // Script files
-            r"^[rpg][a-zA-Z0-9]+\.yaml$", // Rules/Proxies/Groups files
-        ];
-
-        patterns.iter().any(|pattern| {
-            regex::Regex::new(pattern)
-                .map(|re| re.is_match(filename))
-                .unwrap_or(false)
-        })
+        PROFILE_FILE_RE.as_ref().is_some_and(|re| re.is_match(filename))
     }
 }
 
@@ -591,4 +609,63 @@ pub async fn profiles_draft_update_item_safe(index: &String, item: &mut PrfItem)
             Ok((profiles, ()))
         })
         .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn item(uid: &str) -> PrfItem {
+        PrfItem {
+            uid: Some(uid.into()),
+            ..Default::default()
+        }
+    }
+
+    #[tokio::test]
+    #[allow(clippy::expect_used)]
+    async fn missing_reorder_ids_preserve_ordered_items() {
+        let mut profiles = IProfiles {
+            current: None,
+            items: Some(vec![item("a"), item("b"), item("c")]),
+        };
+
+        // Dragging a profile that was deleted mid-flight must not drop the list.
+        let ghost: String = "ghost".into();
+        let b: String = "b".into();
+        let ok = profiles.reorder(&ghost, &b).await;
+        assert!(ok.is_ok());
+        assert_eq!(
+            profiles
+                .items
+                .as_ref()
+                .expect("items must survive a no-op reorder")
+                .iter()
+                .filter_map(|i| i.uid.as_deref())
+                .collect::<Vec<_>>(),
+            vec!["a", "b", "c"]
+        );
+    }
+
+    #[test]
+    fn profile_file_rejects_path_traversal() {
+        assert!(IProfiles::validate_profile_file("R1234567.yaml").is_ok());
+        assert!(IProfiles::validate_profile_file("").is_err());
+        assert!(IProfiles::validate_profile_file("../evil.yaml").is_err());
+        assert!(IProfiles::validate_profile_file("sub/evil.yaml").is_err());
+        assert!(IProfiles::validate_profile_file(r"sub\evil.yaml").is_err());
+        assert!(IProfiles::validate_profile_file("/abs.yaml").is_err());
+    }
+
+    #[test]
+    fn is_profile_file_matches_all_kinds() {
+        for name in [
+            "R1.yaml", "L2.yaml", "m3.yaml", "s4.js", "r5.yaml", "p6.yaml", "g7.yaml",
+        ] {
+            assert!(IProfiles::is_profile_file(name), "{name} should match");
+        }
+        for name in ["Merge.yaml", "Script.js", "random.txt", "x1.yaml", "R1.yaml.bak"] {
+            assert!(!IProfiles::is_profile_file(name), "{name} should not match");
+        }
+    }
 }
