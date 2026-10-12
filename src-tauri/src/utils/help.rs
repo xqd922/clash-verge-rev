@@ -29,8 +29,15 @@ pub async fn read_mapping(path: &PathBuf) -> Result<Mapping> {
     let yaml_str = tokio::fs::read_to_string(path)
         .await
         .with_context(|| format!("failed to read the file \"{}\"", path.display()))?;
+    let label = path.to_path_buf();
 
-    // YAML语法检查
+    // Parsing a multi-megabyte profile is pure CPU; keep it off the async worker.
+    crate::process::AsyncHandler::spawn_blocking(move || parse_mapping(yaml_str, label))
+        .await
+        .map_err(|join| anyhow!("yaml parse task failed: {join}"))?
+}
+
+fn parse_mapping(yaml_str: String, path: PathBuf) -> Result<Mapping> {
     match serde_yaml_ng::from_str::<serde_yaml_ng::Value>(&yaml_str) {
         Ok(mut val) => {
             val.apply_merge()
