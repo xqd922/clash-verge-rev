@@ -1,3 +1,4 @@
+use super::TRAY_ID;
 use crate::core::handle;
 use crate::process::AsyncHandler;
 use crate::utils::{connections_stream, tray_speed};
@@ -145,7 +146,7 @@ impl TraySpeedController {
         });
 
         let app_handle = handle::Handle::app_handle();
-        if let Some(tray) = app_handle.tray_by_id("main") {
+        if let Some(tray) = app_handle.tray_by_id(TRAY_ID) {
             let result = tray.with_inner_tray_icon(|inner| {
                 if let Some(status_item) = inner.ns_status_item() {
                     tray_speed::clear_speed_attributed_title(&status_item);
@@ -158,7 +159,7 @@ impl TraySpeedController {
     }
 
     fn has_main_tray() -> bool {
-        handle::Handle::app_handle().tray_by_id("main").is_some()
+        handle::Handle::app_handle().tray_by_id(TRAY_ID).is_some()
     }
 
     fn set_speed_connection_id(
@@ -180,7 +181,7 @@ impl TraySpeedController {
 
     fn apply_tray_speed(up: u64, down: u64) {
         let app_handle = handle::Handle::app_handle();
-        if let Some(tray) = app_handle.tray_by_id("main") {
+        if let Some(tray) = app_handle.tray_by_id(TRAY_ID) {
             let result = tray.with_inner_tray_icon(move |inner| {
                 if let Some(status_item) = inner.ns_status_item() {
                     tray_speed::set_speed_attributed_title(&status_item, up, down);

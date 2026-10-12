@@ -31,6 +31,10 @@ mod menu_def;
 mod speed_task;
 use menu_def::{MenuIds, MenuTexts};
 
+// A dedicated id keeps us off the generic "main" that other Tauri apps use for their tray,
+// so tray lookups can't match a different app's icon (upstream f9167117).
+pub(crate) const TRAY_ID: &str = "clash-verge-rev-tray";
+
 // TODO: 是否需要将可变菜单抽离存储起来，后续直接更新对应菜单实例，无需重新创建菜单(待考虑)
 
 type ProxyMenuItem = (Option<Submenu<Wry>>, Vec<Box<dyn IsMenuItem<Wry>>>);
@@ -40,6 +44,14 @@ const TRAY_CLICK_DEBOUNCE_MS: u64 = 300;
 #[derive(Clone)]
 struct TrayState {}
 
+/// Menu-rebuild options. `include_proxy_groups` false skips the mihomo round trip for a fast
+/// static shell, which `update_part` then follows up with a full rebuild in the background.
+#[derive(Clone, Copy)]
+struct TrayMenuOptions {
+    is_lightweight_mode: bool,
+    include_proxy_groups: bool,
+}
+
 enum IconKind {
     Common,
     SysProxy,
@@ -48,6 +60,9 @@ enum IconKind {
 
 pub struct Tray {
     limiter: SystemLimiter,
+    /// Serializes menu rebuilds: selection sync, profile switches and config patches all ask
+    /// for one, and two `set_menu` calls racing on the same tray is how a stale submenu ships.
+    menu_update: tokio::sync::Mutex<()>,
     #[cfg(target_os = "macos")]
     speed_controller: speed_task::TraySpeedController,
 }
@@ -118,6 +133,7 @@ impl Default for Tray {
     fn default() -> Self {
         Self {
             limiter: Limiter::new(Duration::from_millis(TRAY_CLICK_DEBOUNCE_MS), SystemClock),
+            menu_update: tokio::sync::Mutex::const_new(()),
             #[cfg(target_os = "macos")]
             speed_controller: speed_task::TraySpeedController::new(),
         }
@@ -166,7 +182,7 @@ impl Tray {
         let tray_event = { Config::verge().await.latest_arc().tray_event.clone() };
         let tray_event = TrayAction::from(tray_event.as_deref().unwrap_or("main_window"));
         let tray = app_handle
-            .tray_by_id("main")
+            .tray_by_id(TRAY_ID)
             .ok_or_else(|| anyhow::anyhow!("Failed to get main tray"))?;
         match tray_event {
             TrayAction::TrayMenu => tray.set_show_menu_on_left_click(true)?,
@@ -182,11 +198,12 @@ impl Tray {
             return Ok(());
         }
         let app_handle = handle::Handle::app_handle();
-        self.update_menu_internal(app_handle).await
+        self.update_menu_internal(app_handle, true).await
     }
 
-    async fn update_menu_internal(&self, app_handle: &AppHandle) -> Result<()> {
-        let Some(tray) = app_handle.tray_by_id("main") else {
+    async fn update_menu_internal(&self, app_handle: &AppHandle, include_proxy_groups: bool) -> Result<()> {
+        let _update = self.menu_update.lock().await;
+        let Some(tray) = app_handle.tray_by_id(TRAY_ID) else {
             logging!(warn, Type::Tray, "Failed to update tray menu: tray not found");
             return Ok(());
         };
@@ -221,7 +238,10 @@ impl Tray {
                     *tun_mode,
                     tun_mode_available,
                     profiles_preview,
-                    is_lightweight_mode,
+                    TrayMenuOptions {
+                        is_lightweight_mode,
+                        include_proxy_groups,
+                    },
                 )
                 .await?,
             ))
@@ -240,23 +260,26 @@ impl Tray {
 
         let app_handle = handle::Handle::app_handle();
 
-        let Some(tray) = app_handle.tray_by_id("main") else {
+        let Some(tray) = app_handle.tray_by_id(TRAY_ID) else {
             logging!(warn, Type::Tray, "Failed to update tray icon: tray not found");
             return Ok(());
         };
 
         let (_is_custom_icon, icon_bytes) = TrayState::get_tray_icon(verge).await;
 
+        // `set_icon_with_as_template` is the atomic form: calling `set_icon` and then
+        // `set_icon_as_template` renders macOS tray icons twice (a visible flicker). On other
+        // platforms it just falls through to `set_icon`, so one call covers all three.
+        // (upstream 9b87cd53)
+        #[cfg(target_os = "macos")]
+        let is_template = verge.tray_icon.as_deref().unwrap_or("monochrome") != "colorful";
+        #[cfg(not(target_os = "macos"))]
+        let is_template = false;
+
         logging_error!(
             Type::Tray,
-            tray.set_icon(Some(tauri::image::Image::from_bytes(&icon_bytes)?))
+            tray.set_icon_with_as_template(Some(tauri::image::Image::from_bytes(&icon_bytes)?), is_template)
         );
-
-        #[cfg(target_os = "macos")]
-        {
-            let is_colorful = verge.tray_icon.as_deref().unwrap_or("monochrome") == "colorful";
-            logging_error!(Type::Tray, tray.set_icon_as_template(!is_colorful));
-        }
 
         Ok(())
     }
@@ -314,7 +337,7 @@ impl Tray {
             current_profile_name
         );
 
-        let Some(tray) = app_handle.tray_by_id("main") else {
+        let Some(tray) = app_handle.tray_by_id(TRAY_ID) else {
             logging!(warn, Type::Tray, "Failed to update tray tooltip: tray not found");
             return Ok(());
         };
@@ -330,7 +353,13 @@ impl Tray {
             return Ok(());
         }
         let verge = Config::verge().await.data_arc();
-        self.update_menu().await?;
+        let app_handle = handle::Handle::app_handle();
+        // Ship the static shell now (no proxy groups means no mihomo round trip) and finish the
+        // menu with a detached full rebuild, so the config-change path does not wait on the core.
+        self.update_menu_internal(app_handle, false).await?;
+        AsyncHandler::spawn(|| async {
+            logging_error!(Type::Tray, Self::global().update_menu().await);
+        });
         self.update_icon(&verge).await?;
         #[cfg(target_os = "macos")]
         self.update_speed_task(verge.enable_tray_speed.unwrap_or(false));
@@ -358,13 +387,13 @@ impl Tray {
         let icon = tauri::image::Image::from_bytes(&icon_bytes)?;
 
         #[cfg(target_os = "linux")]
-        let builder = TrayIconBuilder::with_id("main").icon(icon).icon_as_template(false);
+        let builder = TrayIconBuilder::with_id(TRAY_ID).icon(icon).icon_as_template(false);
 
         #[cfg(any(target_os = "macos", target_os = "windows"))]
         let show_menu_on_left_click = verge.tray_event.as_ref().is_some_and(|v| v == "tray_menu");
 
         #[cfg(not(target_os = "linux"))]
-        let mut builder = TrayIconBuilder::with_id("main").icon(icon).icon_as_template(false);
+        let mut builder = TrayIconBuilder::with_id(TRAY_ID).icon(icon).icon_as_template(false);
         #[cfg(target_os = "macos")]
         {
             let is_monochrome = verge.tray_icon.as_ref().is_none_or(|v| v == "monochrome");
@@ -582,52 +611,9 @@ async fn create_tray_menu(
     tun_mode_enabled: bool,
     tun_mode_available: bool,
     profiles_preview: Vec<IProfilePreview<'_>>,
-    is_lightweight_mode: bool,
+    options: TrayMenuOptions,
 ) -> Result<tauri::menu::Menu<Wry>> {
     let current_proxy_mode = mode.unwrap_or("");
-
-    // TODO: should update tray menu again when it was timeout error
-    let proxy_nodes_data = tokio::time::timeout(
-        Duration::from_millis(1000),
-        handle::Handle::mihomo().await.get_proxies(),
-    )
-    .await
-    .map_or(None, |res| res.ok());
-
-    let runtime_proxy_groups_order = cmd::get_runtime_config()
-        .await
-        .map_err(|e| {
-            logging!(
-                error,
-                Type::Cmd,
-                "Failed to fetch runtime proxy groups for tray menu: {e}"
-            );
-        })
-        .ok()
-        .flatten()
-        .map(|config| {
-            config
-                .get("proxy-groups")
-                .and_then(|groups| groups.as_sequence())
-                .map(|groups| {
-                    groups
-                        .iter()
-                        .filter_map(|group| group.get("name"))
-                        .filter_map(|name| name.as_str())
-                        .map(|name| name.into())
-                        .collect::<Vec<String>>()
-                })
-                .unwrap_or_default()
-        });
-
-    let proxy_group_order_map: Option<HashMap<smartstring::SmartString<smartstring::LazyCompact>, usize>> =
-        runtime_proxy_groups_order.as_ref().map(|group_names| {
-            group_names
-                .iter()
-                .enumerate()
-                .map(|(index, name)| (name.clone(), index))
-                .collect::<HashMap<String, usize>>()
-        });
 
     let verge_settings = Config::verge().await.latest_arc();
     let tray_proxy_groups_display_mode = verge_settings
@@ -635,6 +621,45 @@ async fn create_tray_menu(
         .as_deref()
         .unwrap_or("default");
     let show_outbound_modes_inline = verge_settings.tray_inline_outbound_modes.unwrap_or(false);
+    // The menu rebuilds on every proxy selection change; pulling node data for a tray that
+    // shows no proxy groups (or a fast shell that omits them) only adds a mihomo round trip
+    // (1s worst case) to each rebuild.
+    let fetch_proxy_groups = options.include_proxy_groups && tray_proxy_groups_display_mode != "disable";
+
+    // TODO: should update tray menu again when it was timeout error
+    let proxy_nodes_data = if fetch_proxy_groups {
+        tokio::time::timeout(
+            Duration::from_millis(1000),
+            handle::Handle::mihomo().await.get_proxies(),
+        )
+        .await
+        .map_or(None, |res| res.ok())
+    } else {
+        None
+    };
+
+    // Read the runtime draft directly: going through cmd::get_runtime_config() cloned the whole
+    // config Mapping on every rebuild. (upstream c1179113 avoid cloning runtime config)
+    let proxy_group_order_map = if fetch_proxy_groups {
+        Config::runtime()
+            .await
+            .latest_arc()
+            .config
+            .as_ref()
+            .and_then(|config| config.get("proxy-groups"))
+            .and_then(|groups| groups.as_sequence())
+            .map(|groups| {
+                groups
+                    .iter()
+                    .filter_map(|group| group.get("name"))
+                    .filter_map(|name| name.as_str())
+                    .enumerate()
+                    .map(|(index, name)| (name.into(), index))
+                    .collect::<HashMap<String, usize>>()
+            })
+    } else {
+        None
+    };
 
     let version = env!("CARGO_PKG_VERSION");
 
@@ -755,7 +780,7 @@ async fn create_tray_menu(
         MenuIds::LIGHTWEIGHT_MODE,
         &texts.lightweight_mode,
         true,
-        is_lightweight_mode,
+        options.is_lightweight_mode,
         hotkeys.get("entry_lightweight_mode").map(|s| s.as_str()),
     )?;
 
