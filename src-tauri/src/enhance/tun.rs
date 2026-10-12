@@ -57,6 +57,12 @@ pub fn use_tun(mut config: Mapping, enable: bool) -> Mapping {
                 revise!(dns_val, "fake-ip-range", "198.18.0.1/16");
             }
 
+            // Without a v6 fake-ip range, mihomo can't answer AAAA lookups once TUN owns the
+            // traffic, so every IPv6 name fails to resolve. (upstream #7811 / #7373)
+            if ipv6_val && !dns_val.contains_key(Value::from("fake-ip-range6")) {
+                revise!(dns_val, "fake-ip-range6", "2001:2::0/64");
+            }
+
             #[cfg(target_os = "macos")]
             {
                 AsyncHandler::spawn(move || async move {
@@ -81,4 +87,64 @@ pub fn use_tun(mut config: Mapping, enable: bool) -> Mapping {
     revise!(config, "tun", tun_val);
 
     config
+}
+
+#[cfg(test)]
+#[allow(clippy::expect_used)]
+mod tests {
+    use super::use_tun;
+
+    fn parse(yaml: &str) -> serde_yaml_ng::Mapping {
+        serde_yaml_ng::from_str(yaml).expect("test yaml must parse")
+    }
+
+    #[test]
+    #[allow(clippy::expect_used)]
+    fn fake_ip_v6_range_appears_when_ipv6_enabled() {
+        let config = use_tun(parse(r"{ipv6: true, tun: {enable: false}}"), true);
+        let dns = config
+            .get("dns")
+            .and_then(serde_yaml_ng::Value::as_mapping)
+            .expect("dns added");
+
+        assert_eq!(
+            dns.get("fake-ip-range6").and_then(serde_yaml_ng::Value::as_str),
+            Some("2001:2::0/64")
+        );
+        assert_eq!(
+            dns.get("fake-ip-range").and_then(serde_yaml_ng::Value::as_str),
+            Some("198.18.0.1/16")
+        );
+    }
+
+    #[test]
+    #[allow(clippy::expect_used)]
+    fn fake_ip_v6_range_respects_existing_and_ipv6_disabled() {
+        let custom = use_tun(parse(r"{ipv6: true, dns: {fake-ip-range6: '2001:db8::/64'}}"), true);
+        let dns = custom
+            .get("dns")
+            .and_then(serde_yaml_ng::Value::as_mapping)
+            .expect("dns kept");
+        assert_eq!(
+            dns.get("fake-ip-range6").and_then(serde_yaml_ng::Value::as_str),
+            Some("2001:db8::/64")
+        );
+
+        let no_v6 = use_tun(parse(r"{ipv6: false}"), true);
+        let dns = no_v6
+            .get("dns")
+            .and_then(serde_yaml_ng::Value::as_mapping)
+            .expect("dns added");
+        assert!(!dns.contains_key("fake-ip-range6"), "no v6 range when ipv6 is off");
+    }
+
+    #[test]
+    fn disabled_tun_leaves_dns_untouched() {
+        let config = use_tun(parse(r"{ipv6: true, dns: {enable: false}}"), false);
+        let dns = config
+            .get("dns")
+            .and_then(serde_yaml_ng::Value::as_mapping)
+            .expect("dns kept");
+        assert!(!dns.contains_key("fake-ip-range6"));
+    }
 }

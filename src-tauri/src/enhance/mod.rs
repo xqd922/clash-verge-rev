@@ -576,6 +576,52 @@ fn revert_smart_groups(mut config: Mapping, clash_core: &Option<String>) -> Mapp
     config
 }
 
+fn is_loopback_bind_address(addr: &str) -> bool {
+    let addr = addr.trim();
+    // A literal may be bracketed, e.g. `[::1]`; `str::strip_circumfix` only landed in a newer
+    // Rust than this workspace pins, so trim the pair by hand.
+    let addr = match (addr.starts_with('['), addr.ends_with(']') && addr.len() > 1) {
+        (true, true) => &addr[1..addr.len() - 1],
+        _ => addr,
+    };
+
+    addr.eq_ignore_ascii_case("localhost")
+        || addr.parse::<std::net::IpAddr>().is_ok_and(|addr| addr.is_loopback())
+        || is_ipv4_shorthand_loopback(addr)
+}
+
+fn is_ipv4_shorthand_loopback(addr: &str) -> bool {
+    let parts = addr.split('.').map(str::parse::<u32>).collect::<Result<Vec<_>, _>>();
+
+    let Ok(parts) = parts else {
+        return false;
+    };
+
+    match parts.as_slice() {
+        [first, rest] => *first == 127 && *rest <= 0x00ff_ffff,
+        [first, second, rest] => *first == 127 && *second <= 0xff && *rest <= 0xffff,
+        [first, second, third, fourth] => *first == 127 && *second <= 0xff && *third <= 0xff && *fourth <= 0xff,
+        _ => false,
+    }
+}
+
+/// Sharing with the LAN is pointless if the core still binds to loopback; merge or subscription
+/// `bind-address: 127.0.0.1` silently defeats `allow-lan`. (upstream #7428)
+fn ensure_lan_bind_address(mut config: Mapping) -> Mapping {
+    let allow_lan = config.get("allow-lan").and_then(Value::as_bool).unwrap_or(false);
+
+    if allow_lan
+        && config
+            .get("bind-address")
+            .and_then(Value::as_str)
+            .is_some_and(is_loopback_bind_address)
+    {
+        config.insert(Value::from("bind-address"), Value::from("*"));
+    }
+
+    config
+}
+
 fn cleanup_proxy_groups(mut config: Mapping) -> Mapping {
     const BUILTIN_POLICIES: &[&str] = &["DIRECT", "REJECT", "REJECT-DROP", "PASS", "PASS-RULE"];
 
@@ -759,6 +805,7 @@ pub async fn enhance() -> Result<(Mapping, HashSet<String>, HashMap<String, Resu
     config = cleanup_proxy_groups(config);
 
     config = use_tun(config, enable_tun);
+    config = ensure_lan_bind_address(config);
     config = use_sort(config);
 
     let mut exists_keys_set = HashSet::new();
@@ -773,7 +820,7 @@ pub async fn enhance() -> Result<(Mapping, HashSet<String>, HashMap<String, Resu
 #[allow(clippy::expect_used)]
 #[cfg(test)]
 mod tests {
-    use super::{apply_builtin_scripts, builtin_script_uids_for_core, cleanup_proxy_groups};
+    use super::{apply_builtin_scripts, builtin_script_uids_for_core, cleanup_proxy_groups, ensure_lan_bind_address};
     use serde_yaml_ng::Value;
 
     #[test]
@@ -1085,5 +1132,41 @@ proxy-groups:
             .expect("proxies should be a sequence");
         assert_eq!(proxies.len(), 1);
         assert_eq!(proxies[0].as_str(), Some("DIRECT"));
+    }
+
+    fn mapping(yaml: &str) -> serde_yaml_ng::Mapping {
+        serde_yaml_ng::from_str(yaml).expect("test yaml must parse")
+    }
+
+    #[test]
+    fn lan_bind_address_widens_every_loopback_form() {
+        for bind_address in [
+            "localhost",
+            "127.0.0.1",
+            "127.0.0.2",
+            "127.1",
+            "::1",
+            "[::1]",
+            "0:0:0:0:0:0:0:1",
+        ] {
+            let result = ensure_lan_bind_address(mapping(&format!(
+                r#"{{allow-lan: true, bind-address: "{bind_address}"}}"#
+            )));
+
+            assert_eq!(
+                result.get("bind-address").and_then(Value::as_str),
+                Some("*"),
+                "bind-address {bind_address} should be widened"
+            );
+        }
+    }
+
+    #[test]
+    fn lan_bind_address_preserves_custom_or_disabled() {
+        let custom = ensure_lan_bind_address(mapping(r#"{allow-lan: true, bind-address: "192.168.1.2"}"#));
+        assert_eq!(custom.get("bind-address").and_then(Value::as_str), Some("192.168.1.2"));
+
+        let disabled = ensure_lan_bind_address(mapping(r#"{allow-lan: false, bind-address: "127.0.0.1"}"#));
+        assert_eq!(disabled.get("bind-address").and_then(Value::as_str), Some("127.0.0.1"));
     }
 }
