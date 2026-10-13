@@ -2,7 +2,7 @@ use crate::process::AsyncHandler;
 
 use super::{field::use_lowercase_owned, use_lowercase};
 use anyhow::{Error, Result};
-use boa_engine::{Context, JsString, JsValue, Source, native_function::NativeFunction};
+use boa_engine::{Context, JsString, JsValue, Source, js_string, native_function::NativeFunction, property::Attribute};
 use clash_verge_logging::{Type, logging_error};
 use parking_lot::Mutex;
 use serde_yaml_ng::Mapping;
@@ -23,7 +23,15 @@ pub async fn use_script(script: String, config: Mapping, name: String) -> Result
         return Ok((use_lowercase_owned(config), vec![]));
     }
 
-    let handle = AsyncHandler::spawn_blocking(move || use_script_sync(script, &config, &name));
+    // Serialize the config up front and bind it as a JS global inside the interpreter instead of
+    // interpolating it into the program text (upstream 304f5bad-era script path): Boa's parser
+    // never chews a multi-megabyte literal, which was the dominant cost for big subscriptions.
+    let config_json = serde_json::to_string(&use_lowercase(&config))?;
+    if config_json.len() > MAX_JSON_SIZE {
+        anyhow::bail!("Configuration size exceeds maximum allowed size");
+    }
+
+    let handle = AsyncHandler::spawn_blocking(move || use_script_sync_with_json(script, config_json, &name));
     match tokio::time::timeout(SCRIPT_TIMEOUT, handle).await {
         Ok(Ok(result)) => result,
         Ok(Err(join_err)) => Err(anyhow::anyhow!("script task panicked: {join_err}")),
@@ -31,7 +39,23 @@ pub async fn use_script(script: String, config: Mapping, name: String) -> Result
     }
 }
 
+/// Test helper: the async path serializes before spawning, so only tests need the
+/// Mapping-to-JSON step in-process.
+#[cfg(test)]
 fn use_script_sync(script: String, config: &Mapping, name: &String) -> Result<(Mapping, Vec<(String, String)>)> {
+    let config = use_lowercase(config);
+    let config_str = serde_json::to_string(&config)?;
+    if config_str.len() > MAX_JSON_SIZE {
+        anyhow::bail!("Configuration size exceeds maximum allowed size");
+    }
+    use_script_sync_with_json(script, config_str, name)
+}
+
+fn use_script_sync_with_json(
+    script: String,
+    config_str: std::string::String,
+    name: &String,
+) -> Result<(Mapping, Vec<(String, String)>)> {
     let mut context = Context::default();
 
     context
@@ -94,11 +118,16 @@ fn use_script_sync(script: String, config: &Mapping, name: &String) -> Result<(M
       });"#,
     ));
 
-    let config = use_lowercase(config);
-    let config_str = serde_json::to_string(&config)?;
-    if config_str.len() > MAX_JSON_SIZE {
-        anyhow::bail!("Configuration size exceeds maximum allowed size");
-    }
+    // Bind the JSON instead of embedding it in program source: Boa's parser never chews a
+    // multi-megabyte literal (upstream's __verge_config__ approach). The size cap was checked
+    // by the caller before we got here.
+    context
+        .register_global_property(
+            js_string!("__verge_config__"),
+            JsValue::from(JsString::from(config_str.as_str())),
+            Attribute::all(),
+        )
+        .map_err(|err| anyhow::anyhow!("failed to bind config for script: {err}"))?;
 
     // 仅处理 name 参数中的特殊字符
     let safe_name = escape_js_string_for_single_quote(name);
@@ -109,7 +138,7 @@ fn use_script_sync(script: String, config: &Mapping, name: &String) -> Result<(M
     let code = format!(
         r"try{{
         {script};
-        JSON.stringify(main({config_str},'{safe_name}')||'')
+        JSON.stringify(main(JSON.parse(globalThis.__verge_config__),'{safe_name}')||'')
       }} catch(err) {{
         `__error_flag__ ${{err.toString()}}`
       }}"
@@ -133,13 +162,16 @@ fn use_script_sync(script: String, config: &Mapping, name: &String) -> Result<(M
         let res: Result<Mapping, Error> = parse_json_safely(&result);
 
         match res {
-            Ok(config) => Ok((use_lowercase(&config), outputs.lock().to_vec())),
+            Ok(config) => Ok((use_lowercase_owned(config), outputs.lock().to_vec())),
             Err(err) => {
+                // The script's output was unusable; fall back to the config we handed in
+                // (which was already lowercased when it was serialized).
                 outputs
                     .lock()
                     .push(("exception".into(), "Script execution failed".into()));
                 logging_error!(Type::Config, "Script execution error: {}. Script name: {}", err, name);
-                Ok((config, outputs.lock().to_vec()))
+                let fallback = parse_json_safely(&config_str)?;
+                Ok((fallback, outputs.lock().to_vec()))
             }
         }
     } else {
