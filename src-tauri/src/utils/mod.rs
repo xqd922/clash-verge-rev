@@ -8,6 +8,7 @@ pub mod linux;
 pub mod network;
 pub mod notification;
 pub mod resolve;
+pub mod retry;
 #[cfg(target_os = "windows")]
 pub mod schtasks;
 pub mod server;
