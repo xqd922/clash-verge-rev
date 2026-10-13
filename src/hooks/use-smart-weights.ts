@@ -129,6 +129,7 @@ export function useSmartWeights(
     queryFn: () => getSmartWeights(groupName),
     enabled,
     refetchInterval: 5000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   })

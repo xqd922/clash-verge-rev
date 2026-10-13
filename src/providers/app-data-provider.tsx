@@ -111,6 +111,7 @@ export const AppDataProvider = ({
     queryFn: getAppUptime,
     ...TQ_DEFAULTS,
     refetchInterval: 3000,
+    refetchIntervalInBackground: false,
     retry: 1,
   })
 
