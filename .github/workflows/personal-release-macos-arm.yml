@@ -1,0 +1,166 @@
+name: Personal Release macOS ARM
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "App version (e.g. 7.0.42)"
+        required: true
+      tag:
+        description: "Release tag (e.g. v7.0.42)"
+        required: true
+      source_ref:
+        description: "Git ref to build from"
+        required: false
+        default: "personal"
+      core_version:
+        description: "Pin mihomo stable core version. Leave empty for latest."
+        required: false
+        default: ""
+      update_updater:
+        description: "Regenerate update.json after a successful build"
+        required: false
+        default: "true"
+
+permissions: write-all
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: short
+  HUSKY: 0
+
+concurrency:
+  group: personal-release-macos-arm-${{ github.event.inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  release-macos-arm:
+    name: Release Build (aarch64-apple-darwin)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.source_ref || 'personal' }}
+
+      - name: Install Rust Stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Add Rust target
+        run: rustup target add aarch64-apple-darwin
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "personal-rust-v3"
+          key: "macos-aarch64-apple-darwin"
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          run_install: false
+
+      - name: Pnpm install and prebuild
+        run: |
+          pnpm i
+          pnpm run prebuild aarch64-apple-darwin --force
+        env:
+          MIHOMO_VERSION: ${{ github.event.inputs.core_version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set app version
+        run: pnpm run release-version v${{ github.event.inputs.version }}
+
+      - name: Extract release notes from Changelog
+        id: changelog
+        shell: bash
+        run: |
+          awk '/^## v\(/{if(found) exit; found=1} found{print}' Changelog.md > release_notes.md
+          {
+            echo "notes<<EOF"
+            cat release_notes.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Tauri build
+        uses: tauri-apps/tauri-action@v0.5
+        env:
+          NODE_OPTIONS: "--max_old_space_size=4096"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.event.inputs.tag }}
+          releaseName: "Personal ${{ github.event.inputs.tag }}"
+          releaseBody: ${{ steps.changelog.outputs.notes }}
+          releaseDraft: false
+          prerelease: false
+          tauriScript: pnpm
+          args: --target aarch64-apple-darwin
+          updaterJsonKeepUniversal: true
+
+  release-update:
+    if: ${{ github.event.inputs.update_updater == 'true' }}
+    name: Regenerate Multi-platform update.json
+    runs-on: ubuntu-latest
+    needs: [release-macos-arm]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.source_ref || 'personal' }}
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          run_install: false
+
+      - name: Pnpm install
+        run: pnpm i
+
+      - name: Extract release notes from Changelog
+        shell: bash
+        run: |
+          awk '/^## v\(/{if(found) exit; found=1} found{print}' Changelog.md > release_notes.md
+
+      - name: Generate update.json from all release assets
+        run: node scripts/updater.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove proxy update file
+        run: gh release delete-asset updater update-proxy.json --yes || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Inject release notes into update.json
+        shell: bash
+        run: |
+          gh release download updater --pattern "update.json" --output update.json --clobber
+          node -e "
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('update.json', 'utf8'));
+            data.notes = fs.readFileSync('release_notes.md', 'utf8');
+            fs.writeFileSync('update.json', JSON.stringify(data, null, 2));
+          "
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload update.json to updater release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: updater
+          files: update.json
+          token: ${{ secrets.GITHUB_TOKEN }}
