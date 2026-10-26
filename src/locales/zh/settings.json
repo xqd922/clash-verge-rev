@@ -487,11 +487,31 @@
         "autoDetectInterface": "自动选择流量出口接口",
         "dnsHijack": "DNS 劫持",
         "mtu": "最大传输单元",
-        "autoRedirect": "自动重定向"
+        "autoRedirect": "自动重定向",
+        "autoRedirectFallbackRuleIndex": "自动重定向回退规则索引",
+        "dnsMode": "DNS 模式",
+        "icmpTimeout": "ICMP 超时（秒）",
+        "disableIcmpForwarding": "禁用 ICMP 转发",
+        "congestionController": "拥塞控制算法",
+        "processorsPerChannel": "gVisor 每通道处理器数",
+        "includeMacAddress": "包含 MAC 地址",
+        "excludeMacAddress": "排除 MAC 地址"
       },
       "tooltips": {
         "dnsHijack": "多个 DNS 服务器请使用 , 分隔",
-        "autoRedirect": "自动配置 nftables/iptables 的 TCP 重定向"
+        "autoRedirect": "自动配置 nftables/iptables 的 TCP 重定向",
+        "dnsMode": "控制 TUN 如何配置系统 DNS；自动模式保持旧版核心行为。",
+        "icmpTimeout": "0 表示使用核心默认值。",
+        "disableIcmpForwarding": "防止部分环境中的 ICMP 环回；启用后 ping 延迟可能无法反映真实延迟。",
+        "congestionController": "仅在使用 MIPS 协议栈时生效。",
+        "processorsPerChannel": "gVisor 高级参数。增大数值会提高内存占用，并可能提升峰值吞吐。",
+        "macAddress": "多个 MAC 地址请使用 , 分隔；包含和排除规则不应同时使用。"
+      },
+      "options": {
+        "auto": "自动",
+        "disabled": "禁用",
+        "native": "原生",
+        "hijack": "劫持"
       },
       "messages": {
         "applied": "设置已应用",

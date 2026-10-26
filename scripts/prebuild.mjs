@@ -1,4 +1,4 @@
-import { execSync } from 'child_process'
+import { execFileSync, execSync } from 'child_process'
 import { createHash } from 'crypto'
 import fs from 'fs'
 import fsp from 'fs/promises'
@@ -404,6 +404,7 @@ function clashMetaAlpha() {
     exeFile: `${name}${isWin ? '.exe' : ''}`,
     zipFile: `${name}-${META_ALPHA_VERSION}.${urlExt}`,
     downloadURL: `${META_ALPHA_URL_PREFIX}/${name}-${META_ALPHA_VERSION}.${urlExt}`,
+    expectedVersion: META_ALPHA_VERSION,
   }
 }
 
@@ -417,6 +418,7 @@ function clashMeta() {
     exeFile: `${name}${isWin ? '.exe' : ''}`,
     zipFile: `${name}-${META_VERSION}.${urlExt}`,
     downloadURL: `${META_URL_PREFIX}/${META_VERSION}/${name}-${META_VERSION}.${urlExt}`,
+    expectedVersion: META_VERSION,
   }
 }
 
@@ -432,6 +434,7 @@ function clashMetaSmart() {
     downloadURL:
       META_SMART_DOWNLOAD_URL ??
       `${META_SMART_URL_PREFIX}/${name}-${META_SMART_VERSION}.${urlExt}`,
+    expectedVersion: META_SMART_VERSION,
   }
 }
 
@@ -484,17 +487,41 @@ async function downloadFile(url, outPath) {
   log_success(`download finished: ${url}`)
 }
 
+async function getSidecarVersion(sidecarPath) {
+  try {
+    const output = execFileSync(sidecarPath, ['-v'], {
+      encoding: 'utf8',
+      timeout: 10_000,
+      windowsHide: true,
+    })
+    return output.match(/v\S+|alpha(?:-smart)?-\S+/)?.[0]
+  } catch (err) {
+    log_debug(
+      `Failed to read sidecar version from "${sidecarPath}":`,
+      err.message,
+    )
+    return null
+  }
+}
+
 // =======================
 // resolveSidecar (支持 zip / tgz / gz)
 // =======================
 async function resolveSidecar(binInfo) {
-  const { name, targetFile, zipFile, exeFile, downloadURL } = binInfo
+  const { name, targetFile, zipFile, exeFile, downloadURL, expectedVersion } =
+    binInfo
   const sidecarPath = path.join(SIDECAR_DIR, targetFile)
   await fsp.mkdir(SIDECAR_DIR, { recursive: true })
 
   if (!FORCE && fs.existsSync(sidecarPath)) {
-    log_success(`"${name}" already exists, skipping download`)
-    return
+    const actualVersion = await getSidecarVersion(sidecarPath)
+    if (!expectedVersion || actualVersion === expectedVersion) {
+      log_success(`"${name}" already exists, skipping download`)
+      return
+    }
+    log_info(
+      `"${name}" version mismatch (expected ${expectedVersion}, got ${actualVersion ?? 'unknown'}), re-downloading`,
+    )
   }
 
   const tempDir = path.join(TEMP_DIR, name)

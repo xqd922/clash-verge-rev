@@ -487,11 +487,31 @@
         "autoDetectInterface": "Auto Detect Interface",
         "dnsHijack": "DNS Hijack",
         "mtu": "Max Transmission Unit",
-        "autoRedirect": "Auto Redirect"
+        "autoRedirect": "Auto Redirect",
+        "autoRedirectFallbackRuleIndex": "Auto Redirect Fallback Rule Index",
+        "dnsMode": "DNS Mode",
+        "icmpTimeout": "ICMP Timeout (seconds)",
+        "disableIcmpForwarding": "Disable ICMP Forwarding",
+        "congestionController": "Congestion Controller",
+        "processorsPerChannel": "gVisor Processors per Channel",
+        "includeMacAddress": "Include MAC Address",
+        "excludeMacAddress": "Exclude MAC Address"
       },
       "tooltips": {
         "dnsHijack": "Please use , to separate multiple DNS servers",
-        "autoRedirect": "Automatically configures nftables/iptables TCP redirects"
+        "autoRedirect": "Automatically configures nftables/iptables TCP redirects",
+        "dnsMode": "Controls how TUN configures system DNS. Auto preserves legacy core behavior.",
+        "icmpTimeout": "0 uses the core default value.",
+        "disableIcmpForwarding": "Prevents ICMP loopbacks in some environments. Ping latency may no longer reflect real latency.",
+        "congestionController": "Only effective with the MIPS stack.",
+        "processorsPerChannel": "Advanced gVisor option. Higher values use more memory and may improve peak throughput.",
+        "macAddress": "Comma-separated MAC addresses. Include and exclude rules should not be used together."
+      },
+      "options": {
+        "auto": "Auto",
+        "disabled": "Disabled",
+        "native": "Native",
+        "hijack": "Hijack"
       },
       "messages": {
         "applied": "Settings Applied",

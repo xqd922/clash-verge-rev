@@ -11,6 +11,13 @@ export const StackModeSwitch = (props: Props) => {
   return (
     <ButtonGroup size="small" sx={{ my: '4px' }}>
       <Button
+        variant={value?.toLowerCase() === 'mips' ? 'contained' : 'outlined'}
+        onClick={() => onChange?.('mips')}
+        sx={{ textTransform: 'capitalize' }}
+      >
+        Mips
+      </Button>
+      <Button
         variant={value?.toLowerCase() === 'system' ? 'contained' : 'outlined'}
         onClick={() => onChange?.('system')}
         sx={{ textTransform: 'capitalize' }}

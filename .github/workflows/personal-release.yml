@@ -96,7 +96,7 @@ jobs:
       - name: Pnpm install and prebuild
         run: |
           pnpm i
-          pnpm run prebuild ${{ matrix.target }}
+          pnpm run prebuild ${{ matrix.target }} --force
         env:
           MIHOMO_VERSION: ${{ github.event.inputs.core_version }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -214,7 +214,7 @@ jobs:
       - name: Pnpm install and prebuild
         run: |
           pnpm i
-          pnpm run prebuild ${{ matrix.target }}
+          pnpm run prebuild ${{ matrix.target }} --force
         env:
           MIHOMO_VERSION: ${{ github.event.inputs.core_version }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -338,7 +338,7 @@ jobs:
       - name: Pnpm install and prebuild
         run: |
           pnpm i
-          pnpm run prebuild ${{ matrix.target }}
+          pnpm run prebuild ${{ matrix.target }} --force
         env:
           MIHOMO_VERSION: ${{ github.event.inputs.core_version }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

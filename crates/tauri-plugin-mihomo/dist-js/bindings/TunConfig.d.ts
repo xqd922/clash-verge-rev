@@ -3,6 +3,7 @@ export type TunConfig = {
     enable: boolean;
     device: string;
     stack: TunStack;
+    dnsMode?: string;
     dnsHijack: Array<string>;
     autoRoute: boolean;
     autoDetectInterface: boolean;
@@ -16,7 +17,8 @@ export type TunConfig = {
     autoRedirect?: boolean;
     autoRedirectInputMark?: number;
     autoRedirectOutputMark?: number;
-    loopbackAddress?: string;
+    autoRedirectIproute2FallbackRuleIndex?: number;
+    loopbackAddress?: Array<string>;
     strictRoute?: boolean;
     routeAddress?: Array<string>;
     routeAddressSet?: Array<string>;
@@ -35,8 +37,13 @@ export type TunConfig = {
     includeAndroidUser?: Array<number>;
     includePackage?: Array<string>;
     excludePackage?: Array<string>;
+    includeMacAddress?: Array<string>;
+    excludeMacAddress?: Array<string>;
     endpointIndependentNat?: boolean;
     udpTimeout?: number;
+    icmpTimeout?: number;
+    disableIcmpForwarding?: boolean;
+    congestionController?: string;
     fileDescriptor: number;
     inet4RouteAddress?: Array<string>;
     inet6RouteAddress?: Array<string>;
@@ -44,4 +51,5 @@ export type TunConfig = {
     inet6RouteExcludeAddress?: Array<string>;
     recvmsgx?: boolean;
     sendmsgx?: boolean;
+    processorsPerChannel?: number;
 };

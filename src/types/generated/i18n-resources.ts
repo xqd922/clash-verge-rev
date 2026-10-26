@@ -1032,10 +1032,18 @@ export interface TranslationResources {
           fields: {
             autoDetectInterface: string
             autoRedirect: string
+            autoRedirectFallbackRuleIndex: string
             autoRoute: string
+            congestionController: string
             device: string
+            disableIcmpForwarding: string
             dnsHijack: string
+            dnsMode: string
+            excludeMacAddress: string
+            icmpTimeout: string
+            includeMacAddress: string
             mtu: string
+            processorsPerChannel: string
             routeExcludeAddress: string
             stack: string
             strictRoute: string
@@ -1045,10 +1053,22 @@ export interface TranslationResources {
             invalidRouteExcludeAddress: string
             routeExcludeAddressHint: string
           }
+          options: {
+            auto: string
+            disabled: string
+            hijack: string
+            native: string
+          }
           title: string
           tooltips: {
             autoRedirect: string
+            congestionController: string
+            disableIcmpForwarding: string
             dnsHijack: string
+            dnsMode: string
+            icmpTimeout: string
+            macAddress: string
+            processorsPerChannel: string
           }
         }
         update: {

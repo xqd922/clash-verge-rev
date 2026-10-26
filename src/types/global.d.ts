@@ -45,12 +45,21 @@ interface IConfigData {
   tun: {
     stack: string
     device: string
+    'dns-mode'?: '' | 'disabled' | 'native' | 'hijack'
     'auto-route': boolean
     'auto-redirect'?: boolean
+    'auto-redirect-iproute2-fallback-rule-index'?: number
     'auto-detect-interface': boolean
     'dns-hijack': string[]
+    'loopback-address'?: string[]
     'route-exclude-address'?: string[]
     'strict-route': boolean
+    'include-mac-address'?: string[]
+    'exclude-mac-address'?: string[]
+    'icmp-timeout'?: number
+    'disable-icmp-forwarding'?: boolean
+    'congestion-controller'?: '' | 'cubic' | 'reno' | 'bbr' | 'bbr3'
+    'processors-per-channel'?: number
     mtu: number
   }
   dns?: {

@@ -85,6 +85,9 @@ pub struct TunConfig {
     pub enable: bool,
     pub device: String,
     pub stack: TunStack,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub dns_mode: Option<String>,
     pub dns_hijack: Vec<String>,
     pub auto_route: bool,
     pub auto_detect_interface: bool,
@@ -131,7 +134,11 @@ pub struct TunConfig {
 
     #[ts(optional)]
     #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub loopback_address: Option<String>,
+    pub auto_redirect_iproute2_fallback_rule_index: Option<isize>,
+
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub loopback_address: Option<Vec<String>>,
 
     #[ts(optional)]
     #[serde(skip_serializing_if = "Option::is_none", default)]
@@ -207,12 +214,33 @@ pub struct TunConfig {
 
     #[ts(optional)]
     #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub include_mac_address: Option<Vec<String>>,
+
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub exclude_mac_address: Option<Vec<String>>,
+
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub endpoint_independent_nat: Option<bool>,
 
     #[ts(optional)]
     #[ts(type = "number")]
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub udp_timeout: Option<i64>,
+
+    #[ts(optional)]
+    #[ts(type = "number")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub icmp_timeout: Option<i64>,
+
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub disable_icmp_forwarding: Option<bool>,
+
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub congestion_controller: Option<String>,
 
     pub file_descriptor: u32,
 
@@ -242,6 +270,10 @@ pub struct TunConfig {
     #[ts(optional)]
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub sendmsgx: Option<bool>,
+
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub processors_per_channel: Option<u32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS, PartialEq, Eq)]
@@ -423,6 +455,7 @@ pub enum TunStack {
     Mixed,
     #[serde(rename = "gVisor")]
     Gvisor,
+    Mips,
     System,
 }
 
@@ -432,6 +465,7 @@ impl Display for TunStack {
         match self {
             TunStack::Mixed => write!(f, "Mixed"),
             TunStack::Gvisor => write!(f, "gVisor"),
+            TunStack::Mips => write!(f, "Mips"),
             TunStack::System => write!(f, "System"),
         }
     }
